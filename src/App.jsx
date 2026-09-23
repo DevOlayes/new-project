@@ -19,7 +19,7 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    const loadMarket = () => fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT").then((r) => r.ok ? r.json() : null).then((data) => { if (!cancelled && data) setMarket({ price: Number(data.lastPrice), change: Number(data.priceChangePercent) }); }).catch(() => {});
+    const loadMarket = () => fetch("https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT").then((r) => r.ok ? r.json() : null).then((data) => { if (!cancelled && data) setMarket({ price: Number(data.lastPrice), change: Number(data.priceChangePercent) }); }).catch(() => {});
     loadMarket();
     const timer = setInterval(loadMarket, 30000);
     return () => { cancelled = true; clearInterval(timer); };
