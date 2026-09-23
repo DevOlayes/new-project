@@ -10,7 +10,7 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [account, setAccount] = useState({ wallets: [], trades: [], transactions: [], notifications: [], error: null });
+  const [account, setAccount] = useState({ wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], error: null });
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [market, setMarket] = useState(null);
@@ -46,7 +46,7 @@ export default function App() {
     setProfile(data || null);
   }
 
-  async function signOut() { if (supabase) await supabase.auth.signOut(); setAccount({ wallets: [], trades: [], transactions: [], notifications: [], error: null }); }
+  async function signOut() { if (supabase) await supabase.auth.signOut(); setAccount({ wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], error: null }); }
 
   if (!inMiniApp) return <Landing market={market} />;
   if (!user && loading) return <div className="loading-screen"><div className="loader-orb">F</div><strong>Connecting your Flexar account…</strong><span>Loading your account data…</span></div>;
@@ -87,10 +87,19 @@ function LandingCard({ title, text }) { return <article className="landing-card"
 function Home({ account, loading, setPage }) {
   const active = account.trades.filter((trade) => trade.status === "active");
   const unread = account.notifications.filter((item) => !item.is_read).length;
-  return <><section className="hero"><small>FLEXAR ACCOUNT</small><h1>Ready to trade.</h1><p className="green">Live account data from your Flexar backend.</p><div className="actions"><button onClick={() => setPage("trade")}>View Market</button><button className="secondary" onClick={() => setPage("wallet")}>Wallet</button></div></section>
-    <h2>Balances</h2><div className="grid"><BalanceCard asset="TON" wallet={account.wallets.find((item) => item.asset === "TON")} /><BalanceCard asset="USDT" wallet={account.wallets.find((item) => item.asset === "USDT")} /></div>
-    <h2>Account</h2><div className="grid"><div className="stat"><small>Active trades</small><strong>{loading ? "…" : active.length}</strong></div><div className="stat"><small>Unread alerts</small><strong>{loading ? "…" : unread}</strong></div></div>
-    <h2>Recent activity</h2><ActivityRows account={account} /></>;
+  const opportunities = account.opportunities || [];
+  return <><section className="home-hero"><div><small>FLEXAR AI ENGINE</small><h1>Opportunities,<br /><span>not guesswork.</span></h1><p>The engine scans market conditions and surfaces trade setups for you to review.</p></div><div className="ai-orbit"><span>AI</span><i /><i /><i /></div></section>
+    <section className="home-opportunities"><div className="section-heading"><div><small>AI OPPORTUNITIES</small><h2>Ready to review</h2></div><button onClick={() => setPage("trade")}>View all →</button></div>
+      {opportunities.length ? <div className="opportunity-list">{opportunities.slice(0,3).map((item) => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div> : <div className="empty-state opportunity-empty"><strong>{loading ? "Scanning markets…" : "No opportunities yet"}</strong><p>{loading ? "Flexar is checking the opportunity feed." : "New AI-selected opportunities will appear here when the engine publishes them."}</p></div>}
+    </section>
+    <section className="balance-hero"><div><small>TOTAL AVAILABLE</small><strong>{Number(account.wallets.find((item) => item.asset === "USDT")?.available_balance || 0).toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong></div><div className="balance-actions"><button onClick={() => setPage("wallet")}>Wallet</button><button className="secondary" onClick={() => setPage("activity")}>Activity</button></div></section>
+    <div className="grid home-stats"><div className="stat"><small>Active trades</small><strong>{loading ? "…" : active.length}</strong></div><div className="stat"><small>Unread alerts</small><strong>{loading ? "…" : unread}</strong></div></div>
+    <h2>Recent activity</h2><ActivityRows account={account} />
+  </>;
+}
+function OpportunityCard({ item, setPage }) {
+  const score = Math.round(Number(item.signal_score || 0) * 100);
+  return <article className="opportunity-card"><div className="opp-top"><div><small>{item.symbol}</small><strong>AI opportunity</strong></div><span className={item.direction === "up" ? "green" : "red"}>{item.direction === "up" ? "UP ↗" : "DOWN ↘"}</span></div><div className="opp-meta"><span>{Math.round(item.duration_seconds / 60)} min</span><span>Signal {score}%</span><span>{item.status.toUpperCase()}</span></div><button onClick={() => setPage("trade")}>Review opportunity →</button></article>;
 }
 function BalanceCard({ asset, wallet }) { return <div className="stat"><small>{asset} · {wallet?.network || (asset === "TON" ? "TON" : "TRC-20")}</small><strong>{Number(wallet?.available_balance || 0).toLocaleString(undefined,{maximumFractionDigits:4})} {asset}</strong></div>; }
 function ActivityRows({ account }) {
