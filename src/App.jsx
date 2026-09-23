@@ -107,4 +107,25 @@ function Wallet({ account }) { return <><section className="intro"><small>WALLET
 
 function Profile({ user, profile, signOut }) { return <><section className="profile"><div>{(profile?.display_name || "F").slice(0,1).toUpperCase()}</div><p><small>{profile?.telegram_username ? "@" + profile.telegram_username : "Flexar account"}</small><strong>{user ? profile?.display_name || "Connected account" : "Telegram authentication pending"}</strong></p>{user ? <button className="secondary" onClick={signOut}>Sign out</button> : <span className="pending-badge">PENDING</span>}</section><div className="list"><Row text="Notifications" value="Telegram + app" /><Row text="Security" value="Protected" /><Row text="Referral code" value={profile?.referral_code || "—"} /></div></>; }
 
+function Chart() {
+  // Lightweight SVG chart so the landing/trading UI never depends on a missing chart library.
+  // Replace the data points with live market candles when the market-data service is connected.
+  const points = "0,122 34,116 68,126 102,92 136,100 170,78 204,88 238,61 272,72 306,48 340,56 374,31 408,42 442,20";
+  return <div className="chart-wrap" aria-label="Market price chart">
+    <svg viewBox="0 0 442 150" preserveAspectRatio="none" role="img">
+      <defs>
+        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(124,255,156,.24)" />
+          <stop offset="100%" stopColor="rgba(124,255,156,0)" />
+        </linearGradient>
+      </defs>
+      <path d={`M 0 122 L 34 116 L 68 126 L 102 92 L 136 100 L 170 78 L 204 88 L 238 61 L 272 72 L 306 48 L 340 56 L 374 31 L 408 42 L 442 20 L 442 150 L 0 150 Z`} fill="url(#chartFill)" />
+      <polyline points={points} fill="none" stroke="#7cff9c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="0" y1="128" x2="442" y2="128" stroke="rgba(124,255,156,.08)" />
+      <line x1="0" y1="82" x2="442" y2="82" stroke="rgba(124,255,156,.08)" />
+      <line x1="0" y1="36" x2="442" y2="36" stroke="rgba(124,255,156,.08)" />
+    </svg>
+  </div>;
+}
+
 function Row({ text, value, bad }) { return <div className="row"><span>{text}</span><strong className={bad ? "red" : "green"}>{value}</strong></div>; }
