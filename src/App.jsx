@@ -13,9 +13,17 @@ export default function App() {
   const [account, setAccount] = useState({ wallets: [], trades: [], transactions: [], notifications: [], error: null });
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
+  const [market, setMarket] = useState(null);
 
   const refreshAccount = useCallback(async () => { if (!supabase || !user) return; setLoading(true); const result = await getAccountData(); setAccount(result); setLoading(false); }, [user]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadMarket = () => fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT").then((r) => r.ok ? r.json() : null).then((data) => { if (!cancelled && data) setMarket({ price: Number(data.lastPrice), change: Number(data.priceChangePercent) }); }).catch(() => {});
+    loadMarket();
+    const timer = setInterval(loadMarket, 30000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
   useEffect(() => {
     const miniApp = getTelegramWebApp();
     setInMiniApp(isTelegramMiniApp());
@@ -40,7 +48,7 @@ export default function App() {
 
   async function signOut() { if (supabase) await supabase.auth.signOut(); setAccount({ wallets: [], trades: [], transactions: [], notifications: [], error: null }); }
 
-  if (!inMiniApp) return <Landing />;
+  if (!inMiniApp) return <Landing market={market} />;
   if (!user && loading) return <div className="loading-screen"><div className="loader-orb">F</div><strong>Connecting your Flexar account…</strong><span>Loading your account data…</span></div>;
   if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><b>F</b><div><strong>Flexar</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open Flexar from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
 
@@ -58,13 +66,17 @@ export default function App() {
   </div>;
 }
 
-function Landing() {
+function Landing({ market }) {
+  const price = market?.price;
+  const change = market?.change;
   return <div className="landing"><div className="landing-orb orb-one" /><div className="landing-orb orb-two" />
-    <header className="landing-topbar"><div className="brand"><b>F</b><div><strong>Flexar</strong><small>AI TRADES</small></div></div><span className="live-chip">● TRADING PLATFORM</span></header>
-    <main className="landing-content"><section className="landing-hero"><div className="eyebrow">AI-POWERED TRADING</div><h1>See the market.<br /><span>Make your move.</span></h1><p>Flexar puts market views, AI-assisted trade selection, wallet management and account activity into one Telegram-first trading experience.</p><button className="landing-cta">Open Flexar in Telegram <b>↗</b></button><small className="landing-note">Connect Telegram first. No separate Flexar password is required.</small></section>
-      <section className="landing-terminal"><div className="terminal-top"><div><small>MARKET VIEW</small><strong>TON / USDT</strong></div><span className="green">+2.14%</span></div><Chart /><div className="terminal-bottom"><strong>$3.42</strong><span>LIVE-STYLE MARKET VIEW</span></div><div className="floating-card float-card-a">AI SIGNAL <b>UP ↗</b></div><div className="floating-card float-card-b">BALANCE <b>USDT</b></div></section>
-      <section className="landing-section"><div className="eyebrow">HOW TO GET STARTED</div><h2>From Telegram to trade in three simple steps.</h2><div className="landing-steps"><LandingStep n="01" title="Connect Telegram" text="Launch Flexar from Telegram and securely create your Flexar account."/><LandingStep n="02" title="Fund your wallet" text="Choose TON or USDT on TRC-20 and manage your available balance."/><LandingStep n="03" title="Review & trade" text="See the market, choose direction, duration and stake before confirming." /></div></section>
-      <section className="landing-section"><div className="feature-row"><LandingFeature title="Market charts" text="Understand the market before you enter."/><LandingFeature title="Wallet control" text="Keep TON and USDT balances separated by network."/><LandingFeature title="Account activity" text="Trades and wallet events stay linked to one account." /></div></section>
+    <header className="landing-topbar"><div className="brand"><b>F</b><div><strong>Flexar</strong><small>AI TRADING ENGINE</small></div></div><span className="live-chip">● WEB PLATFORM</span></header>
+    <main className="landing-content">
+      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>Flexar continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta">Enter Flexar <b>↗</b></button><span className="hero-status"><i /> Market data connected</span></div></section>
+      <section className="landing-terminal"><div className="terminal-top"><div><small>LIVE MARKET</small><strong>BTC / USDT</strong></div><span className={change >= 0 ? "green" : "red"}>{change == null ? "—" : (change >= 0 ? "+" : "") + change.toFixed(2) + "%"}</span></div><Chart /><div className="terminal-bottom"><strong>{price == null ? "Loading…" : "$" + price.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>PUBLIC MARKET DATA</span></div><div className="floating-card float-card-a">AI OPPORTUNITY <b>SCANNING</b></div><div className="floating-card float-card-b">NEXT WINDOW <b>60 MIN</b></div></section>
+      <section className="opportunity-preview"><div><div className="eyebrow">AI OPPORTUNITY FEED</div><h2>Users do not hunt for trades. Flexar finds them.</h2></div><div className="opportunity-demo"><div><span>BTC / USDT</span><strong>AI opportunity detected</strong></div><b>UP ↗</b><small>60 MIN · REVIEW READY</small></div></section>
+      <section className="landing-section"><div className="eyebrow">HOW FLEXAR WORKS</div><h2>Simple on the surface. Intelligent underneath.</h2><div className="landing-steps"><LandingStep n="01" title="Scan" text="Market data is continuously collected and analyzed across supported markets."/><LandingStep n="02" title="Select" text="The engine filters signals and turns stronger setups into user-friendly opportunities."/><LandingStep n="03" title="Trade" text="You review the opportunity, choose your stake and confirm when ready." /></div></section>
+      <section className="landing-section"><div className="feature-row"><LandingFeature title="AI-first trading" text="The system does the heavy market analysis before presenting an opportunity."/><LandingFeature title="Real market data" text="Charts and future signals are designed around real market pricing, not invented demo prices."/><LandingFeature title="Transparent activity" text="Trades, balances and wallet events remain connected to your account ledger." /></div></section>
     </main></div>;
 }
 function LandingStep({n,title,text}) { return <article className="landing-step"><span>{n}</span><strong>{title}</strong><p>{text}</p></article>; }
