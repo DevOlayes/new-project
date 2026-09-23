@@ -58,19 +58,17 @@ export default function App() {
   </div>;
 }
 
-function Landing({ onOpen }) {
-  return <div className="landing">
-    <header className="landing-topbar"><div className="brand"><b>F</b><div><strong>Flexar</strong><small>AI Trades</small></div></div><span className="status-pill">● BUILDING</span></header>
-    <main className="landing-content">
-      <section className="landing-hero"><div className="eyebrow">AI-POWERED TRADING</div><h1>Trade with a clearer view.</h1>
-        <p>Flexar brings AI trade selection, wallet management and account activity into one simple Telegram-first experience.</p>
-        <button className="landing-cta" onClick={onOpen}>Open Flexar <span>→</span></button><small className="landing-note">Best experienced inside Telegram.</small>
-      </section>
-      <section className="landing-grid"><LandingCard title="AI Trades" text="A focused flow for selecting and monitoring trades." /><LandingCard title="Wallets" text="TON and USDT on TRC-20 in one account." /><LandingCard title="Activity" text="Keep your trades, transactions and rewards together." /></section>
-      <section className="landing-strip"><span>TELEGRAM-FIRST</span><strong>One account. One balance. Multiple interfaces.</strong></section>
-    </main>
-  </div>;
+function Landing() {
+  return <div className="landing"><div className="landing-orb orb-one" /><div className="landing-orb orb-two" />
+    <header className="landing-topbar"><div className="brand"><b>F</b><div><strong>Flexar</strong><small>AI TRADES</small></div></div><span className="live-chip">● TRADING PLATFORM</span></header>
+    <main className="landing-content"><section className="landing-hero"><div className="eyebrow">AI-POWERED TRADING</div><h1>See the market.<br /><span>Make your move.</span></h1><p>Flexar puts market views, AI-assisted trade selection, wallet management and account activity into one Telegram-first trading experience.</p><button className="landing-cta">Open Flexar in Telegram <b>↗</b></button><small className="landing-note">Connect Telegram first. No separate Flexar password is required.</small></section>
+      <section className="landing-terminal"><div className="terminal-top"><div><small>MARKET VIEW</small><strong>TON / USDT</strong></div><span className="green">+2.14%</span></div><Chart /><div className="terminal-bottom"><strong>$3.42</strong><span>LIVE-STYLE MARKET VIEW</span></div><div className="floating-card float-card-a">AI SIGNAL <b>UP ↗</b></div><div className="floating-card float-card-b">BALANCE <b>USDT</b></div></section>
+      <section className="landing-section"><div className="eyebrow">HOW TO GET STARTED</div><h2>From Telegram to trade in three simple steps.</h2><div className="landing-steps"><LandingStep n="01" title="Connect Telegram" text="Launch Flexar from Telegram and securely create your Flexar account."/><LandingStep n="02" title="Fund your wallet" text="Choose TON or USDT on TRC-20 and manage your available balance."/><LandingStep n="03" title="Review & trade" text="See the market, choose direction, duration and stake before confirming." /></div></section>
+      <section className="landing-section"><div className="feature-row"><LandingFeature title="Market charts" text="Understand the market before you enter."/><LandingFeature title="Wallet control" text="Keep TON and USDT balances separated by network."/><LandingFeature title="Account activity" text="Trades and wallet events stay linked to one account." /></div></section>
+    </main></div>;
 }
+function LandingStep({n,title,text}) { return <article className="landing-step"><span>{n}</span><strong>{title}</strong><p>{text}</p></article>; }
+function LandingFeature({title,text}) { return <article className="landing-feature"><b>✦</b><strong>{title}</strong><p>{text}</p></article>; }
 
 function LandingCard({ title, text }) { return <article className="landing-card"><span>✦</span><strong>{title}</strong><p>{text}</p></article>; }
 
@@ -90,12 +88,17 @@ function ActivityRows({ account }) {
 }
 
 function Trade({ account }) {
-  const [dir, setDir] = useState("UP"); const [amount, setAmount] = useState("25"); const amounts = ["10","25","50","100"];
-  return <><section className="intro"><small>AI TRADE</small><h1>Trade with a clear view.</h1><p>Choose your stake, duration and direction.</p></section>
-    <section className="card"><div className="market"><strong>TON / USDT</strong><span>● LIVE</span></div><div className="price"><small>Current price</small><strong>$3.42</strong><em>+2.14%</em></div>
-      <label>Direction</label><div className="grid two"><button className={dir === "UP" ? "selected" : ""} onClick={() => setDir("UP")}>↗ UP</button><button className={dir === "DOWN" ? "selected" : ""} onClick={() => setDir("DOWN")}>↘ DOWN</button></div>
-      <label>Stake</label><div className="grid four">{amounts.map((item) => <button key={item} className={amount === item ? "selected" : ""} onClick={() => setAmount(item)}>{"$" + item}</button>)}</div>
-      <button className="full">Confirm {dir} trade</button></section></>;
+  const [dir,setDir]=useState("UP"); const [duration,setDuration]=useState("60"); const [amount,setAmount]=useState("25");
+  const usdt=account.wallets.find((item)=>item.asset==="USDT"); const canTrade=Number(usdt?.available_balance||0)>=Number(amount);
+  return <><section className="intro"><small>AI TRADE TERMINAL</small><h1>Read the market first.</h1><p>Review the chart, choose your market settings and prepare the trade.</p></section>
+    <section className="trade-market"><div className="market-head"><div><small>TON / USDT</small><strong>$3.42</strong><span className="green">+2.14%</span></div><span className="live-badge">● LIVE</span></div><Chart/><div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div></section>
+    <section className="card"><div className="trade-balance"><span>Available USDT</span><strong>{Number(usdt?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div>
+      <label>Direction</label><div className="grid two"><button className={dir==="UP"?"selected":"choice"} onClick={()=>setDir("UP")}>↗ UP</button><button className={dir==="DOWN"?"selected":"choice"} onClick={()=>setDir("DOWN")}>↘ DOWN</button></div>
+      <label>Duration</label><div className="grid three">{["30","60","300"].map((v)=><button key={v} className={duration===v?"selected":"choice"} onClick={()=>setDuration(v)}>{v==="60"?"1 min":v==="300"?"5 min":"30 sec"}</button>)}</div>
+      <label>Stake</label><div className="grid four">{["10","25","50","100"].map((v)=><button key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)}>$${v}</button>)}</div>
+      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration}s · $${amount}</strong></div><button className="full" disabled={!canTrade}>Confirm {dir} trade →</button>
+      {!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}{usdt&&!canTrade&&<p className="helper">Stake exceeds your available USDT balance.</p>}<p className="demo-note">Order execution is intentionally locked until the server-side market and settlement engine is connected.</p>
+    </section></>;
 }
 
 function Activity({ account }) { return <><section className="intro"><small>ACTIVITY</small><h1>Your account history.</h1><p>Trades and wallet transactions are loaded from Supabase.</p></section><ActivityRows account={account} /></>; }
