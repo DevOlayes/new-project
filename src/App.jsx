@@ -96,7 +96,7 @@ function Trade({ account }) {
       <label>Direction</label><div className="grid two"><button className={dir==="UP"?"selected":"choice"} onClick={()=>setDir("UP")}>↗ UP</button><button className={dir==="DOWN"?"selected":"choice"} onClick={()=>setDir("DOWN")}>↘ DOWN</button></div>
       <label>Duration</label><div className="grid three">{["30","60","300"].map((v)=><button key={v} className={duration===v?"selected":"choice"} onClick={()=>setDuration(v)}>{v==="60"?"1 min":v==="300"?"5 min":"30 sec"}</button>)}</div>
       <label>Stake</label><div className="grid four">{["10","25","50","100"].map((v)=><button key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)}>${v}</button>)}</div>
-      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration}s · $${amount}</strong></div><button className="full" disabled={!canTrade}>Confirm {dir} trade →</button>
+      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration}s · ${amount}</strong></div><button className="full" disabled={!canTrade}>Confirm {dir} trade →</button>
       {!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}{usdt&&!canTrade&&<p className="helper">Stake exceeds your available USDT balance.</p>}<p className="demo-note">Order execution is intentionally locked until the server-side market and settlement engine is connected.</p>
     </section></>;
 }
