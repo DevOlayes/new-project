@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
