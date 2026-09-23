@@ -77,3 +77,43 @@ Cloudflare can deploy the Vite static frontend from GitHub. A custom domain is o
 ## Development rule
 
 Do not add complexity simply because a feature can be abstracted. Flexar should remain understandable to one developer working from a mobile device.
+
+
+## Current deployment
+
+Cloudflare has a working Workers URL for the current frontend:
+
+`https://new-project.mails4olayes.workers.dev/`
+
+The same public URL is intended to serve two experiences:
+- normal browser: Flexar public landing page
+- Telegram Mini App: Flexar authenticated app shell
+
+Cloudflare supports React + Vite deployment to a `workers.dev` URL and later migration to a custom domain. citeturn0search0turn0search4
+
+## Telegram integration plan
+
+The Telegram Web App SDK is loaded from Telegram's official script. The Mini App will use `Telegram.WebApp.initData` for authentication. Telegram explicitly warns that `initDataUnsafe` must not be trusted; raw `initData` must be validated server-side before account identity is accepted. citeturn0search2
+
+Planned flow:
+
+```
+Telegram user
+  -> Flexar Mini App
+  -> Telegram.WebApp.initData
+  -> Supabase Edge Function
+  -> validate Telegram signature
+  -> create/link Flexar account
+  -> Supabase session/profile
+  -> app
+```
+
+## Environment configuration
+
+The browser uses the Supabase project URL and publishable key. Supabase's current React documentation uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. citeturn0search3turn0search5
+
+Do not commit Telegram bot tokens, Supabase secret keys, or service-role keys to GitHub.
+
+## Important current state
+
+The landing page and Telegram Web App shell are now in place. Live Telegram authentication is deliberately not enabled until the bot token is rotated and stored as a server-side secret. Wallet and trade values in the shell remain demo values until live database queries and server-controlled trading flows are implemented.
