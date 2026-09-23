@@ -23,7 +23,7 @@ export default function App() {
     if (!supabase) { setLoading(false); return; }
     let mounted = true;
     if (miniApp && miniApp.initData) { supabase.functions.invoke("telegram-auth", { body: { initData: miniApp.initData } }).then(({ data, error }) => { if (!mounted) return; if (error || data?.error) { setAuthError(data?.error || error?.message || "Telegram authentication failed."); setLoading(false); return; } setAuthError(""); refreshAccount(); }).catch((error) => { if (mounted) { setAuthError(error.message || "Telegram authentication failed."); setLoading(false); } }); }
-    supabase.auth.getClaims().then(({ data }) => { if (mounted) setUser(data?.claims || null); });
+    supabase.auth.getClaims().then(({ data }) => { if (!mounted) return; const claims=data?.claims; setUser(claims?.sub ? { id: claims.sub, claims } : null); if (claims?.sub) loadProfile(claims.sub); else setLoading(false); });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       setUser(session?.user || null);
