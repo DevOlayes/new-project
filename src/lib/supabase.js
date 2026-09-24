@@ -1,11 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Only the public/publishable Supabase values belong in the browser.
-// Never put the service_role/secret key in VITE_* variables.
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Flexa AI uses only Supabase's browser-safe project URL and publishable key.
+// These fallback values let the Cloudflare deployment work even when VITE_*
+// environment variables have not yet been added to the Worker settings.
+// Never put a service_role/secret key here.
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ||
+  "https://kuwpxpninjdvmkqkaxoi.supabase.co";
 
-export const supabase =
-  supabaseUrl && supabasePublishableKey
-    ? createClient(supabaseUrl, supabasePublishableKey)
-    : null;
+const supabasePublishableKey =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  "sb_publishable_aMUzKrBjzxRQPwCoTU3iQA_ATrcGeBp";
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabasePublishableKey
+);
