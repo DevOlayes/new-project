@@ -1,4 +1,4 @@
-# Flexar
+# Flexa AI
 
 > Mobile-first AI trading web application built with React + JavaScript, Supabase, GitHub and Cloudflare.
 
@@ -6,7 +6,7 @@
 
 Flexar is the web interface for the existing Nexora AI Trades product experience. The goal is to preserve useful Nexora workflows while giving them a polished, mobile-app-like web experience.
 
-Core interfaces: Flexar Web App, Flexar Telegram Mini App, and Telegram notification bot. All interfaces should use the same account and backend data.
+Core interfaces: Flexa AI Web App, Flexa AI Telegram Mini App, and Telegram notification bot. All interfaces should use the same account and backend data.
 
 ## Permanent stack
 
@@ -117,3 +117,42 @@ Do not commit Telegram bot tokens, Supabase secret keys, or service-role keys to
 ## Important current state
 
 The landing page and Telegram Web App shell are now in place. Live Telegram authentication is deliberately not enabled until the bot token is rotated and stored as a server-side secret. Wallet and trade values in the shell remain demo values until live database queries and server-controlled trading flows are implemented.
+
+
+## Authentication and communication channels
+
+### Website authentication
+
+Normal website visitors use OAuth/OIDC:
+- Google: Supabase's built-in Google provider.
+- Telegram: Supabase custom OIDC provider configured with an environment value named `VITE_TELEGRAM_AUTH_PROVIDER`.
+
+The website Telegram button must use the OIDC provider flow, not a `t.me/...startapp` Mini App launch. This keeps the user in the browser and lets Supabase return the session to the original website after Telegram approval.
+
+### Telegram subscriber connection
+
+Telegram website login is configured to request the Telegram bot-access permission. When that provider is used successfully, the user's Telegram ID is stored in `profiles.telegram_user_id` and the profile is marked as eligible for bot notifications.
+
+The database also stores:
+- `telegram_bot_access_granted`
+- `telegram_notifications_enabled`
+- `telegram_connected_at`
+
+The `telegram-broadcast` Edge Function is admin-protected and sends messages only to profiles that have bot access and notifications enabled. The bot token remains a Supabase server secret.
+
+### Google email
+
+Google authentication provides the user's email to Supabase Auth. The account onboarding flow synchronizes that email into `profiles.email` for future email delivery.
+
+Email broadcast consent is intentionally separate:
+- `email_marketing_opt_in` defaults to false.
+- Future broadcast UI can let users explicitly enable/disable email updates.
+
+This keeps having an email address separate from permission to receive marketing broadcasts.
+
+### Two Telegram experiences
+
+1. **Website login:** browser -> Telegram OIDC consent -> browser callback -> Flexa AI web app.
+2. **Telegram Mini App:** Telegram -> Flexa AI Mini App -> stay inside Telegram.
+
+These flows must remain separate. The Mini App is not the website's Telegram login mechanism.
