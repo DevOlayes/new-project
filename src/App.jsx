@@ -14,7 +14,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [market, setMarket] = useState(null);
-  const [showAuth, setShowAuth] = useState(false);\n  const [installPrompt, setInstallPrompt] = useState(null);\n  const [rewardBusy, setRewardBusy] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [rewardBusy, setRewardBusy] = useState(false);
 
   const refreshAccount = useCallback(async () => { if (!supabase || !user) return; setLoading(true); const result = await getAccountData(); setAccount(result); setLoading(false); }, [user]);
 
@@ -26,7 +28,8 @@ export default function App() {
     return () => { cancelled = true; clearInterval(timer); };
   }, []);
   useEffect(() => {
-    window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); setInstallPrompt(event); });\n    const miniApp = getTelegramWebApp();
+    window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); setInstallPrompt(event); });
+    const miniApp = getTelegramWebApp();
     setInMiniApp(isTelegramMiniApp());
     if (miniApp) { miniApp.ready(); miniApp.expand(); }
     if (!supabase) { setLoading(false); return; }
@@ -41,7 +44,29 @@ export default function App() {
     return () => { mounted = false; data.subscription.unsubscribe(); };
   }, [refreshAccount]);
 
-  async function provisionAccount(id) {\n    if (!supabase) return;\n    const referralCode = new URLSearchParams(window.location.search).get("ref") || localStorage.getItem("flexa_referral_code") || "";\n    if (referralCode) localStorage.setItem("flexa_referral_code", referralCode);\n    await supabase.functions.invoke("account-onboarding", { body: { referral_code: referralCode } });\n    refreshAccount();\n  }\n\n  async function claimReward() {\n    if (!supabase || rewardBusy) return;\n    setRewardBusy(true);\n    const { error } = await supabase.functions.invoke("account-onboarding", { body: { action: "claim" } });\n    setRewardBusy(false);\n    if (!error) refreshAccount();\n  }\n\n  async function installFlexa() {\n    if (!installPrompt) return;\n    await installPrompt.prompt();\n    setInstallPrompt(null);\n  }\n\n  async function loadProfile(id) {
+  async function provisionAccount(id) {
+    if (!supabase) return;
+    const referralCode = new URLSearchParams(window.location.search).get("ref") || localStorage.getItem("flexa_referral_code") || "";
+    if (referralCode) localStorage.setItem("flexa_referral_code", referralCode);
+    await supabase.functions.invoke("account-onboarding", { body: { referral_code: referralCode } });
+    refreshAccount();
+  }
+
+  async function claimReward() {
+    if (!supabase || rewardBusy) return;
+    setRewardBusy(true);
+    const { error } = await supabase.functions.invoke("account-onboarding", { body: { action: "claim" } });
+    setRewardBusy(false);
+    if (!error) refreshAccount();
+  }
+
+  async function installFlexa() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    setInstallPrompt(null);
+  }
+
+  async function loadProfile(id) {
     if (!supabase) return;
     const { data } = await supabase.from("profiles").select("display_name,telegram_username,avatar_url,referral_code").eq("id", id).maybeSingle();
     setProfile(data || null);
@@ -119,7 +144,9 @@ function Home({ account, loading, setPage, claimReward, rewardBusy }) {
     <h2>Recent activity</h2><ActivityRows account={account} />
   </>;
 }
-function RewardBanner({ reward, onClaim, busy }) { return <section className="reward-banner"><div><small>WELCOME REWARD</small><strong>$50 <span>TRADE CREDIT</span></strong><p>Use within {Math.max(0,Math.ceil((new Date(reward.expires_at)-Date.now())/86400000))} days. The $50 itself is non-withdrawable; only eligible profit from reward trades can be withdrawn before expiry.</p></div><button onClick={onClaim} disabled={busy}>{busy ? "Claiming…" : "Claim $50 →"}</button></section>; }\n\nfunction OpportunityCard({ item, setPage }) {
+function RewardBanner({ reward, onClaim, busy }) { return <section className="reward-banner"><div><small>WELCOME REWARD</small><strong>$50 <span>TRADE CREDIT</span></strong><p>Use within {Math.max(0,Math.ceil((new Date(reward.expires_at)-Date.now())/86400000))} days. The $50 itself is non-withdrawable; only eligible profit from reward trades can be withdrawn before expiry.</p></div><button onClick={onClaim} disabled={busy}>{busy ? "Claiming…" : "Claim $50 →"}</button></section>; }
+
+function OpportunityCard({ item, setPage }) {
   const score = Math.round(Number(item.signal_score || 0) * 100);
   return <article className="opportunity-card"><div className="opp-top"><div><small>{item.symbol}</small><strong>AI opportunity</strong></div><span className={item.direction === "up" ? "green" : "red"}>{item.direction === "up" ? "UP ↗" : "DOWN ↘"}</span></div><div className="opp-meta"><span>{Math.round(item.duration_seconds / 60)} min</span><span>Signal {score}%</span><span>{item.status.toUpperCase()}</span></div><button onClick={() => setPage("trade")}>Review opportunity →</button></article>;
 }
