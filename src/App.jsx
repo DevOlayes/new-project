@@ -82,7 +82,7 @@ function Landing({ market, showAuth, setShowAuth, installPrompt, installFlexa })
 }
 function AuthModal({ onClose }) {
   const [error, setError] = useState("");
-  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><div className="auth-modal-icon">F</div><div className="eyebrow">WELCOME TO FLEXA AI</div><h2>Start in seconds.</h2><p>Create your account or sign back in in seconds.</p><AuthOptions setAuthError={setError} authError={error} /><small className="auth-legal">By continuing, you agree to use Flexa AI responsibly and follow applicable terms.</small></div></div>;
+  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><div className="auth-modal-icon">F</div><div className="eyebrow">WELCOME TO FLEXA AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your Flexa AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to Flexa AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use Flexa AI responsibly and follow applicable terms.</small></div></div>;
 }
 
 function AuthOptions({ setAuthError, authError }) {
