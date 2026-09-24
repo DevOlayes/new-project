@@ -14,6 +14,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [market, setMarket] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
 
   const refreshAccount = useCallback(async () => { if (!supabase || !user) return; setLoading(true); const result = await getAccountData(); setAccount(result); setLoading(false); }, [user]);
 
@@ -48,7 +49,7 @@ export default function App() {
 
   async function signOut() { if (supabase) await supabase.auth.signOut(); setAccount({ wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], error: null }); }
 
-  if (!inMiniApp) return <Landing market={market} />;
+  if (!inMiniApp) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} />;
   if (!user && loading) return <div className="loading-screen"><div className="loader-orb">F</div><strong>Connecting your Flexar account…</strong><span>Loading your account data…</span></div>;
   if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><b>F</b><div><strong>Flexar</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open Flexar from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
 
@@ -66,19 +67,40 @@ export default function App() {
   </div>;
 }
 
-function Landing({ market }) {
+function Landing({ market, showAuth, setShowAuth }) {
   const price = market?.price;
   const change = market?.change;
   return <div className="landing"><div className="landing-orb orb-one" /><div className="landing-orb orb-two" />
     <header className="landing-topbar"><div className="brand"><b>F</b><div><strong>Flexar</strong><small>AI TRADING ENGINE</small></div></div><span className="live-chip">● WEB PLATFORM</span></header>
     <main className="landing-content">
-      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>Flexar continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta">Enter Flexar <b>↗</b></button><span className="hero-status"><i /> Market data connected</span></div></section>
+      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>Flexar continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta" onClick={() => setShowAuth(true)}>Get started <b>→</b></button><div className="landing-trust">Free account · Choose Google or Telegram · No Flexar password</div><span className="hero-status"><i /> Market data connected</span></div></section>
       <section className="landing-terminal"><div className="terminal-top"><div><small>LIVE MARKET</small><strong>BTC / USDT</strong></div><span className={change >= 0 ? "green" : "red"}>{change == null ? "—" : (change >= 0 ? "+" : "") + change.toFixed(2) + "%"}</span></div><Chart /><div className="terminal-bottom"><strong>{price == null ? "Loading…" : "$" + price.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>PUBLIC MARKET DATA</span></div><div className="floating-card float-card-a">AI OPPORTUNITY <b>SCANNING</b></div><div className="floating-card float-card-b">NEXT WINDOW <b>60 MIN</b></div></section>
       <section className="opportunity-preview"><div><div className="eyebrow">AI OPPORTUNITY FEED</div><h2>Users do not hunt for trades. Flexar finds them.</h2></div><div className="opportunity-demo"><div><span>BTC / USDT</span><strong>AI opportunity detected</strong></div><b>UP ↗</b><small>60 MIN · REVIEW READY</small></div></section>
       <section className="landing-section"><div className="eyebrow">HOW FLEXAR WORKS</div><h2>Simple on the surface. Intelligent underneath.</h2><div className="landing-steps"><LandingStep n="01" title="Scan" text="Market data is continuously collected and analyzed across supported markets."/><LandingStep n="02" title="Select" text="The engine filters signals and turns stronger setups into user-friendly opportunities."/><LandingStep n="03" title="Trade" text="You review the opportunity, choose your stake and confirm when ready." /></div></section>
       <section className="landing-section"><div className="feature-row"><LandingFeature title="AI-first trading" text="The system does the heavy market analysis before presenting an opportunity."/><LandingFeature title="Real market data" text="Charts and future signals are designed around real market pricing, not invented demo prices."/><LandingFeature title="Transparent activity" text="Trades, balances and wallet events remain connected to your account ledger." /></div></section>
-    </main></div>;
+    </main>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</div>;
 }
+function AuthModal({ onClose }) {
+  const [error, setError] = useState("");
+  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><div className="auth-modal-icon">F</div><div className="eyebrow">WELCOME TO FLEXAR</div><h2>Start in seconds.</h2><p>Choose how you want to create or access your Flexar account.</p><AuthOptions setAuthError={setError} authError={error} /><small className="auth-legal">By continuing, you agree to use Flexar responsibly and follow applicable terms.</small></div></div>;
+}
+
+function AuthOptions({ setAuthError, authError }) {
+  const [busy, setBusy] = useState("");
+  async function continueWithGoogle() {
+    if (!supabase) { setAuthError("Supabase is not configured in this build."); return; }
+    setBusy("google"); setAuthError("");
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+    if (error) { setBusy(""); setAuthError(error.message || "Google sign-in could not start."); }
+  }
+  function continueWithTelegram() {
+    const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME;
+    if (!botUsername) { setAuthError("Telegram sign-in still needs the Flexar Telegram bot username configured."); return; }
+    window.open("https://t.me/" + botUsername + "?startapp=auth", "_blank", "noopener,noreferrer");
+  }
+  return <div className="auth-options"><button className="auth-provider google" onClick={continueWithGoogle} disabled={!!busy}><span className="provider-mark">G</span><span>{busy === "google" ? "Connecting Google…" : "Continue with Google"}</span><b>→</b></button><button className="auth-provider telegram" onClick={continueWithTelegram} disabled={!!busy}><span className="provider-mark">✈</span><span>Continue with Telegram</span><b>→</b></button>{authError && <div className="error-banner">{authError}</div>}</div>;
+}
+
 function LandingStep({n,title,text}) { return <article className="landing-step"><span>{n}</span><strong>{title}</strong><p>{text}</p></article>; }
 function LandingFeature({title,text}) { return <article className="landing-feature"><b>✦</b><strong>{title}</strong><p>{text}</p></article>; }
 
