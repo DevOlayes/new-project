@@ -120,8 +120,9 @@ function AuthOptions({ setAuthError, authError }) {
     if (error) { setBusy(""); setAuthError(error.message || "Google sign-in could not start."); }
   }
   function continueWithTelegram() {
-    const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME;
-    if (!botUsername) { setAuthError("Telegram sign-in still needs the Flexa AI Telegram bot username configured."); return; }
+    // Flexa AI's dedicated Telegram bot. The environment variable can override this
+    // later, but the public bot username is safe to keep as a browser-side fallback.
+    const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "flexarxbot";
     window.open("https://t.me/" + botUsername + "?startapp=auth", "_blank", "noopener,noreferrer");
   }
   return <div className="auth-options"><button className="auth-provider google" onClick={continueWithGoogle} disabled={!!busy}><span className="provider-mark google-mark" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-label="Google"><path fill="#4285F4" d="M21.35 12.27c0-.72-.06-1.42-.18-2.09H12v3.95h5.24a4.48 4.48 0 0 1-1.94 2.94v2.44h3.14c1.84-1.69 2.91-4.18 2.91-7.24Z"/><path fill="#34A853" d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.44c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.52A9.75 9.75 0 0 0 12 21.7Z"/><path fill="#FBBC05" d="M6.54 13.79a5.87 5.87 0 0 1 0-3.58V7.69H3.3a9.75 9.75 0 0 0 0 8.62l3.24-2.52Z"/><path fill="#EA4335" d="M12 6.18c1.43 0 2.72.49 3.73 1.46l2.8-2.8C16.84 3.2 14.63 2.3 12 2.3a9.75 9.75 0 0 0-8.7 5.39l3.24 2.52C7.31 7.9 9.46 6.18 12 6.18Z"/></svg></span><span>{busy === "google" ? "Connecting Google…" : "Continue with Google"}</span><b>→</b></button><button className="auth-provider telegram" onClick={continueWithTelegram} disabled={!!busy}><span className="provider-mark telegram-mark" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-label="Telegram"><circle cx="12" cy="12" r="11" fill="#2AABEE"/><path fill="#FFFFFF" d="M17.92 6.21 15.48 17.7c-.18.82-.67 1.02-1.35.64l-3.72-2.74-1.8 1.73c-.2.2-.36.36-.74.36l.26-3.79 6.9-6.23c.3-.27-.06-.42-.46-.15L7.3 11.76l-3.67-.92c-.8-.25-.82-.8.16-1.19l14.56-5.61c.67-.24 1.25.16 1.04 1.17Z"/></svg></span><span>Continue with Telegram</span><b>→</b></button>{authError && <div className="error-banner">{authError}</div>}</div>;
