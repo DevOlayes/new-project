@@ -205,6 +205,7 @@ function Home({ account, loading, setPage, claimReward, rewardBusy }) {
     <section className="home-opportunities"><div className="section-heading"><div><small>AI OPPORTUNITIES</small><h2>Ready to review</h2></div><button onClick={() => setPage("trade")}>View all →</button></div>
       {opportunities.length ? <div className="opportunity-list">{opportunities.slice(0,3).map((item) => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div> : <div className="empty-state opportunity-empty"><strong>{loading ? "Scanning markets…" : "No opportunities yet"}</strong><p>{loading ? "Flexa AI is checking the opportunity feed." : "New AI-selected opportunities will appear here when the engine publishes them."}</p></div>}
     </section>
+    <MarketsMonitored markets={account.markets} />
     <section className="balance-hero"><div><small>TOTAL AVAILABLE</small><strong>{Number(account.wallets.find((item) => item.asset === "USDT")?.available_balance || 0).toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong></div><div className="balance-actions"><button onClick={() => setPage("wallet")}>Wallet</button><button className="secondary" onClick={() => setPage("activity")}>Activity</button></div></section>
     <div className="grid home-stats"><div className="stat"><small>Active trades</small><strong>{loading ? "…" : active.length}</strong></div><div className="stat"><small>Unread alerts</small><strong>{loading ? "…" : unread}</strong></div></div>
     <h2>Recent activity</h2><ActivityRows account={account} />
@@ -212,6 +213,10 @@ function Home({ account, loading, setPage, claimReward, rewardBusy }) {
 }
 function RewardBanner({ reward, onClaim, busy }) { return <section className="reward-banner"><div><small>WELCOME REWARD</small><strong>$50 <span>TRADE CREDIT</span></strong><p>Use within {Math.max(0,Math.ceil((new Date(reward.expires_at)-Date.now())/86400000))} days. The $50 itself is non-withdrawable; only eligible profit from reward trades can be withdrawn before expiry.</p></div><button onClick={onClaim} disabled={busy}>{busy ? "Claiming…" : "Claim $50 →"}</button></section>; }
 
+function MarketsMonitored({ markets }) {
+  if (!markets?.length) return null;
+  return <section className="markets-monitored"><div className="section-heading"><div><small>MARKETS MONITORED</small><h2>Supported pairs</h2></div><span className="live-chip">AI SCAN</span></div><div className="market-pair-grid">{markets.map((market) => <div className="market-pair" key={market.symbol}><span>{market.market_type === "forex" ? "FX" : "CRYPTO"}</span><strong>{market.display_symbol}</strong><small>{market.source === "yahoo_finance" ? "Yahoo Finance" : "Binance"}</small></div>)}</div></section>;
+}
 function OpportunityCard({ item, setPage }) {
   const score = Math.round(Number(item.signal_score || 0) * 100);
   return <article className="opportunity-card"><div className="opp-top"><div><small>{item.symbol}</small><strong>AI opportunity</strong></div><span className={item.direction === "up" ? "green" : "red"}>{item.direction === "up" ? "UP ↗" : "DOWN ↘"}</span></div><div className="opp-meta"><span>{Math.round(item.duration_seconds / 60)} min</span><span>Signal {score}%</span><span>{item.status.toUpperCase()}</span></div><button onClick={() => setPage("trade")}>Review opportunity →</button></article>;
@@ -224,15 +229,17 @@ function ActivityRows({ account }) {
 }
 
 function Trade({ account }) {
-  const [dir,setDir]=useState("UP"); const [duration,setDuration]=useState("60"); const [amount,setAmount]=useState("25");
+  const [amount,setAmount]=useState("25");
+  const opportunity=account.opportunities?.[0] || null;
+  const dir=opportunity?.direction === "down" ? "DOWN" : "UP";
+  const duration=opportunity ? String(Math.round(opportunity.duration_seconds/60)) : "60";
   const usdt=account.wallets.find((item)=>item.asset==="USDT"); const canTrade=Number(usdt?.available_balance||0)>=Number(amount);
   return <><section className="intro"><small>AI TRADE TERMINAL</small><h1>Read the market first.</h1><p>Review the chart, choose your market settings and prepare the trade.</p></section>
     <section className="trade-market"><div className="market-head"><div><small>TON / USDT</small><strong>$3.42</strong><span className="green">+2.14%</span></div><span className="live-badge">● LIVE</span></div><Chart/><div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div></section>
     <section className="card"><div className="trade-balance"><span>Available USDT</span><strong>{Number(usdt?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div>
-      <label>Direction</label><div className="grid two"><button className={dir==="UP"?"selected":"choice"} onClick={()=>setDir("UP")}>↗ UP</button><button className={dir==="DOWN"?"selected":"choice"} onClick={()=>setDir("DOWN")}>↘ DOWN</button></div>
-      <label>Duration</label><div className="grid three">{["30","60","300"].map((v)=><button key={v} className={duration===v?"selected":"choice"} onClick={()=>setDuration(v)}>{v==="60"?"1 min":v==="300"?"5 min":"30 sec"}</button>)}</div>
+      <div className="ai-selected-trade"><small>AI DIRECTION</small><strong className={dir==="UP"?"green":"red"}>{dir==="UP"?"↗ UP":"↘ DOWN"}</strong><span>{duration} min · {opportunity ? Math.round(Number(opportunity.signal_score||0)*100) : 0}% signal confidence</span></div>
       <label>Stake</label><div className="grid four">{["10","25","50","100"].map((v)=><button key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)}>${v}</button>)}</div>
-      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration}s · ${amount}</strong></div><button className="full" disabled={!canTrade}>Confirm {dir} trade →</button>
+      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration}s · ${amount}</strong></div><button className="full" disabled={!canTrade || !opportunity}>{opportunity ? "Confirm " + dir + " trade →" : "Waiting for AI opportunity…"}</button>
       {!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}{usdt&&!canTrade&&<p className="helper">Stake exceeds your available USDT balance.</p>}<p className="demo-note">Order execution is intentionally locked until the server-side market and settlement engine is connected.</p>
     </section></>;
 }
