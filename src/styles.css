@@ -81,3 +81,6 @@
 .admin-setting label{font-size:12px;opacity:.6}
 .admin-setting input{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:inherit}
 @media(min-width:760px){.admin-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}.admin-grid{grid-template-columns:1fr 1fr}.admin-shell{padding:32px}.admin-header h1{font-size:38px}}
+
+/* Telegram Login Widget: keep the official iframe fully visible and clickable. */
+.telegram-widget-wrap{position:relative;z-index:3;width:100%;display:grid;gap:8px;padding:2px 0}.telegram-widget-label{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.04em}.telegram-widget-frame{width:100%;min-height:46px;display:flex;align-items:center;justify-content:center;position:relative;z-index:4;overflow:visible}.telegram-widget-frame iframe{max-width:100%!important;position:relative!important;z-index:5!important}
