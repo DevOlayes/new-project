@@ -149,9 +149,9 @@ function AuthOptions({ setAuthError, authError }) {
   async function continueWithTelegram() {
     if (!supabase) { setAuthError("Supabase is not configured in this build."); return; }
 
-    const clientId = Number(import.meta.env.VITE_TELEGRAM_CLIENT_ID || 0);
+    // Telegram Client IDs are public identifiers, so keep a source fallback for the production build.\n    // The environment variable can still override this value in other deployments.\n    const clientId = Number(import.meta.env.VITE_TELEGRAM_CLIENT_ID || 8897849997);
     if (!clientId) {
-      setAuthError("Telegram login is not configured yet. Add the Telegram Client ID from BotFather to the Cloudflare build environment.");
+      setAuthError("Telegram login is not configured yet.");
       return;
     }
 
