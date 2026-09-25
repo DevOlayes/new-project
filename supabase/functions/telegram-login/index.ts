@@ -71,6 +71,82 @@ async function verifyTelegramLogin(telegramUser, botToken) {
   return telegramUser;
 }
 
+function base64UrlDecode(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function decodeJwtPart(value) {
+  return JSON.parse(new TextDecoder().decode(base64UrlDecode(value)));
+}
+
+// Telegram's current Login library returns an OIDC ID token.
+// The signature and claims are verified here before any Supabase user is touched.
+async function verifyTelegramIdToken(idToken, clientId) {
+  if (!idToken || !clientId) throw new Error("Telegram OIDC is not configured.");
+
+  const parts = String(idToken).split(".");
+  if (parts.length !== 3) throw new Error("Invalid Telegram ID token.");
+
+  const header = decodeJwtPart(parts[0]);
+  const payload = decodeJwtPart(parts[1]);
+  if (!header?.kid || header.alg !== "RS256") throw new Error("Unsupported Telegram ID token.");
+
+  if (payload.iss !== "https://oauth.telegram.org") {
+    throw new Error("Telegram ID token issuer is invalid.");
+  }
+
+  const audiences = Array.isArray(payload.aud) ? payload.aud.map(String) : [String(payload.aud || "")];
+  if (!audiences.includes(String(clientId))) {
+    throw new Error("Telegram ID token audience is invalid.");
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(Number(payload.exp)) || Number(payload.exp) <= now) {
+    throw new Error("Telegram ID token has expired.");
+  }
+
+  const jwksResponse = await fetch("https://oauth.telegram.org/.well-known/jwks.json");
+  if (!jwksResponse.ok) throw new Error("Could not load Telegram signing keys.");
+
+  const jwks = await jwksResponse.json();
+  const jwk = jwks?.keys?.find((key) => key.kid === header.kid);
+  if (!jwk) throw new Error("Telegram signing key was not found.");
+
+  const publicKey = await crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["verify"],
+  );
+
+  const valid = await crypto.subtle.verify(
+    { name: "RSASSA-PKCS1-v1_5" },
+    publicKey,
+    base64UrlDecode(parts[2]),
+    new TextEncoder().encode(parts[0] + "." + parts[1]),
+  );
+
+  if (!valid) throw new Error("Telegram ID token signature is invalid.");
+  if (!payload.id && !payload.sub) throw new Error("Telegram ID token contains no user identity.");
+
+  const name = payload.name || [payload.given_name, payload.family_name].filter(Boolean).join(" ");
+  const telegramId = String(payload.id || payload.sub);
+
+  return {
+    id: telegramId,
+    first_name: payload.given_name || name || "Flexa AI",
+    last_name: payload.family_name || undefined,
+    username: payload.preferred_username || null,
+    photo_url: payload.picture || null,
+    auth_date: Number(payload.iat || now),
+    allows_write_to_pm: Boolean(payload.telegram_bot_access || payload.allows_write_to_pm),
+  };
+}
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -102,10 +178,14 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const telegramUser = await verifyTelegramLogin(
-      body?.telegram_user,
-      Deno.env.get("TELEGRAM_BOT_TOKEN") || "",
-    );
+
+    const telegramClientId = Deno.env.get("TELEGRAM_CLIENT_ID") || "";
+    const telegramUser = body?.id_token
+      ? await verifyTelegramIdToken(body.id_token, telegramClientId)
+      : await verifyTelegramLogin(
+          body?.telegram_user,
+          Deno.env.get("TELEGRAM_BOT_TOKEN") || "",
+        );
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const { secretKey, publishableKey } = getSupabaseKeys();
