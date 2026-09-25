@@ -161,6 +161,7 @@ function AuthOptions({ setAuthError, authError }) {
     script.async = true;
     script.setAttribute("data-telegram-login", "flexarxbot");
     script.setAttribute("data-size", "large");
+    script.setAttribute("data-radius", "12");
     script.setAttribute("data-userpic", "false");
     script.setAttribute("data-request-access", "write");
     script.setAttribute("data-onauth", "onFlexaTelegramAuth(user)");
