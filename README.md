@@ -53,7 +53,7 @@ The first frontend foundation is intentionally small. It establishes navigation 
 
 Current pages: Home, AI Trade, Activity, Wallet and Profile.
 
-The current UI uses sample values only. It is not yet a live trading engine and must not be presented as one.
+The frontend is connected to the live Supabase account, market-opportunity and wallet data model. Real-money trading, deposits and withdrawals remain disabled until their server-side financial flows are implemented and verified.
 
 ## Backend model
 
@@ -123,40 +123,36 @@ The landing page and Telegram Web App shell are now in place. Live Telegram auth
 
 ### Website authentication
 
-Normal website visitors use OAuth/OIDC:
+Normal website visitors use:
 - Google: Supabase's built-in Google provider.
-- Telegram: Supabase custom OIDC provider configured with an environment value named `VITE_TELEGRAM_AUTH_PROVIDER`.
+- Telegram: Telegram's official Login Widget, which sends signed Telegram identity data to the server-side `telegram-login` Edge Function. The function verifies the Telegram signature before creating/linking the Supabase account and returning a Supabase session.
 
-The website Telegram button must use the OIDC provider flow, not a `t.me/...startapp` Mini App launch. This keeps the user in the browser and lets Supabase return the session to the original website after Telegram approval.
+The website Telegram login must remain a browser authentication flow. It is separate from the Telegram Mini App.
 
 ### Telegram subscriber connection
 
-Telegram website login is configured to request the Telegram bot-access permission. When that provider is used successfully, the user's Telegram ID is stored in `profiles.telegram_user_id` and the profile is marked as eligible for bot notifications.
-
-The database also stores:
+Telegram website login requests bot-access permission. When Telegram grants that permission, the profile stores:
+- `telegram_user_id`
 - `telegram_bot_access_granted`
 - `telegram_notifications_enabled`
 - `telegram_connected_at`
 
-The `telegram-broadcast` Edge Function is admin-protected and sends messages only to profiles that have bot access and notifications enabled. The bot token remains a Supabase server secret.
+The `telegram-broadcast` Edge Function is admin-protected and sends messages only to eligible profiles. The bot token remains a Supabase server secret.
 
 ### Google email
 
-Google authentication provides the user's email to Supabase Auth. The account onboarding flow synchronizes that email into `profiles.email` for future email delivery.
+Google authentication provides the user's email to Supabase Auth. Account onboarding synchronizes that email into `profiles.email` for future email delivery.
 
-Email broadcast consent is intentionally separate:
+Email broadcast consent is separate:
 - `email_marketing_opt_in` defaults to false.
-- Future broadcast UI can let users explicitly enable/disable email updates.
-
-This keeps having an email address separate from permission to receive marketing broadcasts.
+- Future broadcast UI can explicitly enable/disable email updates.
 
 ### Two Telegram experiences
 
-1. **Website login:** browser -> Telegram OIDC consent -> browser callback -> Flexa AI web app.
-2. **Telegram Mini App:** Telegram -> Flexa AI Mini App -> stay inside Telegram.
+1. **Website login:** browser -> Telegram Login Widget -> server-side signature verification -> Supabase session -> Flexa AI web app.
+2. **Telegram Mini App:** Telegram -> Flexa AI Mini App -> server-side `initData` verification -> Supabase session -> app.
 
-These flows must remain separate. The Mini App is not the website's Telegram login mechanism.
-
+These flows must remain separate.
 
 ## Market Intelligence — Stage 6B
 
@@ -192,4 +188,4 @@ Market Sources
   -> Next Opportunity Engine Run
 ```
 
-The Admin phase should be built after this telemetry foundation so the admin dashboard can expose real engine health, pair coverage, signal volume, outcome data and model-performance history.
+The Admin dashboard foundation is now connected to the production telemetry model and includes operational views for users, transactions, trades, opportunities, markets, adaptive profiles, subscriptions and settings.
