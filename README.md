@@ -4,7 +4,7 @@
 
 ## Product direction
 
-Flexar is the web interface for the existing Nexora AI Trades product experience. The goal is to preserve useful Nexora workflows while giving them a polished, mobile-app-like web experience.
+Flexa AI is the web interface for the existing Nexora AI Trades product experience. The goal is to preserve useful Nexora workflows while giving them a polished, mobile-app-like web experience.
 
 Core interfaces: Flexa AI Web App, Flexa AI Telegram Mini App, and Telegram notification bot. All interfaces should use the same account and backend data.
 
@@ -156,3 +156,40 @@ This keeps having an email address separate from permission to receive marketing
 2. **Telegram Mini App:** Telegram -> Flexa AI Mini App -> stay inside Telegram.
 
 These flows must remain separate. The Mini App is not the website's Telegram login mechanism.
+
+
+## Market Intelligence — Stage 6B
+
+The market engine now monitors **10 supported pairs**:
+- Crypto: BTC/USDT, ETH/USDT, SOL/USDT, BNB/USDT, XRP/USDT, DOGE/USDT
+- Forex: EUR/USD, GBP/USD, USD/JPY, AUD/USD
+
+Crypto market candles are sourced from Binance spot data. Forex candles use Yahoo Finance intraday data and are normalized into the same candle/feature pipeline. Forex is treated as a market-data source for the AI opportunity engine; source availability and freshness are checked before a signal can be produced.
+
+### Performance and adaptive-learning layer
+
+The engine now records:
+- immutable opportunity decision snapshots
+- feature/scoring context at signal-generation time
+- settled opportunity evaluation rows
+- model performance statistics by symbol and timeframe
+- adaptive timeframe weights per symbol/model version
+- confidence-floor adjustments with conservative guardrails
+
+The adaptive layer is **not autonomous ML retraining**. It is a controlled feedback system: once enough labelled outcomes exist, recent performance can adjust the weighting of the existing signal components. Model changes should still be validated before any future ML model replaces the deterministic engine.
+
+### Current engine flow
+
+```
+Market Sources
+  -> Market Candles
+  -> Market Features
+  -> AI Opportunity Engine
+  -> Decision Snapshot
+  -> Opportunity Evaluation
+  -> Performance Dataset
+  -> Adaptive Weights
+  -> Next Opportunity Engine Run
+```
+
+The Admin phase should be built after this telemetry foundation so the admin dashboard can expose real engine health, pair coverage, signal volume, outcome data and model-performance history.
