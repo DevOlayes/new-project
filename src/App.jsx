@@ -5,6 +5,8 @@ import { getAccountData } from "./lib/data";
 
 const nav = [["home","⌂","Home"],["trade","↗","Trade"],["activity","◷","Activity"],["wallet","▣","Wallet"],["profile","◉","Profile"]];
 
+const FLEXA_APP_URL = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "");
+
 export default function App() {
   const [inMiniApp, setInMiniApp] = useState(false);
   const [page, setPage] = useState("home");
@@ -120,7 +122,7 @@ function AuthOptions({ setAuthError, authError }) {
     setBusy("google"); setAuthError("");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: `${FLEXA_APP_URL}/` }
     });
     if (error) { setBusy(""); setAuthError(error.message || "Google sign-in could not start."); }
   }
