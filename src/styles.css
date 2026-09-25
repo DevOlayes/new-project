@@ -82,8 +82,3 @@
 .admin-setting input{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:inherit}
 @media(min-width:760px){.admin-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}.admin-grid{grid-template-columns:1fr 1fr}.admin-shell{padding:32px}.admin-header h1{font-size:38px}}
 
-/* Telegram auth: the official widget is kept as an invisible click layer so the visible control matches Google. */
-.telegram-login-button-wrap{position:relative;width:100%;min-height:54px;overflow:hidden;border-radius:14px}
-.telegram-login-button-wrap>.auth-provider{position:relative;z-index:1}
-.telegram-login-hit-area{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:auto}
-.telegram-login-hit-area iframe{width:100%!important;height:54px!important;max-width:none!important;border:0!important;opacity:0!important;position:absolute!important;inset:0!important;z-index:3!important}
