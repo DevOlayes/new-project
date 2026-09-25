@@ -112,11 +112,13 @@ Telegram user
 
 The browser uses the Supabase project URL and publishable key. Supabase's current React documentation uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. citeturn0search3turn0search5
 
-Do not commit Telegram bot tokens, Supabase secret keys, or service-role keys to GitHub.
+Do not commit Telegram bot tokens, Telegram Client Secrets, Supabase secret keys, or service-role keys to GitHub.
+
+Website Telegram login also requires `VITE_TELEGRAM_CLIENT_ID` in the Cloudflare build environment and the same Client ID as the server-side `TELEGRAM_CLIENT_ID` secret in Supabase Edge Functions. Telegram's current Login flow requires the website origin to be registered under the bot's Allowed URLs in @BotFather. citeturn1search0
 
 ## Important current state
 
-The landing page and Telegram Web App shell are now in place. Live Telegram authentication is deliberately not enabled until the bot token is rotated and stored as a server-side secret. Wallet and trade values in the shell remain demo values until live database queries and server-controlled trading flows are implemented.
+The landing page and Telegram Web App shell are now in place. Website Telegram login uses Telegram's current Login library with a custom Flexa-styled button; the legacy hidden iframe widget is no longer used. The server verifies Telegram OIDC ID-token signatures before creating/linking a Supabase account. Wallet and trade values in the shell remain demo values until live database queries and server-controlled trading flows are implemented.
 
 
 ## Authentication and communication channels
@@ -125,7 +127,7 @@ The landing page and Telegram Web App shell are now in place. Live Telegram auth
 
 Normal website visitors use:
 - Google: Supabase's built-in Google provider.
-- Telegram: Telegram's official Login Widget, which sends signed Telegram identity data to the server-side `telegram-login` Edge Function. The function verifies the Telegram signature before creating/linking the Supabase account and returning a Supabase session.
+- Telegram: Telegram's current Login library. The visible button is native Flexa UI; Telegram opens its authentication popup and returns an OIDC ID token. The `telegram-login` Edge Function verifies the token signature and claims before creating/linking the Supabase account and returning a Supabase session.
 
 The website Telegram login must remain a browser authentication flow. It is separate from the Telegram Mini App.
 
@@ -149,7 +151,7 @@ Email broadcast consent is separate:
 
 ### Two Telegram experiences
 
-1. **Website login:** browser -> Telegram Login Widget -> server-side signature verification -> Supabase session -> Flexa AI web app.
+1. **Website login:** browser -> Flexa Telegram button -> Telegram Login popup -> server-side OIDC verification -> Supabase session -> Flexa AI web app.
 2. **Telegram Mini App:** Telegram -> Flexa AI Mini App -> server-side `initData` verification -> Supabase session -> app.
 
 These flows must remain separate.
