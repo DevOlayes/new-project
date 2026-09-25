@@ -125,53 +125,85 @@ function AuthOptions({ setAuthError, authError }) {
     if (error) { setBusy(""); setAuthError(error.message || "Google sign-in could not start."); }
   }
 
-  useEffect(() => {
-    // Load Telegram's official Login Widget directly on the website.
-    // This avoids Supabase custom OAuth/OIDC providers completely.
-    window.onFlexaTelegramAuth = async (telegramUser) => {
-      if (!supabase) return;
-      setBusy("telegram");
-      setAuthError("");
-      try {
-        const { data, error } = await supabase.functions.invoke("telegram-login", {
-          body: { telegram_user: telegramUser },
-        });
-        if (error || data?.error) throw new Error(data?.error || error?.message || "Telegram login failed.");
-        if (!data?.session?.access_token || !data?.session?.refresh_token) {
-          throw new Error("Telegram login returned no session.");
-        }
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
-        if (sessionError) throw sessionError;
-      } catch (error) {
-        setAuthError(error.message || "Telegram login failed.");
-      } finally {
-        setBusy("");
+  function loadTelegramLoginSdk() {
+    if (window.Telegram?.Login) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-flexa-telegram-login-sdk="true"]');
+      if (existing) {
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", () => reject(new Error("Telegram login library could not load.")), { once: true });
+        return;
       }
-    };
+      const script = document.createElement("script");
+      script.src = "https://telegram.org/js/telegram-login.js?1";
+      script.async = true;
+      script.dataset.flexaTelegramLoginSdk = "true";
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Telegram login library could not load."));
+      document.head.appendChild(script);
+    });
+  }
 
-    const container = document.getElementById("flexa-telegram-login");
-    if (!container) return;
-    container.innerHTML = "";
+  async function continueWithTelegram() {
+    if (!supabase) { setAuthError("Supabase is not configured in this build."); return; }
 
-    const script = document.createElement("script");
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.async = true;
-    script.setAttribute("data-telegram-login", "flexarxbot");
-    script.setAttribute("data-size", "large");
-    script.setAttribute("data-radius", "12");
-    script.setAttribute("data-userpic", "false");
-    script.setAttribute("data-request-access", "write");
-    script.setAttribute("data-onauth", "onFlexaTelegramAuth(user)");
-    container.appendChild(script);
+    const clientId = Number(import.meta.env.VITE_TELEGRAM_CLIENT_ID || 0);
+    if (!clientId) {
+      setAuthError("Telegram login is not configured yet. Add the Telegram Client ID from BotFather to the Cloudflare build environment.");
+      return;
+    }
 
-    return () => {
-      container.innerHTML = "";
-      delete window.onFlexaTelegramAuth;
-    };
-  }, [setAuthError]);
+    setBusy("telegram");
+    setAuthError("");
+
+    try {
+      await loadTelegramLoginSdk();
+
+      window.Telegram.Login.auth(
+        {
+          client_id: clientId,
+          scope: ["profile", "write"],
+          lang: "en",
+        },
+        async (result) => {
+          if (!result || result.error) {
+            setBusy("");
+            setAuthError(result?.error || "Telegram login was cancelled or failed.");
+            return;
+          }
+
+          if (!result.id_token) {
+            setBusy("");
+            setAuthError("Telegram did not return a verified login token.");
+            return;
+          }
+
+          try {
+            const { data, error } = await supabase.functions.invoke("telegram-login", {
+              body: { id_token: result.id_token },
+            });
+            if (error || data?.error) throw new Error(data?.error || error?.message || "Telegram login failed.");
+            if (!data?.session?.access_token || !data?.session?.refresh_token) {
+              throw new Error("Telegram login returned no session.");
+            }
+
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+            });
+            if (sessionError) throw sessionError;
+          } catch (error) {
+            setAuthError(error.message || "Telegram login failed.");
+          } finally {
+            setBusy("");
+          }
+        },
+      );
+    } catch (error) {
+      setBusy("");
+      setAuthError(error.message || "Telegram login could not start.");
+    }
+  }
 
   return <div className="auth-options">
     <button className="auth-provider google" onClick={continueWithGoogle} disabled={!!busy}>
@@ -186,17 +218,14 @@ function AuthOptions({ setAuthError, authError }) {
       <span>{busy === "google" ? "Connecting Google…" : "Continue with Google"}</span><b>→</b>
     </button>
 
-    <div className="telegram-login-button-wrap">
-      <button className="auth-provider telegram" type="button" disabled={!!busy}>
-        <span className="provider-mark telegram-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" role="img" aria-label="Telegram">
-            <path fill="currentColor" d="M21.5 3.5 18.3 20c-.24 1.17-.88 1.46-1.78.91l-4.92-3.63-2.37 2.28c-.26.26-.48.48-.98.48l.35-5.02 9.14-8.26c.4-.35-.09-.55-.62-.2L5.81 13.9.98 12.38c-1.05-.33-1.07-1.05.22-1.56L20.1 3.03c.88-.33 1.65.2 1.4.47Z"/>
-          </svg>
-        </span>
-        <span>{busy === "telegram" ? "Connecting Telegram…" : "Continue with Telegram"}</span><b>→</b>
-      </button>
-      <div id="flexa-telegram-login" className="telegram-login-hit-area" aria-hidden="true" />
-    </div>
+    <button className="auth-provider telegram" type="button" onClick={continueWithTelegram} disabled={!!busy}>
+      <span className="provider-mark telegram-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" role="img" aria-label="Telegram">
+          <path fill="currentColor" d="M21.5 3.5 18.3 20c-.24 1.17-.88 1.46-1.78.91l-4.92-3.63-2.37 2.28c-.26.26-.48.48-.98.48l.35-5.02 9.14-8.26c.4-.35-.09-.55-.62-.2L5.81 13.9.98 12.38c-1.05-.33-1.07-1.05.22-1.56L20.1 3.03c.88-.33 1.65.2 1.4.47Z"/>
+        </svg>
+      </span>
+      <span>{busy === "telegram" ? "Connecting Telegram…" : "Continue with Telegram"}</span><b>→</b>
+    </button>
 
     {authError && <div className="error-banner">{authError}</div>}
   </div>;
