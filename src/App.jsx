@@ -186,9 +186,16 @@ function AuthOptions({ setAuthError, authError }) {
       <span>{busy === "google" ? "Connecting Google…" : "Continue with Google"}</span><b>→</b>
     </button>
 
-    <div className="telegram-widget-wrap">
-      <div className="telegram-widget-label">Continue with Telegram</div>
-      <div id="flexa-telegram-login" aria-label="Continue with Telegram" />
+    <div className="telegram-login-button-wrap">
+      <button className="auth-provider telegram" type="button" disabled={!!busy}>
+        <span className="provider-mark telegram-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" role="img" aria-label="Telegram">
+            <path fill="currentColor" d="M21.5 3.5 18.3 20c-.24 1.17-.88 1.46-1.78.91l-4.92-3.63-2.37 2.28c-.26.26-.48.48-.98.48l.35-5.02 9.14-8.26c.4-.35-.09-.55-.62-.2L5.81 13.9.98 12.38c-1.05-.33-1.07-1.05.22-1.56L20.1 3.03c.88-.33 1.65.2 1.4.47Z"/>
+          </svg>
+        </span>
+        <span>{busy === "telegram" ? "Connecting Telegram…" : "Continue with Telegram"}</span><b>→</b>
+      </button>
+      <div id="flexa-telegram-login" className="telegram-login-hit-area" aria-hidden="true" />
     </div>
 
     {authError && <div className="error-banner">{authError}</div>}
