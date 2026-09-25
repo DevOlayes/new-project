@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
 
-    const telegramClientId = Deno.env.get("TELEGRAM_CLIENT_ID") || "";
+    // Client ID is a public Telegram application identifier; environment config can override it.\n    const telegramClientId = Deno.env.get("TELEGRAM_CLIENT_ID") || "8897849997";
     const telegramUser = body?.id_token
       ? await verifyTelegramIdToken(body.id_token, telegramClientId)
       : await verifyTelegramLogin(
