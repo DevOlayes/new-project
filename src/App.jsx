@@ -260,14 +260,14 @@ function Trade({ account }) {
   const opportunity=account.opportunities?.[0] || null;
   const dir=opportunity?.direction === "down" ? "DOWN" : "UP";
   const duration=opportunity ? String(Math.round(opportunity.duration_seconds/60)) : "60";
-  const usdt=account.wallets.find((item)=>item.asset==="USDT"); const canTrade=Number(usdt?.available_balance||0)>=Number(amount);
+  const usdt=account.wallets.find((item)=>item.asset==="USDT"); const canTrade=Boolean(account.tradingAccess?.has_access) && Number(usdt?.available_balance||0)>=Number(amount);
   return <><section className="intro"><small>AI TRADE TERMINAL</small><h1>{opportunity ? "AI-selected opportunity." : "Waiting for the next setup."}</h1><p>{opportunity ? "Flexa AI selected this market from the supported pair feed. The engine handles the complex analysis underneath." : "Flexa AI is scanning the supported crypto and forex pairs for a qualifying setup."}</p></section>
     <section className="trade-market"><div className="market-head"><div><small>{opportunity?.symbol || account.markets?.[0]?.display_symbol || "MARKET"}</small><strong>{opportunity?.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong><span className={dir==="UP" ? "green" : "red"}>{opportunity ? dir : "SCANNING"}</span></div><span className="live-badge">● LIVE ENGINE</span></div><Chart/><div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div></section>
     <section className="card"><div className="trade-balance"><span>Available USDT</span><strong>{Number(usdt?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div>
       <div className="ai-selected-trade"><small>AI DIRECTION</small><strong className={dir==="UP"?"green":"red"}>{dir==="UP"?"↗ UP":"↘ DOWN"}</strong><span>{duration} min · {opportunity ? Math.round(Number(opportunity.signal_score||0)*100) : 0}% signal confidence</span></div>
       <label>Stake</label><div className="grid four">{["10","25","50","100"].map((v)=><button key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)}>${v}</button>)}</div>
       <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration} min · ${amount}</strong></div><button className="full" disabled={!canTrade || !opportunity}>{opportunity ? "Confirm " + dir + " trade →" : "Waiting for AI opportunity…"}</button>
-      {!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}{usdt&&!canTrade&&<p className="helper">Stake exceeds your available USDT balance.</p>}<p className="demo-note">Order execution is intentionally locked until the server-side market and settlement engine is connected.</p>
+      {!account.tradingAccess?.has_access&&<div className="subscription-lock"><b>Your trading trial has ended.</b><span>Choose a Flexa Pro plan to continue using the trading engine.</span><button className="secondary">View plans</button></div>}{!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}{usdt&&account.tradingAccess?.has_access&&!canTrade&&<p className="helper">Stake exceeds your available USDT balance.</p>}<p className="demo-note">Trading access is controlled server-side. Execution remains locked until the settlement flow is enabled.</p>
     </section></>;
 }
 
