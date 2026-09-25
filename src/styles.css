@@ -40,3 +40,16 @@
 .google-mark svg,.telegram-mark svg{width:18px;height:18px;display:block}.google-mark{background:#fff!important}.telegram-mark{background:#229ed9!important}
 @media(max-width:600px){.welcome-campaign,.reward-banner{align-items:flex-start;flex-direction:column}.campaign-badge{align-self:flex-start}.reward-banner button{width:100%}}
 .auth-mode-toggle{width:100%;margin-top:12px;border:0;background:transparent;color:var(--green);font-size:10px;font-weight:800;padding:8px}.auth-mode-toggle:hover{text-decoration:underline}
+
+/* Supported market grid: compact so ten pairs remain easy to scan on mobile. */
+.markets-monitored{margin:28px 0}
+.market-pair-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.market-pair{padding:14px;border:1px solid rgba(124,255,156,.12);border-radius:16px;background:rgba(255,255,255,.025);display:flex;flex-direction:column;gap:4px}
+.market-pair span{font-size:10px;letter-spacing:.12em;opacity:.55}
+.market-pair strong{font-size:14px}
+.market-pair small{font-size:10px;opacity:.5}
+.ai-selected-trade{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 0;margin-bottom:14px;border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07)}
+.ai-selected-trade small{font-size:10px;letter-spacing:.12em;opacity:.55}
+.ai-selected-trade strong{font-size:22px}
+.ai-selected-trade span{font-size:11px;opacity:.6;text-align:right}
+@media (min-width:600px){.market-pair-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
