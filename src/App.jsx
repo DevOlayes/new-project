@@ -700,6 +700,7 @@ function Trade({ account }) {
   const aiDir = opportunity?.direction === "down" ? "DOWN" : "UP";
   const aiDuration = opportunity ? String(Math.round(opportunity.duration_seconds / 60)) : "60";
   const manualDir = manualDirection === "down" ? "DOWN" : "UP";
+  const activeDir = mode === "ai" ? aiDir : manualDir;
   const activeDuration = mode === "ai" ? aiDuration : String(Number(manualDuration) / 60);
   const activeSymbol = mode === "ai" ? opportunity?.symbol : manualSymbol;
 
