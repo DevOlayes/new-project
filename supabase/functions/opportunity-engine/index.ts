@@ -17,7 +17,7 @@ Deno.serve(async(req)=>{
  if(req.method!=="POST")return Response.json({error:"POST required"},{status:405});
  const supplied=req.headers.get("apikey")??req.headers.get("authorization")?.replace(/^Bearer\s+/i,"")??"";
  if(!supplied||supplied!==publishableKey)return Response.json({error:"Unauthorized"},{status:401});
- const now=new Date(),starts=new Date(Math.ceil((Date.now()+3600000)/60000)*60000),closes=new Date(starts.getTime()+DURATION_SECONDS*1000),results=[];
+ const now=new Date(),starts=new Date(Math.ceil((Date.now()+60000)/60000)*60000),closes=new Date(starts.getTime()+DURATION_SECONDS*1000),results=[];
  for(const symbol of SYMBOLS){
   const {data:rows,error}=await admin.from("market_features").select("*").eq("symbol",symbol).in("interval",["1m","5m","15m","1h"]).order("candle_open_time",{ascending:false}).limit(100);
   if(error)throw error;
