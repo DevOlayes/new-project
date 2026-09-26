@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
   if (body.action === "claim") {
     if (!reward) return Response.json({ error: "Welcome reward is unavailable." }, { status: 404 });
 
-    if (reward.status === "available") {
+    if (reward.status === "available" && new Date(reward.expires_at).getTime() > Date.now()) {
       const { data: claimed, error: claimError } = await admin
         .from("user_rewards")
         .update({
