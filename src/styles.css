@@ -131,3 +131,6 @@ button{pointer-events:auto;touch-action:manipulation}
 .opportunity-empty{min-height:92px;display:grid;place-items:center}
 .opportunity-empty strong{color:#fff}
 @media(max-width:560px){.ai-start-card{grid-template-columns:1fr}.start-ai-button{width:100%;justify-content:center}.home-insights{grid-template-columns:1fr}.brand-symbol{width:36px;height:36px;flex-basis:36px}}
+
+.landing-wordmark{width:min(260px,58vw);height:auto;display:block;object-fit:contain}
+@media(max-width:520px){.landing-wordmark{width:205px}}
