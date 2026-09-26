@@ -1,0 +1,23 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+const url=Deno.env.get("SUPABASE_URL")!;
+const secretKeys=JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}");
+const serviceKey=secretKeys.default||Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
+const publishableKeys=JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS")||"{}");
+const publishableKey=publishableKeys.default||Deno.env.get("SUPABASE_PUBLISHABLE_KEY")||"";
+const admin=createClient(url,serviceKey);
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization,x-client-info,apikey,content-type","Access-Control-Allow-Methods":"POST,OPTIONS"};
+Deno.serve(async(req)=>{
+ if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
+ if(req.method!=="POST")return Response.json({error:"POST required"},{status:405,headers:cors});
+ const token=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");
+ if(!token||!publishableKey)return Response.json({error:"Unauthorized"},{status:401,headers:cors});
+ const auth=createClient(url,publishableKey,{global:{headers:{Authorization:`Bearer ${token}`}}});
+ const {data,error}=await auth.auth.getUser(token);
+ if(error||!data.user)return Response.json({error:"Invalid session"},{status:401,headers:cors});
+ const body=await req.json().catch(()=>({})), opportunityId=String(body.opportunity_id||""), stake=Number(body.stake||0);
+ if(!opportunityId||!Number.isFinite(stake)||stake<=0)return Response.json({error:"A valid opportunity and stake are required."},{status:400,headers:cors});
+ const {data:trade,error:tradeError}=await admin.schema("private").rpc("execute_trade",{p_user_id:data.user.id,p_opportunity_id:opportunityId,p_stake:stake});
+ if(tradeError)return Response.json({error:tradeError.message},{status:400,headers:cors});
+ return Response.json({ok:true,trade},{headers:cors});
+});
