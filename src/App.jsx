@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Component, useCallback, useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
@@ -301,17 +301,46 @@ export default function App() {
     <header className="topbar"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI Trades</small></div></div><button type="button" className="icon-button notification-button" onClick={() => setShowNotifications(true)} aria-label="Open notifications"><span className="bell-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></span>{unreadNotifications > 0 && <b className="notification-dot">{unreadNotifications > 9 ? "9+" : unreadNotifications}</b>}</button></header>
     <main className="content">
       {authError && <div className="error-banner">{authError}</div>}
-      <div key={page} className="page-transition" aria-live="polite">
-        {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
-        {page === "trade" && <Trade account={account} />}
-        {page === "activity" && <Activity account={account} />}
-        {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} />}
-        {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
-      </div>
+      <AppErrorBoundary page={page}>
+        <div key={page} className="page-transition" aria-live="polite">
+          {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
+          {page === "trade" && <Trade account={account} />}
+          {page === "activity" && <Activity account={account} />}
+          {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} />}
+          {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
+        </div>
+      </AppErrorBoundary>
     </main>
     <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
   </div>;
+}
+
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, message: "" };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, message: error?.message || "Unexpected page error." };
+  }
+
+  componentDidCatch(error) {
+    console.error("Flexa page error:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <section className="empty-state page-error-state">
+        <strong>This page hit an unexpected error.</strong>
+        <p>The rest of Flexa is still protected. Reload this page to try again.</p>
+        <small>{this.state.message}</small>
+        <button type="button" className="landing-cta" onClick={() => window.location.reload()}>Reload Flexa →</button>
+      </section>;
+    }
+    return this.props.children;
+  }
 }
 
 function NotificationPanel({ notifications, onClose }) {
