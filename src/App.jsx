@@ -475,6 +475,7 @@ function ActivityRows({ account }) {
 
 function Trade({ account }) {
   const [amount,setAmount]=useState("25");
+  const [notice,setNotice]=useState("");
   const opportunity=account.opportunities?.[0] || null;
   const dir=opportunity?.direction === "down" ? "DOWN" : "UP";
   const duration=opportunity ? String(Math.round(opportunity.duration_seconds/60)) : "60";
@@ -484,15 +485,17 @@ function Trade({ account }) {
     <section className="card"><div className="trade-balance"><span>Available USDT</span><strong>{Number(usdt?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div>
       <div className="ai-selected-trade"><small>AI DIRECTION</small><strong className={dir==="UP"?"green":"red"}>{dir==="UP"?"↗ UP":"↘ DOWN"}</strong><span>{duration} min · {opportunity ? Math.round(Number(opportunity.signal_score||0)*100) : 0}% signal confidence</span></div>
       <label>Stake</label><div className="grid four">{["10","25","50","100"].map((v)=><button key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)}>${v}</button>)}</div>
-      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration} min · ${amount}</strong></div><button className="full" disabled={!canTrade || !opportunity}>{opportunity ? "Confirm " + dir + " trade →" : "Waiting for AI opportunity…"}</button>
+      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration} min · ${amount}</strong></div><button className="full" disabled={!canTrade || !opportunity} onClick={()=>setNotice("Trade execution is not enabled yet. No balance has been changed.")}>{opportunity ? "Confirm " + dir + " trade →" : "Waiting for AI opportunity…"}</button>
+      {notice&&<div className="notice" role="status">{notice}</div>}
       {!account.tradingAccess?.has_access&&<div className="subscription-lock"><b>Your trading trial has ended.</b><span>Choose a Flexa Pro plan to continue using the trading engine.</span><button className="secondary">View plans</button></div>}{!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}{usdt&&account.tradingAccess?.has_access&&!canTrade&&<p className="helper">Stake exceeds your available USDT balance.</p>}<p className="demo-note">Trading access is controlled server-side. Execution remains locked until the settlement flow is enabled.</p>
     </section></>;
 }
 
 function Activity({ account }) { return <><section className="intro"><small>ACTIVITY</small><h1>Your account history.</h1><p>Trades and wallet transactions are loaded from Supabase.</p></section><ActivityRows account={account} /></>; }
 
-function Wallet({ account }) { return <><section className="intro"><small>WALLET</small><h1>Your funds, connected.</h1><p>Balances below are read directly from Supabase.</p></section><div className="grid">{account.wallets.map((wallet)=><BalanceCard key={wallet.id} asset={wallet.asset} wallet={wallet} />)}</div><div className="actions"><button>Deposit</button><button className="secondary">Withdraw</button></div><div className="notice">Deposit verification and withdrawals will be server-controlled. The browser cannot edit balances.</div></>; }
-
+function Wallet({ account }) {
+  const [notice,setNotice]=useState("");
+  return <><section className="intro"><small>WALLET</small><h1>Your funds, connected.</h1><p>Balances below are read directly from Supabase.</p></section><div className="grid">{account.wallets.map((wallet)=><BalanceCard key={wallet.id} asset={wallet.asset} wallet={wallet} />)}</div><div className="actions"><button onClick={()=>setNotice("Deposit flow is being prepared. No balance can be changed from the browser.")}>Deposit</button><button className="secondary" onClick={()=>setNotice("Withdrawal flow is being prepared. No balance can be changed from the browser.")}>Withdraw</button></div>{notice&&<div className="notice" role="status">{notice}</div>}<div className="notice">Deposit verification and withdrawals are server-controlled. The browser cannot edit balances.</div></>; }
 function Profile({ user, profile, signOut }) { return <><section className="profile"><div>{(profile?.display_name || "F").slice(0,1).toUpperCase()}</div><p><small>{profile?.telegram_username ? "@" + profile.telegram_username : "Flexa AI account"}</small><strong>{user ? profile?.display_name || "Connected account" : "Telegram authentication pending"}</strong></p>{user ? <button className="secondary" onClick={signOut}>Sign out</button> : <span className="pending-badge">PENDING</span>}</section><div className="list"><Row text="Notifications" value="Telegram + app" /><Row text="Security" value="Protected" /><Row text="Referral code" value={profile?.referral_code || "—"} /><Row text="Referral sharing" value="Invite friends · earn after qualification" /></div></>; }
 
 function Chart() {
