@@ -6,16 +6,23 @@ const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const publishableKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
 const admin = createClient(url, serviceKey);
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") return Response.json({ error: "POST required" }, { status: 405 });
+  if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders });
+  if (req.method !== "POST") return Response.json({ error: "POST required" }, { status: 405, headers: corsHeaders });
 
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.replace(/^Bearer\s+/i, "");
-  if (!token || !publishableKey) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token || !publishableKey) return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
 
   const authClient = createClient(url, publishableKey, { global: { headers: { Authorization: `Bearer ${token}` } } });
   const { data: userData, error: userError } = await authClient.auth.getUser(token);
-  if (userError || !userData.user) return Response.json({ error: "Invalid session" }, { status: 401 });
+  if (userError || !userData.user) return Response.json({ error: "Invalid session" }, { status: 401, headers: corsHeaders });
 
   const user = userData.user;
   const body = await req.json().catch(() => ({}));
@@ -25,7 +32,7 @@ Deno.serve(async (req: Request) => {
     .from("reward_campaigns")
     .select("id,code,reward_amount,expiry_days,profit_cap")
     .eq("code", "WELCOME_50").eq("active", true).single();
-  if (campaignError || !campaign) return Response.json({ error: "Welcome campaign is unavailable." }, { status: 503 });
+  if (campaignError || !campaign) return Response.json({ error: "Welcome campaign is unavailable." }, { status: 503, headers: corsHeaders });
 
   const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Flexa AI user";
   const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
@@ -74,12 +81,12 @@ Deno.serve(async (req: Request) => {
       status: "available",
       expires_at: expiresAt,
     }).select("id,status,expires_at,remaining_reward,profit_withdrawable,profit_cap").single();
-    if (rewardError) return Response.json({ error: "Could not provision welcome reward." }, { status: 500 });
+    if (rewardError) return Response.json({ error: "Could not provision welcome reward." }, { status: 500, headers: corsHeaders });
     reward = created;
   }
 
   if (body.action === "claim") {
-    if (!reward) return Response.json({ error: "Welcome reward is unavailable." }, { status: 404 });
+    if (!reward) return Response.json({ error: "Welcome reward is unavailable." }, { status: 404, headers: corsHeaders });
 
     if (reward.status === "available" && new Date(reward.expires_at).getTime() > Date.now()) {
       const { data: claimed, error: claimError } = await admin
@@ -94,7 +101,7 @@ Deno.serve(async (req: Request) => {
         .select("id,status,expires_at,remaining_reward,profit_withdrawable,profit_cap")
         .maybeSingle();
 
-      if (claimError) return Response.json({ error: "Could not claim welcome reward." }, { status: 500 });
+      if (claimError) return Response.json({ error: "Could not claim welcome reward." }, { status: 500, headers: corsHeaders });
       if (claimed) reward = claimed;
     }
 
@@ -104,7 +111,7 @@ Deno.serve(async (req: Request) => {
       brand: "Flexa AI",
       reward,
       message: reward.status === "active" ? "Welcome reward claimed." : "Welcome reward is no longer available.",
-    });
+    }, { headers: corsHeaders });
   }
 
   if (referredBy) {
@@ -133,5 +140,5 @@ Deno.serve(async (req: Request) => {
     reward,
     referral_attached: Boolean(referredBy),
     message: "Account provisioned. Welcome reward is ready to claim.",
-  });
+  }, { headers: corsHeaders });
 });
