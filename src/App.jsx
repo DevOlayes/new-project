@@ -212,7 +212,11 @@ export default function App() {
 
   async function startAiScan() {
     if (!supabase || aiScanning || aiEngineActive) return;
+    // Lock the control immediately on the user's click. The engine is now considered
+    // active while the opportunity window it creates is still alive.
     setAiScanning(true);
+    setAiEngineActive(true);
+    try { sessionStorage.setItem("flexa_ai_engine_active", "true"); } catch {}
     setGlobalNotice("");
     try {
       const { data, error } = await supabase.functions.invoke("opportunity-engine", {
@@ -220,11 +224,12 @@ export default function App() {
       });
       if (error || data?.error) throw new Error(data?.error || error?.message || "The AI engine could not start.");
       await refreshAccount();
-      setAiEngineActive(true);
-      try { sessionStorage.setItem("flexa_ai_engine_active", "true"); } catch {}
       setPage("trade");
-      setGlobalNotice("Flexa AI is active. The selected opportunity is ready below.");
+      setGlobalNotice("Flexa AI is active. Your AI-selected opportunity is ready.");
     } catch(error) {
+      // If the backend rejected the start, release the lock so the user can retry.
+      setAiEngineActive(false);
+      try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
       setGlobalNotice(error.message || "The AI engine could not start.");
     } finally {
       setAiScanning(false);
@@ -238,13 +243,24 @@ export default function App() {
   }
 
   useEffect(() => {
+    const handleTradeStarted = () => refreshAccount();
+    window.addEventListener("flexa-trade-started", handleTradeStarted);
+    return () => window.removeEventListener("flexa-trade-started", handleTradeStarted);
+  }, [refreshAccount]);
+
+  useEffect(() => {
     if (!aiEngineActive || aiScanning) return;
-    const hasLiveOpportunity = (account.opportunities || []).some((item) => ["scheduled", "open"].includes(item.status));
-    if (!hasLiveOpportunity) {
+    const live = (account.opportunities || []).filter((item) => ["scheduled", "open"].includes(item.status));
+    if (!live.length) return;
+    const latestEnd = Math.max(...live.map((item) => new Date(item.entry_window_end || 0).getTime()).filter(Number.isFinite));
+    if (!Number.isFinite(latestEnd) || latestEnd <= Date.now()) return;
+    const timer = setTimeout(() => {
       setAiEngineActive(false);
       try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
-    }
-  }, [account.opportunities, aiEngineActive, aiScanning]);
+      refreshAccount();
+    }, Math.max(1000, latestEnd - Date.now() + 1500));
+    return () => clearTimeout(timer);
+  }, [account.opportunities, aiEngineActive, aiScanning, refreshAccount]);
 
   async function signOut() {
     if (supabase) await supabase.auth.signOut();
@@ -649,7 +665,8 @@ function ActivityRows({ account }) {
 function Trade({ account }) {
   const [amount,setAmount] = useState("25");
   const [notice,setNotice] = useState("");
-  const opportunity = account.opportunities?.[0] || null;
+  const [busy,setBusy] = useState(false);
+  const opportunity = account.opportunities?.find((item) => ["scheduled","open"].includes(item.status)) || null;
   const dir = opportunity?.direction === "down" ? "DOWN" : "UP";
   const duration = opportunity ? String(Math.round(opportunity.duration_seconds / 60)) : "60";
   const usdt = account.wallets.find((item) => item.asset === "USDT");
@@ -658,6 +675,27 @@ function Trade({ account }) {
 
   function updateAmount(value) {
     if (value === "" || /^\d*(\.\d{0,2})?$/.test(value)) setAmount(value);
+  }
+
+  async function confirmTrade() {
+    if (!supabase || busy || !opportunity || !canTrade || numericAmount <= 0) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      const { data, error } = await supabase.functions.invoke("execute-trade", {
+        body: { opportunity_id: opportunity.id, stake: numericAmount }
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message || "The trade could not be started.");
+      setNotice(`Trade started: ${dir} ${numericAmount.toFixed(2)} USDT for ${duration} minutes.`);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      // Refresh the ledger so the user immediately sees the new active trade and
+      // the updated available balance.
+      window.dispatchEvent(new CustomEvent("flexa-trade-started"));
+    } catch (error) {
+      setNotice(error.message || "The trade could not be started.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <>
@@ -669,11 +707,7 @@ function Trade({ account }) {
 
     {opportunity ? <section className={dir === "UP" ? "ai-trade-decision up" : "ai-trade-decision down"}>
       <div className="ai-decision-head"><div><small>FLEXA AI DECISION</small><strong>{opportunity.symbol}</strong></div><span>● READY</span></div>
-      <div className="ai-direction-block">
-        <small>THE AI SAYS</small>
-        <strong>{dir === "UP" ? "↗ UP" : "↘ DOWN"}</strong>
-        <p>Flexa AI expects this market to move <b>{dir}</b> during the selected {duration}-minute window.</p>
-      </div>
+      <div className="ai-direction-block"><small>THE AI SAYS</small><strong>{dir === "UP" ? "↗ UP" : "↘ DOWN"}</strong><p>Flexa AI expects this market to move <b>{dir}</b> during the selected {duration}-minute window.</p></div>
       <div className="ai-decision-grid">
         <div><small>ENTRY PRICE</small><strong>{opportunity.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div>
         <div><small>DURATION</small><strong>{duration} min</strong></div>
@@ -684,25 +718,24 @@ function Trade({ account }) {
 
     <section className="trade-market">
       <div className="market-head"><div><small>{opportunity?.symbol || account.markets?.[0]?.display_symbol || "MARKET"}</small><strong>{opportunity?.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong><span className={dir === "UP" ? "green" : "red"}>{opportunity ? dir : "SCANNING"}</span></div><span className="live-badge">● LIVE MARKET</span></div>
-      <Chart />
-      <div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div>
+      <Chart /><div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div>
     </section>
 
     <section className="card trade-ticket">
       <div className="trade-balance"><span>AVAILABLE USDT</span><strong>{Number(usdt?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div>
       <div className="stake-heading"><div><small>YOUR STAKE</small><strong>How much do you want to use?</strong></div><span>USDT</span></div>
-      <div className="stake-presets">
-        {["10","25","50","100"].map((v)=><button type="button" key={v} className={amount===v ? "selected" : "choice"} onClick={()=>setAmount(v)}>${v}</button>)}
-      </div>
+      <div className="stake-presets">{["10","25","50","100"].map((v)=><button type="button" key={v} className={amount===v ? "selected" : "choice"} onClick={()=>setAmount(v)} disabled={busy}>${v}</button>)}</div>
       <label className="custom-amount-label">Or enter your own amount</label>
-      <div className="amount-input-wrap"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} placeholder="0.00" aria-label="Custom trade amount" /></div>
+      <div className="amount-input-wrap"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} placeholder="0.00" aria-label="Custom trade amount" disabled={busy} /></div>
       <div className="trade-summary"><span>YOUR TRADE</span><strong><b className={dir === "UP" ? "green" : "red"}>{dir === "UP" ? "↗ UP" : "↘ DOWN"}</b> · {duration} min · ${amount || "0"}</strong></div>
-      <button className="full trade-confirm-button" disabled={!canTrade || !opportunity || numericAmount <= 0} onClick={()=>setNotice("Trade execution is not enabled yet. No balance has been changed.")}>{opportunity ? `Confirm ${dir} trade →` : "Waiting for AI opportunity…"}</button>
+      <button className="full trade-confirm-button" disabled={busy || !canTrade || !opportunity || numericAmount <= 0} onClick={confirmTrade}>
+        {busy ? "Starting trade…" : opportunity ? `Confirm ${dir} trade →` : "Waiting for AI opportunity…"}
+      </button>
       {notice&&<div className="notice" role="status">{notice}</div>}
       {!account.tradingAccess?.has_access&&<div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a Flexa Pro plan to continue using the trading engine.</span><button className="secondary" onClick={()=>setNotice("Subscription checkout is not connected yet.")}>View plans</button></div>}
       {!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}
       {usdt&&account.tradingAccess?.has_access&&!canTrade&&numericAmount>0&&<p className="helper">Your stake is higher than your available USDT balance.</p>}
-      <p className="demo-note">Your selected amount and the AI direction are shown again above the confirmation button.</p>
+      <p className="demo-note">The AI direction, duration and your stake are shown again before confirmation.</p>
     </section>
   </>;
 }
