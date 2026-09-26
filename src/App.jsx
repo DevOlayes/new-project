@@ -228,7 +228,7 @@ export default function App() {
       {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} />}
       {page === "trade" && <Trade account={account} />}
       {page === "activity" && <Activity account={account} />}
-      {page === "wallet" && <Wallet account={account} />}
+      {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} />}
       {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
     </main>
     <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
@@ -433,7 +433,7 @@ function RewardBanner({ reward, onClaim, busy }) {\n  const daysLeft = Math.max(
   const initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
   const referral=profile?.referral_code||"—";
   return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXA AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section><section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of Flexa AI</button></div>;
-}function Wallet({ account }) {
+}function Wallet({ account, refreshAccount }) {
   const [modal, setModal] = useState("");
   const [walletInfo, setWalletInfo] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState("USDT");
@@ -486,6 +486,7 @@ function RewardBanner({ reward, onClaim, busy }) {\n  const daysLeft = Math.max(
       setAddress("");
       setModal("");
       setNotice("Withdrawal request submitted. Your funds are now locked while the request is reviewed.");
+      await refreshAccount();
     } catch (error) {
       setNotice(error.message || "Withdrawal request failed.");
     } finally {
