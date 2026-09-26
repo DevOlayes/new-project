@@ -225,7 +225,7 @@ export default function App() {
     <header className="topbar"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI Trades</small></div></div><button type="button" className="icon-button" onClick={() => setPage("profile")} aria-label="Open profile">⌁</button></header>
     <main className="content">
       {authError && <div className="error-banner">{authError}</div>}
-      {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} />}
+      {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} />}
       {page === "trade" && <Trade account={account} />}
       {page === "activity" && <Activity account={account} />}
       {page === "wallet" && <Wallet account={account} />}
@@ -434,12 +434,98 @@ function RewardBanner({ reward, onClaim, busy }) {\n  const daysLeft = Math.max(
   const referral=profile?.referral_code||"—";
   return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXA AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section><section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of Flexa AI</button></div>;
 }function Wallet({ account }) {
-  const [notice,setNotice]=useState("");
+  const [modal, setModal] = useState("");
+  const [walletInfo, setWalletInfo] = useState(null);
+  const [selectedAsset, setSelectedAsset] = useState("USDT");
+  const [amount, setAmount] = useState("");
+  const [address, setAddress] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
   const reward=account.rewards?.find((r)=>["available","active"].includes(r.status));
   const usdt=account.wallets.find(w=>w.asset==="USDT");
   const total=Number(usdt?.available_balance||0)+Number(reward?.profit_withdrawable||0);
-  return <div className="wallet-page"><section className="wallet-hero"><div><small>PORTFOLIO VALUE</small><strong>{total.toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong><span>Cash balance + eligible reward profit</span></div><div className="wallet-orbit">◎</div></section><div className="wallet-actions"><button onClick={()=>setNotice("Deposit address flow is next in the payment integration. Your balance cannot be edited from the browser.")}>＋ Deposit</button><button className="secondary" onClick={()=>setNotice("Withdrawal verification is server-controlled. Connect the payment rail before sending funds.")}>↗ Withdraw</button></div>{reward&&<section className="wallet-reward"><div><small>FLEXA WELCOME CREDIT</small><strong>${Number(reward.remaining_reward||0).toFixed(2)} <span>REMAINING</span></strong><p>{reward.status==="available"?"Claim it on Home to activate your trade credit.":"Trade credit is active. Profit generated from it becomes eligible wallet profit."}</p></div><span className="credit-pill">{reward.status.toUpperCase()}</span></section>}<section className="asset-section"><div className="section-heading"><div><small>ASSETS</small><h2>Your balances</h2></div></div><div className="asset-list">{account.wallets.map(wallet=><div className="asset-row" key={wallet.id}><div className="asset-icon">{wallet.asset==="USDT"?"₮":"T"}</div><div><strong>{wallet.asset}</strong><small>{wallet.network}</small></div><b>{Number(wallet.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})}</b></div>)}</div></section><section className="asset-section"><div className="section-heading"><div><small>RECENT</small><h2>Wallet activity</h2></div></div><ActivityRows account={{...account,trades:[]}} /></section>{notice&&<div className="notice" role="status">{notice}</div>}</div>;
-}function Activity({ account }) {
+
+  async function openDeposit() {
+    setNotice("");
+    setModal("deposit");
+    if (walletInfo) return;
+    const { data, error } = await supabase.functions.invoke("wallet-info");
+    if (error || data?.error) {
+      setNotice(data?.error || error?.message || "Could not load deposit details.");
+      return;
+    }
+    setWalletInfo(data);
+  }
+
+  async function submitWithdrawal(event) {
+    event.preventDefault();
+    setNotice("");
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      setNotice("Enter a valid withdrawal amount.");
+      return;
+    }
+    if (!address.trim()) {
+      setNotice("Enter the destination wallet address.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const wallet = account.wallets.find((item) => item.asset === selectedAsset);
+      const { data, error } = await supabase.functions.invoke("request-withdrawal", {
+        body: {
+          asset: selectedAsset,
+          network: wallet?.network,
+          amount: numericAmount,
+          address: address.trim(),
+        },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message || "Withdrawal request failed.");
+      setAmount("");
+      setAddress("");
+      setModal("");
+      setNotice("Withdrawal request submitted. Your funds are now locked while the request is reviewed.");
+    } catch (error) {
+      setNotice(error.message || "Withdrawal request failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <div className="wallet-page">
+    <section className="wallet-hero"><div><small>PORTFOLIO VALUE</small><strong>${total.toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong><span>Cash balance + eligible reward profit</span></div><div className="wallet-orbit">◎</div></section>
+    <div className="wallet-actions">
+      <button onClick={openDeposit}>＋ Deposit</button>
+      <button className="secondary" onClick={()=>{setNotice("");setModal("withdraw");}}>↗ Withdraw</button>
+    </div>
+    {reward&&<section className="wallet-reward"><div><small>FLEXA WELCOME CREDIT</small><strong>${Number(reward.remaining_reward||0).toFixed(2)} <span>REMAINING</span></strong><p>{reward.status==="available"?"Claim it on Home to activate your trade credit.":"Trade credit is active. Profit generated from it becomes eligible wallet profit."}</p></div><span className="credit-pill">{reward.status.toUpperCase()}</span></section>}
+    <section className="asset-section"><div className="section-heading"><div><small>ASSETS</small><h2>Your balances</h2></div></div><div className="asset-list">{account.wallets.map(wallet=><div className="asset-row" key={wallet.id}><div className="asset-icon">{wallet.asset==="USDT"?"₮":"T"}</div><div><strong>{wallet.asset}</strong><small>{wallet.network}</small></div><b>{Number(wallet.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})}</b></div>)}</div></section>
+    <section className="asset-section"><div className="section-heading"><div><small>RECENT</small><h2>Wallet activity</h2></div></div><ActivityRows account={{...account,trades:[]}} /></section>
+    {notice&&<div className="notice" role="status">{notice}</div>}
+    {modal==="deposit"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
+      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button>
+      <div className="eyebrow">DEPOSIT</div><h2>Fund your wallet.</h2>
+      <p>Send funds only on the network shown below. Deposits are credited after the transaction is verified.</p>
+      <div className="wallet-network-list">
+        {Object.entries(walletInfo?.deposit_addresses||{}).map(([asset, info])=><div className="wallet-address-card" key={asset}><strong>{asset}</strong><small>{info?.network || "Network"}</small><code>{info?.address || "Deposit address is being configured."}</code>{info?.address&&<button type="button" onClick={()=>navigator.clipboard?.writeText(info.address)}>Copy address</button>}</div>)}
+        {!walletInfo && <div className="empty-state"><strong>Loading deposit details…</strong></div>}
+        {walletInfo && !Object.keys(walletInfo.deposit_addresses||{}).length && <div className="empty-state"><strong>Deposit addresses are not configured yet.</strong><p>The wallet screen is working; an admin must add the receiving addresses before deposits can be credited.</p></div>}
+      </div>
+    </div></div>}
+    {modal==="withdraw"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
+      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button>
+      <div className="eyebrow">WITHDRAW</div><h2>Send funds out.</h2><p>Withdrawal requests are processed server-side. Your balance is locked when the request is accepted.</p>
+      <form onSubmit={submitWithdrawal} className="wallet-form">
+        <label>Asset<select value={selectedAsset} onChange={e=>setSelectedAsset(e.target.value)}><option value="USDT">USDT</option><option value="TON">TON</option></select></label>
+        <label>Amount<input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" /></label>
+        <label>Destination address<input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Paste wallet address" autoComplete="off" /></label>
+        <button className="landing-cta" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit withdrawal →"}</button>
+      </form>
+    </div></div>}
+  </div>;
+}
+function Activity({ account }) {
   const trades=account.trades||[];
   const wins=trades.filter(t=>t.status==="won").length;
   const losses=trades.filter(t=>t.status==="lost").length;
