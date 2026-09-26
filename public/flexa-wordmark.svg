@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 300" role="img" aria-labelledby="title">
+  <title>Flexa AI</title>
+  <rect width="1024" height="300" fill="#000"/>
+  <image href="/flexa-symbol.webp" x="30" y="35" width="230" height="230" preserveAspectRatio="xMidYMid meet"/>
+  <text x="285" y="196" font-family="Arial, Helvetica, sans-serif" font-size="128" font-weight="900" letter-spacing="-5" fill="#f4f7f5">FLEXAR</text>
+  <text x="760" y="196" font-family="Arial, Helvetica, sans-serif" font-size="128" font-weight="900" letter-spacing="-5" fill="#19e879">AI</text>
+</svg>
