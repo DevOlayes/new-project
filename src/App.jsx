@@ -428,7 +428,14 @@ function Home({ account, loading, setPage, claimReward, rewardBusy, startAiScan,
   </>;
 }
 
-function RewardBanner({ reward, onClaim, busy }) {\n  const daysLeft = Math.max(0, Math.ceil((new Date(reward.expires_at) - Date.now()) / 86400000));\n  const expired = new Date(reward.expires_at).getTime() <= Date.now();\n  const claimed = reward.status === "active";\n  const remaining = Number(reward.remaining_reward || 0);\n  const withdrawable = Number(reward.profit_withdrawable || 0);\n  return <section className="reward-banner"><div className="reward-glow" /><div className="reward-copy"><small>{claimed ? "REWARD CREDIT ACTIVE" : "WELCOME REWARD"}</small><strong>${Number(reward.reward_amount || 50).toFixed(0)} <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : claimed ? "$"+remaining.toFixed(2)+" credit remaining · $"+withdrawable.toFixed(2)+" eligible profit." : "Use within "+daysLeft+" days. The reward itself is non-withdrawable; eligible profit can be withdrawn before expiry."}</p></div>{claimed ? <div className="reward-state"><b>ACTIVE</b><span>{daysLeft}d left</span></div> : <button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim reward →"}</button>}</section>;\n}function Profile({ user, profile, signOut }) {
+function RewardBanner({ reward, onClaim, busy }) {
+  const daysLeft = Math.max(0, Math.ceil((new Date(reward.expires_at) - Date.now()) / 86400000));
+  const expired = new Date(reward.expires_at).getTime() <= Date.now();
+  const claimed = reward.status === "active";
+  const remaining = Number(reward.remaining_reward || 0);
+  const withdrawable = Number(reward.profit_withdrawable || 0);
+  return <section className="reward-banner"><div className="reward-glow" /><div className="reward-copy"><small>{claimed ? "REWARD CREDIT ACTIVE" : "WELCOME REWARD"}</small><strong>${Number(reward.reward_amount || 50).toFixed(0)} <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : claimed ? "$"+remaining.toFixed(2)+" credit remaining · $"+withdrawable.toFixed(2)+" eligible profit." : "Use within "+daysLeft+" days. The reward itself is non-withdrawable; eligible profit can be withdrawn before expiry."}</p></div>{claimed ? <div className="reward-state"><b>ACTIVE</b><span>{daysLeft}d left</span></div> : <button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim reward →"}</button>}</section>;
+}function Profile({ user, profile, signOut }) {
   const name=profile?.display_name||"Flexa AI user";
   const initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
   const referral=profile?.referral_code||"—";
