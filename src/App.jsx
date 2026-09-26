@@ -664,7 +664,13 @@ function Trade({ account }) {
   const [amount,setAmount] = useState("25");
   const [notice,setNotice] = useState("");
   const [busy,setBusy] = useState(false);
-  const opportunity = account.opportunities?.find((item) => ["scheduled","open"].includes(item.status)) || null;
+  const opportunity = account.opportunities?.find((item) => {
+    if (!["scheduled","open"].includes(item.status)) return false;
+    const end = new Date(item.entry_window_end || 0).getTime();
+    const start = new Date(item.entry_window_start || 0).getTime();
+    const now = Date.now();
+    return Number.isFinite(end) && end > now && Number.isFinite(start) && start <= now;
+  }) || null;
   const dir = opportunity?.direction === "down" ? "DOWN" : "UP";
   const duration = opportunity ? String(Math.round(opportunity.duration_seconds / 60)) : "60";
   const usdt = account.wallets.find((item) => item.asset === "USDT");
@@ -688,7 +694,15 @@ function Trade({ account }) {
       const { data, error } = await supabase.functions.invoke("execute-trade", {
         body: { opportunity_id: opportunity.id, stake: numericAmount }
       });
-      if (error || data?.error) throw new Error(data?.error || error?.message || "The trade could not be started.");
+      if (error) {
+        let message = error.message || "The trade could not be started.";
+        try {
+          const payload = await error.context?.json?.();
+          message = payload?.error || payload?.message || message;
+        } catch {}
+        throw new Error(message);
+      }
+      if (data?.error) throw new Error(data.error);
       setNotice(`Trade started: ${dir} ${numericAmount.toFixed(2)} USDT for ${duration} minutes.`);
       await new Promise((resolve) => setTimeout(resolve, 250));
       // Refresh the ledger so the user immediately sees the new active trade and
