@@ -766,6 +766,8 @@ function Trade({ account }) {
   const activeDir = mode === "ai" ? aiDir : manualDir;
   const activeDuration = mode === "ai" ? aiDuration : String(Number(manualDuration) / 60);
   const activeSymbol = mode === "ai" ? opportunity?.symbol : manualSymbol;
+  const aiTakeProfit = opportunity?.entry_price ? (Number(opportunity.entry_price) * (opportunity.direction === "down" ? 0.992 : 1.008)) : null;
+  const aiStopLoss = opportunity?.entry_price ? (Number(opportunity.entry_price) * (opportunity.direction === "down" ? 1.004 : 0.996)) : null;
 
   const usdt = account.wallets.find((item) => item.asset === "USDT");
   const reward = account.rewards?.find((item) => item.status === "active");
@@ -808,13 +810,16 @@ function Trade({ account }) {
       }
       if (data?.error) throw new Error(data.error);
 
+      const tradeResult = data?.trade || data || {};
       const tradeDetails = {
-        tradeId: data?.trade_id || null,
-        symbol: data?.symbol || activeSymbol,
-        direction: data?.direction || activeDir.toLowerCase(),
-        stake: Number(data?.stake ?? numericAmount),
-        duration: data?.duration_seconds ? Math.round(Number(data.duration_seconds) / 60) : Number(activeDuration),
-        fundingSource: data?.funding_source || null
+        tradeId: tradeResult?.trade_id || null,
+        symbol: tradeResult?.symbol || activeSymbol,
+        direction: tradeResult?.direction || activeDir.toLowerCase(),
+        stake: Number(tradeResult?.stake ?? numericAmount),
+        duration: tradeResult?.duration_seconds ? Math.round(Number(tradeResult.duration_seconds) / 60) : Number(activeDuration),
+        fundingSource: tradeResult?.funding_source || null,
+        takeProfitPrice: tradeResult?.take_profit_price || null,
+        stopLossPrice: tradeResult?.stop_loss_price || null
       };
       setNotice("Trade placed successfully.");
       await new Promise((resolve) => setTimeout(resolve, 150));
@@ -836,27 +841,6 @@ function Trade({ account }) {
         : "Trade manually using your own market view. Choose the market, direction, duration and stake."}</p>
     </section>
 
-    {opportunity && <section className={mode === "ai" ? "ai-opportunity-banner active" : "ai-opportunity-banner"}>
-      <div>
-        <span className="eyebrow">✦ FRESH AI OPPORTUNITY</span>
-        <strong>{opportunity.symbol} · {aiDir}</strong>
-        <small>{aiDuration} min · {Math.round(Number(opportunity.signal_score || 0) * 100)}% signal · entry window is live</small>
-      </div>
-      {mode === "ai"
-        ? <button type="button" className="ai-selected-pill" disabled>AI SETUP SELECTED</button>
-        : <button type="button" className="landing-cta" onClick={() => { setMode("ai"); setNotice(""); }} disabled={busy}>Trade this AI setup →</button>}
-    </section>}
-
-    {mode === "ai" && opportunity && <section className={aiDir === "UP" ? "ai-trade-decision up" : "ai-trade-decision down"}>
-      <div className="ai-decision-head"><div><small>FLEXA AI DECISION</small><strong>{opportunity.symbol}</strong></div><span>● READY</span></div>
-      <div className="ai-direction-block"><small>THE AI SAYS</small><strong>{aiDir === "UP" ? "↗ UP" : "↘ DOWN"}</strong><p>Market direction and duration are set by Flexa AI.</p></div>
-      <div className="ai-decision-grid">
-        <div><small>ENTRY PRICE</small><strong>{opportunity.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div>
-        <div><small>DURATION</small><strong>{aiDuration} min</strong></div>
-        <div><small>SIGNAL</small><strong>{Math.round(Number(opportunity.signal_score || 0) * 100)}%</strong></div>
-      </div>
-      <div className="ai-no-choice">The AI has already set the trade parameters. You only choose the stake below.</div>
-    </section>}
 
     <section className="trade-market">
       <div className="market-head"><div><small>{activeSymbol || "MARKET"}</small><strong>{mode === "ai" && opportunity?.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "LIVE"}</strong><span className={activeDir === "UP" ? "green" : "red"}>{activeDir === "UP" ? "↗ UP" : "↘ DOWN"}</span></div><span className="live-badge">● LIVE MARKET</span></div>
@@ -864,6 +848,16 @@ function Trade({ account }) {
     </section>
 
     <section className="card trade-ticket">
+      {opportunity && <div className={mode === "ai" ? "ticket-opportunity active" : "ticket-opportunity"}>
+        <div>
+          <span className="eyebrow">✦ FRESH AI OPPORTUNITY</span>
+          <strong>{opportunity.symbol} · {aiDir}</strong>
+          <small>{aiDuration} min · {Math.round(Number(opportunity.signal_score || 0) * 100)}% signal · live entry window</small>
+        </div>
+        {mode === "ai"
+          ? <span className="ai-selected-pill">AI SETUP SELECTED</span>
+          : <button type="button" className="ticket-ai-button" onClick={() => { setMode("ai"); setNotice(""); }} disabled={busy}>Trade this setup →</button>}
+      </div>}
       {mode === "manual" ? <div className="trade-selection-block">
         <div className="section-heading"><div><small>MANUAL TRADE</small><h2>Build your trade</h2></div><span className="live-badge">● YOUR CALL</span></div>
         <label className="manual-field"><span>1. MARKET</span><select value={manualSymbol} onChange={e=>setManualSymbol(e.target.value)} disabled={busy}>
@@ -876,7 +870,16 @@ function Trade({ account }) {
         <div className="manual-duration-row"><span>3. DURATION</span><div>{[[900,"15 min"],[1800,"30 min"],[3600,"60 min"]].map(([value,label])=><button key={value} type="button" className={Number(manualDuration)===value ? "selected" : ""} onClick={()=>setManualDuration(value)} disabled={busy}>{label}</button>)}</div></div>
       </div> : <div className="trade-selection-block ai-selection-block">
         <div className="section-heading"><div><small>FLEXA AI TRADE</small><h2>AI setup locked</h2></div><span className="live-badge">● AI SELECTED</span></div>
-        <div className="ai-inline-selection"><div><small>MARKET</small><strong>{activeSymbol || "—"}</strong></div><div><small>DIRECTION</small><strong className={activeDir === "UP" ? "green" : "red"}>{activeDir === "UP" ? "↗ UP" : "↘ DOWN"}</strong></div><div><small>DURATION</small><strong>{activeDuration} min</strong></div></div>
+        <div className="ai-inline-selection">
+          <div><small>MARKET</small><strong>{activeSymbol || "—"}</strong></div>
+          <div><small>DIRECTION</small><strong className={activeDir === "UP" ? "green" : "red"}>{activeDir === "UP" ? "↗ UP" : "↘ DOWN"}</strong></div>
+          <div><small>DURATION</small><strong>{activeDuration} min</strong></div>
+        </div>
+        <div className="ai-risk-grid">
+          <div><small>TAKE PROFIT</small><strong>{aiTakeProfit ? Number(aiTakeProfit).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div>
+          <div><small>STOP LOSS</small><strong>{aiStopLoss ? Number(aiStopLoss).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div>
+        </div>
+        <p className="ai-risk-note">Flexa automatically closes the AI trade at its take-profit or stop-loss level. If neither is reached, it settles at the end of the trade duration.</p>
       </div>}
       <div className="trade-balance"><span>TRADING FUNDS</span><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong><small>Wallet {walletBalance.toFixed(2)} USDT · Welcome bonus {bonusBalance.toFixed(2)} USDT</small></div>
       <div className="trade-funds-breakdown">
@@ -937,7 +940,18 @@ function Activity({ account }) {
   const losses=trades.filter(t=>t.status==="lost").length;
   const profit=trades.reduce((sum,t)=>sum+Number(t.result_amount||0)-Number(t.stake||0),0);
   return <div className="activity-page"><section className="intro"><small>ACTIVITY CENTER</small><h1>Everything that happened.</h1><p>Your trade outcomes and wallet events are kept together so you can follow every change to your account.</p></section>
-    {activeTrades.length>0&&<section className="active-trades-card"><div className="section-heading"><div><small>LIVE NOW</small><h2>Active trade</h2></div><span className="live-badge">● ACTIVE</span></div>{activeTrades.map(t=><div className="active-trade-row" key={t.id}><div><strong>{t.metadata?.market_symbol || t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ UP":"↘ DOWN"}</span><small>Opened {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} · {Math.round(Number(t.duration_seconds||0)/60)} min</small></div><strong>{Number(t.stake||0).toFixed(2)} USDT</strong></div>)}</section>}
+    {activeTrades.length>0&&<section className="active-trades-card"><div className="section-heading"><div><small>LIVE NOW</small><h2>Active trade</h2></div><span className="live-badge">● ACTIVE</span></div>{activeTrades.map(t=><div className="active-trade-row" key={t.id}>
+  <div>
+    <strong>{t.metadata?.market_symbol || t.asset}</strong>
+    <span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ UP":"↘ DOWN"}</span>
+    <small>Opened {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} · {Math.round(Number(t.duration_seconds||0)/60)} min · settles {new Date(t.closes_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</small>
+    {t.metadata?.trade_mode==="ai" && <div className="active-risk-row">
+      <span>TP {t.metadata?.take_profit_price ? Number(t.metadata.take_profit_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</span>
+      <span>SL {t.metadata?.stop_loss_price ? Number(t.metadata.stop_loss_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</span>
+    </div>}
+  </div>
+  <strong>{Number(t.stake||0).toFixed(2)} USDT</strong>
+</div>)</section>}
     <section className="activity-stats"><div><small>TRADES</small><strong>{trades.length}</strong></div><div><small>WINS</small><strong>{wins}</strong></div><div><small>LOSSES</small><strong>{losses}</strong></div><div><small>NET</small><strong className={profit>=0?"green":"red"}>{profit>=0?"+":""}{profit.toFixed(2)}</strong></div></section><section className="activity-section"><div className="section-heading"><div><small>TRADE HISTORY</small><h2>Recent trades</h2></div></div>{trades.length?<div className="timeline">{trades.map(t=><div className="timeline-row" key={t.id}><div className="timeline-dot" /><div className="timeline-main"><div><strong>{t.metadata?.market_symbol || t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction.toUpperCase()}</span></div><small>{new Date(t.opened_at).toLocaleString()} · {Math.round(Number(t.duration_seconds||0)/60)} min</small></div><div className="timeline-value"><strong className={t.status==="won"?"green":t.status==="lost"?"red":""}>{t.status==="won"?"+":""}{Number(t.result_amount??t.potential_payout??t.stake).toFixed(2)}</strong><small>{t.status.toUpperCase()}</small></div></div>)}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your trades will appear here.</p></div>}</section><section className="activity-section"><div className="section-heading"><div><small>WALLET LEDGER</small><h2>Recent transactions</h2></div></div><ActivityRows account={{...account,trades:[]}} /></section></div>;
 
 }
