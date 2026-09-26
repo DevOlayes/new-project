@@ -13,8 +13,10 @@ const strength=(r:Record<string,unknown>)=>clamp(n(r.trend_score)*.42+n(r.moment
 const quality=(r:Record<string,unknown>)=>{const v=Math.abs(n(r.volatility_20));if(!v)return .5;if(v<.001)return .35;if(v<=.008)return 1;if(v<=.015)return .65;return .25;};
 const volume=(r:Record<string,unknown>)=>{const v=n(r.volume_change_20);return v>=0?Math.min(1,.65+v*.25):Math.max(.2,.65+v*.5);};
 const fresh=(r:Record<string,unknown>,m:number)=>Date.now()-new Date(String(r.candle_open_time)).getTime()<=m*60000;
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization,x-client-info,apikey,content-type","Access-Control-Allow-Methods":"POST,OPTIONS"};
 Deno.serve(async(req)=>{
- if(req.method!=="POST")return Response.json({error:"POST required"},{status:405});
+ if(req.method==="OPTIONS")return new Response("ok",{status:200,headers:cors});
+ if(req.method!=="POST")return Response.json({error:"POST required"},{status:405,headers:cors});
  const supplied=req.headers.get("apikey")??req.headers.get("authorization")?.replace(/^Bearer\s+/i,"")??"";
  if(!supplied||supplied!==publishableKey)return Response.json({error:"Unauthorized"},{status:401});
  const now=new Date(),starts=new Date(Math.floor(Date.now()/60000)*60000),closes=new Date(starts.getTime()+DURATION_SECONDS*1000),results=[];
@@ -38,5 +40,5 @@ Deno.serve(async(req)=>{
   const {data,error:ie}=await admin.from("ai_opportunities").insert({symbol,direction,duration_seconds:DURATION_SECONDS,entry_window_start:starts.toISOString(),entry_window_end:closes.toISOString(),signal_score:+confidence.toFixed(6),model_version:VERSION,status:"open",entry_price:entry,metadata:{engine:VERSION,reason:String(Math.round(alignment*100))+"% timeframe alignment • regime consistency • volatility and volume quality",signal:+weighted.toFixed(6),feature_snapshot:snapshot}}).select("id,symbol,direction,entry_window_start,entry_window_end,signal_score").single();
   if(ie)throw ie;results.push({symbol,status:"created",opportunity:data});
  }
- return Response.json({engine:VERSION,generated_at:now.toISOString(),target_start:starts.toISOString(),target_close:closes.toISOString(),results});
+ return Response.json({engine:VERSION,generated_at:now.toISOString(),target_start:starts.toISOString(),target_close:closes.toISOString(),results},{headers:cors});
 });
