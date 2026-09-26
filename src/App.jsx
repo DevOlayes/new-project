@@ -22,6 +22,7 @@ export default function App() {
   const [rewardBusy, setRewardBusy] = useState(false);
   const [aiScanning, setAiScanning] = useState(false);
   const [globalNotice, setGlobalNotice] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const refreshAccount = useCallback(async () => {
     if (!supabase || !user) return;
@@ -221,17 +222,36 @@ export default function App() {
   if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexa-symbol.webp" alt="Flexa AI" /><strong>Connecting your Flexa AI account…</strong><span>Loading your account data…</span></div>;
   if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open Flexa AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
 
+  const notifications = account.notifications || [];
+  const unreadNotifications = notifications.filter((item) => !item.is_read).length;
+
   return <div className="app-shell">
-    <header className="topbar"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI Trades</small></div></div><button type="button" className="icon-button" onClick={() => setPage("profile")} aria-label="Open profile">⌁</button></header>
+    <header className="topbar"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI Trades</small></div></div><button type="button" className="icon-button notification-button" onClick={() => setShowNotifications(true)} aria-label="Open notifications"><span aria-hidden="true">♢</span>{unreadNotifications > 0 && <b className="notification-dot">{unreadNotifications > 9 ? "9+" : unreadNotifications}</b>}</button></header>
     <main className="content">
       {authError && <div className="error-banner">{authError}</div>}
-      {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} />}
-      {page === "trade" && <Trade account={account} />}
-      {page === "activity" && <Activity account={account} />}
-      {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} />}
-      {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
+      <div key={page} className="page-transition" aria-live="polite">
+        {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} />}
+        {page === "trade" && <Trade account={account} />}
+        {page === "activity" && <Activity account={account} />}
+        {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} />}
+        {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
+      </div>
     </main>
     <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
+    {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
+  </div>;
+}
+
+function NotificationPanel({ notifications, onClose }) {
+  return <div className="notification-backdrop" onClick={onClose}>
+    <aside className="notification-panel" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Notifications">
+      <div className="notification-panel-head"><div><small>FLEXA AI</small><h2>Notifications</h2></div><button type="button" className="auth-close" onClick={onClose} aria-label="Close notifications">×</button></div>
+      <div className="notification-list">
+        {notifications.length ? notifications.slice(0, 20).map((item) => <article className={item.is_read ? "notification-item" : "notification-item unread"} key={item.id || item.created_at}>
+          <span className="notification-mark">•</span><div><strong>{item.title || item.type || "Account update"}</strong><p>{item.message || item.body || "You have a new Flexa AI update."}</p><small>{item.created_at ? new Date(item.created_at).toLocaleString() : "Just now"}</small></div>
+        </article>) : <div className="empty-state"><strong>No notifications yet</strong><p>Important account and trading updates will appear here.</p></div>}
+      </div>
+    </aside>
   </div>;
 }
 
