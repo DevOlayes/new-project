@@ -192,3 +192,59 @@ body{background:radial-gradient(circle at 50% -10%,rgba(124,255,156,.08),transpa
 @keyframes overlayIn{from{opacity:0}to{opacity:1}}
 @keyframes panelIn{from{opacity:0;transform:translateY(-8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){.page-transition,.notification-backdrop,.notification-panel{animation:none!important}}
+
+
+/* AI engine and trade-ticket UX refresh */
+.home-reward-card{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 14px;padding:18px 20px;border:1px solid rgba(124,255,156,.34);border-radius:20px;background:linear-gradient(135deg,rgba(124,255,156,.14),rgba(8,18,11,.96));box-shadow:0 18px 55px rgba(0,0,0,.25)}
+.home-reward-card small{display:block;color:var(--green);font-size:8px;font-weight:900;letter-spacing:.14em}
+.home-reward-card strong{display:block;font-size:30px;line-height:1;margin:6px 0}
+.home-reward-card span{display:block;color:var(--muted);font-size:9px;line-height:1.5}
+.home-reward-card button{flex:0 0 auto;border:0;border-radius:12px;background:var(--green);color:#061009;padding:12px 15px;font-size:10px;font-weight:900}
+.home-reward-card button:disabled{opacity:.6}
+.reward-active-button{background:rgba(124,255,156,.1)!important;color:var(--green)!important;border:1px solid rgba(124,255,156,.3)!important}
+.start-ai-button.active{background:#0b150e;color:var(--green);border:1px solid rgba(124,255,156,.35);box-shadow:0 0 25px rgba(124,255,156,.08)}
+.start-ai-button:disabled{cursor:not-allowed}
+.ai-opportunity-label{color:var(--green);font-size:8px;font-weight:900;letter-spacing:.16em;margin-bottom:12px}
+.ai-opportunity-card .opp-top{margin-bottom:4px}
+.ai-opportunity-direction{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:13px 0;padding:12px;border-radius:12px;background:rgba(0,0,0,.18);border:1px solid rgba(124,255,156,.1)}
+.ai-opportunity-direction span{color:var(--muted);font-size:9px}
+.ai-opportunity-direction strong{font-size:18px}
+.ai-opportunity-card button{background:var(--green);color:#061009;border-color:transparent}
+.ai-trade-decision{margin:0 0 14px;padding:20px;border-radius:22px;border:1px solid rgba(124,255,156,.35);background:linear-gradient(145deg,#122017,#070d09);box-shadow:0 18px 60px rgba(0,0,0,.25)}
+.ai-trade-decision.down{border-color:rgba(255,118,118,.35)}
+.ai-decision-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ai-decision-head small,.ai-direction-block small,.ai-decision-grid small,.stake-heading small{display:block;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.13em}
+.ai-decision-head strong{display:block;font-size:17px;margin-top:5px}
+.ai-decision-head>span{font-size:8px;color:var(--green);font-weight:900;letter-spacing:.1em}
+.ai-direction-block{margin:20px 0;padding:18px;border-radius:17px;background:rgba(124,255,156,.07);border:1px solid rgba(124,255,156,.16)}
+.ai-trade-decision.down .ai-direction-block{background:rgba(255,118,118,.06);border-color:rgba(255,118,118,.16)}
+.ai-direction-block strong{display:block;font-size:42px;line-height:1;margin:8px 0}
+.ai-direction-block p{margin:0;color:var(--muted);font-size:11px;line-height:1.6}
+.ai-direction-block p b{color:#fff}
+.ai-decision-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ai-decision-grid>div{padding:11px;border-radius:12px;background:#0b150e;border:1px solid var(--border)}
+.ai-decision-grid strong{display:block;margin-top:5px;font-size:12px}
+.ai-no-choice{margin-top:12px;padding:10px 12px;border-radius:10px;color:var(--muted);font-size:9px;line-height:1.5;background:rgba(0,0,0,.16)}
+.trade-ticket{padding:20px}
+.stake-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:18px 0 10px}
+.stake-heading strong{display:block;margin-top:5px;font-size:15px}
+.stake-heading>span{color:var(--green);font-size:9px;font-weight:900}
+.stake-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stake-presets button{min-height:48px;border-radius:12px;border:1px solid rgba(124,255,156,.14);background:#0b150e;color:#fff;font-weight:850}
+.stake-presets button.choice{background:#0b150e;color:#dbe9df}
+.stake-presets button.selected{background:var(--green);color:#061009;border-color:var(--green);box-shadow:0 0 20px rgba(124,255,156,.13)}
+.custom-amount-label{display:block;color:var(--muted);font-size:10px;margin:18px 0 7px}
+.amount-input-wrap{display:flex;align-items:center;border:1px solid rgba(124,255,156,.22);border-radius:13px;background:#0b150e;overflow:hidden}
+.amount-input-wrap:focus-within{border-color:rgba(124,255,156,.65);box-shadow:0 0 0 3px rgba(124,255,156,.06)}
+.amount-input-wrap>span{padding-left:14px;color:var(--green);font-size:17px;font-weight:900}
+.amount-input-wrap input{width:100%;border:0;outline:0;background:transparent;color:#fff;padding:13px 12px;font-size:18px;font-weight:800}
+.trade-summary{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:18px;padding:13px;border-radius:12px;background:rgba(124,255,156,.05);border:1px solid rgba(124,255,156,.12)}
+.trade-summary span{color:var(--muted);font-size:9px;letter-spacing:.1em}
+.trade-summary strong{font-size:11px;text-align:right}
+.trade-confirm-button{min-height:52px}
+@media(max-width:600px){
+  .home-reward-card{align-items:flex-start;flex-direction:column}
+  .home-reward-card button{width:100%}
+  .ai-decision-grid{grid-template-columns:1fr 1fr 1fr}
+  .ai-direction-block strong{font-size:38px}
+}
