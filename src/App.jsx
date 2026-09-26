@@ -145,29 +145,32 @@ export default function App() {
     const loadAccount = async () => {
       setLoading(true);
 
-      const [{ data: profileData }, onboarding] = await Promise.all([
-        supabase.from("profiles")
-          .select("display_name,telegram_username,avatar_url,referral_code,is_admin")
-          .eq("id", user.id)
-          .maybeSingle(),
-        supabase.functions.invoke("account-onboarding", {
-          body: {
-            referral_code:
-              new URLSearchParams(window.location.search).get("ref") ||
-              localStorage.getItem("flexa_referral_code") ||
-              "",
-          },
-        }),
-      ]);
+      const onboarding = await supabase.functions.invoke("account-onboarding", {
+        body: {
+          referral_code:
+            new URLSearchParams(window.location.search).get("ref") ||
+            localStorage.getItem("flexa_referral_code") ||
+            "",
+        },
+      });
 
       if (cancelled) return;
 
-      if (profileData) setProfile(profileData);
       if (onboarding.error || onboarding.data?.error) {
         setAuthError(onboarding.data?.error || onboarding.error?.message || "");
       } else {
         setAuthError("");
       }
+
+      // Read the profile after onboarding so first-time users do not race
+      // the profile upsert and get stuck with an empty profile/admin state.
+      const { data: profileData } = await supabase.from("profiles")
+        .select("display_name,telegram_username,avatar_url,referral_code,is_admin")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      setProfile(profileData || null);
 
       const result = await getAccountData();
       if (cancelled) return;
