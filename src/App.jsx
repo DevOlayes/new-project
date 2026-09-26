@@ -159,7 +159,10 @@ function AuthOptions({ setAuthError, authError }) {
     setAuthError("");
 
     try {
-      await loadTelegramLoginSdk();
+      // The SDK is preloaded in index.html so this call stays inside the user's click gesture.
+      if (!window.Telegram?.Login?.auth) {
+        throw new Error("Telegram login library is not ready. Please try again.");
+      }
 
       window.Telegram.Login.auth(
         {
