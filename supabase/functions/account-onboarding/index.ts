@@ -56,13 +56,17 @@ Deno.serve(async (req: Request) => {
     profilePatch,
     { onConflict: "id" },
   );
-  if (profileError) throw profileError;
+  if (profileError) return Response.json({ error: "Could not initialize your profile." }, { status: 500, headers: corsHeaders });
 
   for (const wallet of [
     { user_id: user.id, asset: "TON", network: "TON" },
     { user_id: user.id, asset: "USDT", network: "TRC-20" },
   ]) {
-    await admin.from("wallets").upsert(wallet, { onConflict: "user_id,asset,network", ignoreDuplicates: true });
+    const { error: walletError } = await admin.from("wallets").upsert(
+      wallet,
+      { onConflict: "user_id,asset,network", ignoreDuplicates: true },
+    );
+    if (walletError) return Response.json({ error: "Could not initialize your wallet." }, { status: 500, headers: corsHeaders });
   }
 
   const { data: existingReward } = await admin
