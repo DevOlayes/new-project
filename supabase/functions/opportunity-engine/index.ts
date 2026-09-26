@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 const url=Deno.env.get("SUPABASE_URL")!, serviceKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, publishableKey=Deno.env.get("SUPABASE_PUBLISHABLE_KEY")??"";
 const admin=createClient(url,serviceKey);
-const SYMBOLS=["BTCUSDT","ETHUSDT"], VERSION="opportunity-v2", DURATION_SECONDS=3600;
+const SYMBOLS=["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"], VERSION="opportunity-v2", DURATION_SECONDS=3600;
 const clamp=(v:number,min=-1,max=1)=>Math.max(min,Math.min(max,v));
 const n=(v:unknown)=>typeof v==="number"?v:Number(v??0);
 const strength=(r:Record<string,unknown>)=>clamp(n(r.trend_score)*.42+n(r.momentum_score)*.33+n(r.structure_score)*.25);
