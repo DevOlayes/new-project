@@ -189,32 +189,25 @@ export default function App() {
     };
   }, [user]);
 
-  async function provisionAccount(id) {
-    if (!supabase) return;
-    const referralCode = new URLSearchParams(window.location.search).get("ref") || localStorage.getItem("flexa_referral_code") || "";
-    if (referralCode) localStorage.setItem("flexa_referral_code", referralCode);
-    await supabase.functions.invoke("account-onboarding", { body: { referral_code: referralCode } });
-    refreshAccount();
-  }
-
   async function claimReward() {
     if (!supabase || rewardBusy) return;
     setRewardBusy(true);
-    const { error } = await supabase.functions.invoke("account-onboarding", { body: { action: "claim" } });
-    setRewardBusy(false);
-    if (!error) refreshAccount();
+    setAuthError("");
+    try {
+      const { data, error } = await supabase.functions.invoke("account-onboarding", { body: { action: "claim" } });
+      if (error || data?.error) throw new Error(data?.error || error?.message || "Could not claim your welcome reward.");
+      await refreshAccount();
+    } catch (error) {
+      setAuthError(error.message || "Could not claim your welcome reward.");
+    } finally {
+      setRewardBusy(false);
+    }
   }
 
   async function installFlexa() {
     if (!installPrompt) return;
     await installPrompt.prompt();
     setInstallPrompt(null);
-  }
-
-  async function loadProfile(id) {
-    if (!supabase) return;
-    const { data } = await supabase.from("profiles").select("display_name,telegram_username,avatar_url,referral_code,is_admin").eq("id", id).maybeSingle();
-    setProfile(data || null);
   }
 
   async function signOut() { if (supabase) await supabase.auth.signOut(); setAccount(EMPTY_ACCOUNT); }
@@ -431,7 +424,11 @@ function Home({ account, loading, setPage, claimReward, rewardBusy }) {
   </>;
 }
 
-function RewardBanner({ reward, onClaim, busy }) { return <section className="reward-banner"><div><small>WELCOME REWARD</small><strong>$50 <span>TRADE CREDIT</span></strong><p>Use within {Math.max(0,Math.ceil((new Date(reward.expires_at)-Date.now())/86400000))} days. The $50 itself is non-withdrawable; only eligible profit from reward trades can be withdrawn before expiry.</p></div><button onClick={onClaim} disabled={busy}>{busy ? "Claiming…" : "Claim $50 →"}</button></section>; }
+function RewardBanner({ reward, onClaim, busy }) {
+  const daysLeft = Math.max(0, Math.ceil((new Date(reward.expires_at) - Date.now()) / 86400000));
+  const expired = new Date(reward.expires_at).getTime() <= Date.now();
+  return <section className="reward-banner"><div><small>WELCOME REWARD</small><strong>$50 <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : "Use within " + daysLeft + " days. The $50 itself is non-withdrawable; only eligible profit from reward trades can be withdrawn before expiry."}</p></div><button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim $50 →"}</button></section>;
+}
 
 function AdminDashboard({ onExit }) {
   const [data,setData]=useState(null), [tab,setTab]=useState("overview"), [busy,setBusy]=useState(false), [error,setError]=useState("");
