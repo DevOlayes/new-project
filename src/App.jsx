@@ -12,7 +12,8 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], tradingAccess: null, error: null };\n  const [account, setAccount] = useState(EMPTY_ACCOUNT);
+  const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], tradingAccess: null, error: null };
+  const [account, setAccount] = useState(EMPTY_ACCOUNT);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [market, setMarket] = useState(null);
@@ -149,7 +150,9 @@ function AuthOptions({ setAuthError, authError }) {
   async function continueWithTelegram() {
     if (!supabase) { setAuthError("Supabase is not configured in this build."); return; }
 
-    // Telegram Client IDs are public identifiers, so keep a source fallback for the production build.\n    // The environment variable can still override this value in other deployments.\n    const clientId = Number(import.meta.env.VITE_TELEGRAM_CLIENT_ID || 8897849997);
+    // Telegram Client IDs are public identifiers, so keep a source fallback for the production build.
+    // The environment variable can still override this value in other deployments.
+    const clientId = Number(import.meta.env.VITE_TELEGRAM_CLIENT_ID || 8897849997);
     if (!clientId) {
       setAuthError("Telegram login is not configured yet.");
       return;
