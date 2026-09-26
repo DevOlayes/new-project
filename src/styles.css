@@ -94,3 +94,40 @@ body{touch-action:pan-y}
 .bottom-nav{z-index:100;pointer-events:auto}
 .nav{pointer-events:auto;touch-action:manipulation}
 button{pointer-events:auto;touch-action:manipulation}
+
+/* Flexa brand assets and stable mobile interaction layer. */
+.brand-symbol{width:38px;height:38px;display:block;object-fit:cover;border-radius:10px;background:#000;flex:0 0 38px}
+.loader-logo{width:58px;height:58px;display:block;margin:auto;object-fit:cover;border-radius:18px}
+.auth-modal-icon{object-fit:cover;background:#000!important;padding:0!important}
+.auth-provider{flex-wrap:nowrap;min-width:0}
+.auth-provider>span:nth-child(2){flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
+.auth-provider b{flex:0 0 auto}
+.app-shell{isolation:isolate}
+.content{min-height:calc(100vh - 72px)}
+.bottom-nav{backdrop-filter:none;-webkit-backdrop-filter:none;bottom:calc(10px + env(safe-area-inset-bottom));touch-action:manipulation}
+.bottom-nav .nav{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.home-balance{margin-top:0;margin-bottom:12px}
+.balance-caption{display:block;margin-top:5px;color:var(--muted);font-size:9px}
+.ai-start-card{position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;gap:16px;margin:0 0 14px;padding:22px;border:1px solid rgba(124,255,156,.28);border-radius:24px;background:radial-gradient(circle at 85% 15%,rgba(124,255,156,.12),transparent 30%),linear-gradient(145deg,#122017,#070d09);overflow:hidden}
+.ai-start-card:after{content:"";position:absolute;width:180px;height:180px;right:-90px;bottom:-110px;border-radius:50%;background:rgba(124,255,156,.08);pointer-events:none}
+.ai-start-copy{position:relative;z-index:1}
+.ai-start-copy small{color:var(--green);font-size:9px;font-weight:800;letter-spacing:.16em}
+.ai-start-copy h1{font-size:clamp(30px,8vw,46px);line-height:.94;letter-spacing:-.06em;margin:8px 0}
+.ai-start-copy h1 span{color:var(--green)}
+.ai-start-copy p{max-width:430px;color:var(--muted);font-size:10px;line-height:1.65;margin:0}
+.start-ai-button{position:relative;z-index:2;display:flex;align-items:center;gap:16px;min-width:130px;padding:14px 16px;border:0;border-radius:14px;background:var(--green);color:#061009;font-size:11px;font-weight:900;box-shadow:0 12px 35px rgba(124,255,156,.16)}
+.start-ai-button b{font-size:18px;margin-left:auto}
+.engine-status{grid-column:1/-1;color:var(--muted);font-size:8px;letter-spacing:.1em;display:flex;align-items:center;gap:7px}
+.engine-status i{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+.home-insights{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px}
+.home-insight-card{padding:15px;border:1px solid var(--border);border-radius:17px;background:rgba(255,255,255,.025)}
+.home-insight-card small{display:block;color:var(--muted);font-size:8px;letter-spacing:.12em}
+.home-insight-card strong{display:block;margin:8px 0 4px;font-size:19px}
+.home-insight-card span{display:block;color:var(--muted);font-size:9px;line-height:1.4}
+.home-activity-head{display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 10px}
+.home-activity-head small{color:var(--green);font-size:9px;font-weight:800;letter-spacing:.16em}
+.home-activity-head h2{margin:6px 0 0;font-size:20px}
+.home-activity-head button{border:0;background:transparent;color:var(--green);font-size:10px}
+.opportunity-empty{min-height:92px;display:grid;place-items:center}
+.opportunity-empty strong{color:#fff}
+@media(max-width:560px){.ai-start-card{grid-template-columns:1fr}.start-ai-button{width:100%;justify-content:center}.home-insights{grid-template-columns:1fr}.brand-symbol{width:36px;height:36px;flex-basis:36px}}

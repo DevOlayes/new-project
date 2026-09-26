@@ -12,7 +12,7 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [account, setAccount] = useState({ wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], error: null });
+  const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], tradingAccess: null, error: null };\n  const [account, setAccount] = useState(EMPTY_ACCOUNT);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [market, setMarket] = useState(null);
@@ -74,15 +74,15 @@ export default function App() {
     setProfile(data || null);
   }
 
-  async function signOut() { if (supabase) await supabase.auth.signOut(); setAccount({ wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], error: null }); }
+  async function signOut() { if (supabase) await supabase.auth.signOut(); setAccount(EMPTY_ACCOUNT); }
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => setPage("home")} />;
   if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFlexa={installFlexa} />;
-  if (!user && loading) return <div className="loading-screen"><div className="loader-orb">F</div><strong>Connecting your Flexa AI account…</strong><span>Loading your account data…</span></div>;
-  if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><b>F</b><div><strong>Flexa AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open Flexa AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
+  if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexa-symbol.webp" alt="Flexa AI" /><strong>Connecting your Flexa AI account…</strong><span>Loading your account data…</span></div>;
+  if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open Flexa AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
 
   return <div className="app-shell">
-    <header className="topbar"><div className="brand"><b>F</b><div><strong>Flexa AI</strong><small>AI Trades</small></div></div><button className="icon-button" onClick={() => setPage("profile")}>⌁</button></header>
+    <header className="topbar"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI Trades</small></div></div><button type="button" className="icon-button" onClick={() => setPage("profile")} aria-label="Open profile">⌁</button></header>
     <main className="content">
       {authError && <div className="error-banner">{authError}</div>}
       {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} />}
@@ -91,7 +91,7 @@ export default function App() {
       {page === "wallet" && <Wallet account={account} />}
       {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
     </main>
-    <nav className="bottom-nav">{nav.map(([id, icon, label]) => <button key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
+    <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
   </div>;
 }
 
@@ -111,7 +111,7 @@ function Landing({ market, showAuth, setShowAuth, installPrompt, installFlexa })
 function AuthModal({ onClose }) {
   const [mode, setMode] = useState("signup");
   const [error, setError] = useState("");
-  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><div className="auth-modal-icon">F</div><div className="eyebrow">WELCOME TO FLEXA AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your Flexa AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to Flexa AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use Flexa AI responsibly and follow applicable terms.</small></div></div>;
+  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="Flexa AI" /><div className="eyebrow">WELCOME TO FLEXA AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your Flexa AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to Flexa AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use Flexa AI responsibly and follow applicable terms.</small></div></div>;
 }
 
 function AuthOptions({ setAuthError, authError }) {
@@ -208,7 +208,7 @@ function AuthOptions({ setAuthError, authError }) {
   }
 
   return <div className="auth-options">
-    <button className="auth-provider google" onClick={continueWithGoogle} disabled={!!busy}>
+    <button type="button" className="auth-provider google" onClick={continueWithGoogle} disabled={!!busy}>
       <span className="provider-mark google-mark" aria-hidden="true">
         <svg viewBox="0 0 24 24" role="img" aria-label="Google">
           <path fill="#4285F4" d="M21.35 12.27c0-.72-.06-1.42-.18-2.09H12v3.95h5.24a4.48 4.48 0 0 1-1.94 2.94v2.44h3.14c1.84-1.69 2.91-4.18 2.91-7.24Z"/>
@@ -237,20 +237,52 @@ function LandingFeature({title,text}) { return <article className="landing-featu
 
 function LandingCard({ title, text }) { return <article className="landing-card"><span>✦</span><strong>{title}</strong><p>{text}</p></article>; }
 
+function getBestPerformingPair(trades) {
+  const settled = (trades || []).filter((trade) => ["won", "lost"].includes(trade.status));
+  if (!settled.length) return null;
+  const totals = settled.reduce((map, trade) => {
+    const symbol = trade.asset || "Unknown";
+    map[symbol] = (map[symbol] || 0) + (Number(trade.result_amount || 0) - Number(trade.stake || 0));
+    return map;
+  }, {});
+  return Object.entries(totals).sort((a, b) => b[1] - a[1])[0] || null;
+}
+
 function Home({ account, loading, setPage, claimReward, rewardBusy }) {
   const active = account.trades.filter((trade) => trade.status === "active");
   const unread = account.notifications.filter((item) => !item.is_read).length;
   const opportunities = account.opportunities || [];
-  return <>{account.rewards?.find((r) => r.status === "available") && <RewardBanner reward={account.rewards.find((r) => r.status === "available")} onClaim={claimReward} busy={rewardBusy} />}<section className="home-hero"><div><small>FLEXA AI ENGINE</small><h1>Opportunities,<br /><span>not guesswork.</span></h1><p>The engine scans market conditions and surfaces trade setups for you to review.</p></div><div className="ai-orbit"><span>AI</span><i /><i /><i /></div></section>
-    <section className="home-opportunities"><div className="section-heading"><div><small>AI OPPORTUNITIES</small><h2>Ready to review</h2></div><button onClick={() => setPage("trade")}>View all →</button></div>
-      {opportunities.length ? <div className="opportunity-list">{opportunities.slice(0,3).map((item) => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div> : <div className="empty-state opportunity-empty"><strong>{loading ? "Scanning markets…" : "No opportunities yet"}</strong><p>{loading ? "Flexa AI is checking the opportunity feed." : "New AI-selected opportunities will appear here when the engine publishes them."}</p></div>}
+  const bestPair = getBestPerformingPair(account.trades);
+
+  return <>
+    <section className="balance-hero home-balance">
+      <div><small>TOTAL AVAILABLE</small><strong>{Number(account.wallets.find((item) => item.asset === "USDT")?.available_balance || 0).toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong><span className="balance-caption">Available trading balance</span></div>
+      <div className="balance-actions"><button type="button" onClick={() => setPage("wallet")}>Wallet</button></div>
     </section>
-    <MarketsMonitored markets={account.markets} />
-    <section className="balance-hero"><div><small>TOTAL AVAILABLE</small><strong>{Number(account.wallets.find((item) => item.asset === "USDT")?.available_balance || 0).toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong></div><div className="balance-actions"><button onClick={() => setPage("wallet")}>Wallet</button><button className="secondary" onClick={() => setPage("activity")}>Activity</button></div></section>
-    <div className="grid home-stats"><div className="stat"><small>Active trades</small><strong>{loading ? "…" : active.length}</strong></div><div className="stat"><small>Unread alerts</small><strong>{loading ? "…" : unread}</strong></div></div>
-    <h2>Recent activity</h2><ActivityRows account={account} />
+
+    <section className="ai-start-card">
+      <div className="ai-start-copy"><small>FLEXA AI ENGINE</small><h1>Let AI find<br /><span>the opportunity.</span></h1><p>Start the AI trading center to review the strongest market setup currently available.</p></div>
+      <button type="button" className="start-ai-button" onClick={() => setPage("trade")}><span>Start AI</span><b>→</b></button>
+      <div className="engine-status"><i /> Engine ready</div>
+    </section>
+
+    <section className="home-insights">
+      <article className="home-insight-card"><small>BEST PERFORMING PAIR</small><strong>{bestPair ? bestPair[0] : "—"}</strong><span>{bestPair ? `${bestPair[1] >= 0 ? "+" : ""}${bestPair[1].toFixed(2)} USDT realized` : "Complete a trade to see performance"}</span></article>
+      <article className="home-insight-card"><small>ACTIVE TRADES</small><strong>{loading ? "…" : active.length}</strong><span>{unread ? `${unread} unread alert${unread === 1 ? "" : "s"}` : "No unread alerts"}</span></article>
+    </section>
+
+    {account.rewards?.find((r) => r.status === "available") && <RewardBanner reward={account.rewards.find((r) => r.status === "available")} onClaim={claimReward} busy={rewardBusy} />}
+
+    <section className="home-opportunities">
+      <div className="section-heading"><div><small>AI OPPORTUNITIES</small><h2>Ready to review</h2></div><button type="button" onClick={() => setPage("trade")}>Trading center →</button></div>
+      {opportunities.length ? <div className="opportunity-list">{opportunities.slice(0,2).map((item) => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div> : <div className="empty-state opportunity-empty"><strong>{loading ? "Preparing the AI feed" : "No opportunity is ready yet"}</strong><p>{loading ? "The engine is loading the latest market state." : "Your home stays clean until Flexa AI has a setup ready for review."}</p></div>}
+    </section>
+
+    <section className="home-activity-head"><div><small>ACCOUNT ACTIVITY</small><h2>Recent activity</h2></div><button type="button" onClick={() => setPage("activity")}>View all →</button></section>
+    <ActivityRows account={account} />
   </>;
 }
+
 function RewardBanner({ reward, onClaim, busy }) { return <section className="reward-banner"><div><small>WELCOME REWARD</small><strong>$50 <span>TRADE CREDIT</span></strong><p>Use within {Math.max(0,Math.ceil((new Date(reward.expires_at)-Date.now())/86400000))} days. The $50 itself is non-withdrawable; only eligible profit from reward trades can be withdrawn before expiry.</p></div><button onClick={onClaim} disabled={busy}>{busy ? "Claiming…" : "Claim $50 →"}</button></section>; }
 
 function AdminDashboard({ onExit }) {
