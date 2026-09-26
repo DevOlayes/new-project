@@ -858,24 +858,26 @@ function Trade({ account }) {
       <div className="ai-no-choice">The AI has already set the trade parameters. You only choose the stake below.</div>
     </section>}
 
-    {mode === "manual" && <section className="card manual-trade-panel">
-      <div className="section-heading"><div><small>MANUAL TRADE</small><h2>Build your trade</h2></div><span className="live-badge">● YOUR CALL</span></div>
-      <label className="manual-field"><span>1. MARKET</span><select value={manualSymbol} onChange={e=>setManualSymbol(e.target.value)} disabled={busy}>
-        {["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(symbol=><option key={symbol} value={symbol}>{symbol}</option>)}
-      </select></label>
-      <div className="manual-direction-grid">
-        <button type="button" className={manualDirection === "up" ? "manual-direction up selected" : "manual-direction up"} onClick={()=>setManualDirection("up")} disabled={busy}>↗ <strong>2. UP</strong><small>Price rises</small></button>
-        <button type="button" className={manualDirection === "down" ? "manual-direction down selected" : "manual-direction down"} onClick={()=>setManualDirection("down")} disabled={busy}>↘ <strong>2. DOWN</strong><small>Price falls</small></button>
-      </div>
-      <div className="manual-duration-row"><span>3. DURATION</span><div>{[[900,"15 min"],[1800,"30 min"],[3600,"60 min"]].map(([value,label])=><button key={value} type="button" className={Number(manualDuration)===value ? "selected" : ""} onClick={()=>setManualDuration(value)} disabled={busy}>{label}</button>)}</div></div>
-    </section>}
-
     <section className="trade-market">
       <div className="market-head"><div><small>{activeSymbol || "MARKET"}</small><strong>{mode === "ai" && opportunity?.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "LIVE"}</strong><span className={activeDir === "UP" ? "green" : "red"}>{activeDir === "UP" ? "↗ UP" : "↘ DOWN"}</span></div><span className="live-badge">● LIVE MARKET</span></div>
       <Chart /><div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div>
     </section>
 
     <section className="card trade-ticket">
+      {mode === "manual" ? <div className="trade-selection-block">
+        <div className="section-heading"><div><small>MANUAL TRADE</small><h2>Build your trade</h2></div><span className="live-badge">● YOUR CALL</span></div>
+        <label className="manual-field"><span>1. MARKET</span><select value={manualSymbol} onChange={e=>setManualSymbol(e.target.value)} disabled={busy}>
+          {["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(symbol=><option key={symbol} value={symbol}>{symbol}</option>)}
+        </select></label>
+        <div className="manual-direction-grid">
+          <button type="button" className={manualDirection === "up" ? "manual-direction up selected" : "manual-direction up"} onClick={()=>setManualDirection("up")} disabled={busy}>↗ <strong>2. UP</strong><small>Price rises</small></button>
+          <button type="button" className={manualDirection === "down" ? "manual-direction down selected" : "manual-direction down"} onClick={()=>setManualDirection("down")} disabled={busy}>↘ <strong>2. DOWN</strong><small>Price falls</small></button>
+        </div>
+        <div className="manual-duration-row"><span>3. DURATION</span><div>{[[900,"15 min"],[1800,"30 min"],[3600,"60 min"]].map(([value,label])=><button key={value} type="button" className={Number(manualDuration)===value ? "selected" : ""} onClick={()=>setManualDuration(value)} disabled={busy}>{label}</button>)}</div></div>
+      </div> : <div className="trade-selection-block ai-selection-block">
+        <div className="section-heading"><div><small>FLEXA AI TRADE</small><h2>AI setup locked</h2></div><span className="live-badge">● AI SELECTED</span></div>
+        <div className="ai-inline-selection"><div><small>MARKET</small><strong>{activeSymbol || "—"}</strong></div><div><small>DIRECTION</small><strong className={activeDir === "UP" ? "green" : "red"}>{activeDir === "UP" ? "↗ UP" : "↘ DOWN"}</strong></div><div><small>DURATION</small><strong>{activeDuration} min</strong></div></div>
+      </div>}
       <div className="trade-balance"><span>TRADING FUNDS</span><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong><small>Wallet {walletBalance.toFixed(2)} USDT · Welcome bonus {bonusBalance.toFixed(2)} USDT</small></div>
       <div className="trade-funds-breakdown">
         <div><span>MAIN BALANCE</span><strong>{walletBalance.toFixed(2)} USDT</strong><small>Deposited funds</small></div>
