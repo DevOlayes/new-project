@@ -277,3 +277,12 @@ body{background:radial-gradient(circle at 50% -10%,rgba(124,255,156,.08),transpa
 .trade-success-secondary{margin-top:8px;border:1px solid var(--border);background:rgba(255,255,255,.035);color:#dbe9df}
 @keyframes tradeSuccessIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:480px){.trade-success-modal{padding:21px}.trade-success-modal h2{font-size:22px}}
+
+
+.active-trades-card{padding:18px;border:1px solid rgba(124,255,156,.28);border-radius:20px;background:linear-gradient(145deg,rgba(124,255,156,.08),rgba(255,255,255,.015));box-shadow:0 12px 35px rgba(0,0,0,.16)}
+.active-trade-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:14px;border-radius:14px;background:rgba(0,0,0,.18);border:1px solid rgba(124,255,156,.1)}
+.active-trade-row>div{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.active-trade-row strong{font-size:13px}
+.active-trade-row span{font-size:9px;font-weight:900}
+.active-trade-row small{width:100%;color:var(--muted);font-size:8px}
+.active-trade-row>strong{white-space:nowrap;color:var(--green)}
