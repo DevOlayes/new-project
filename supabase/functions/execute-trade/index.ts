@@ -17,7 +17,7 @@ Deno.serve(async(req)=>{
  if(error||!data.user)return Response.json({error:"Invalid session"},{status:401,headers:cors});
  const body=await req.json().catch(()=>({})), opportunityId=String(body.opportunity_id||""), stake=Number(body.stake||0);
  if(!opportunityId||!Number.isFinite(stake)||stake<=0)return Response.json({error:"A valid opportunity and stake are required."},{status:400,headers:cors});
- const {data:trade,error:tradeError}=await admin.schema("private").rpc("execute_trade",{p_user_id:data.user.id,p_opportunity_id:opportunityId,p_stake:stake});
+ const {data:trade,error:tradeError}=await auth.rpc("execute_trade",{p_user_id:data.user.id,p_opportunity_id:opportunityId,p_stake:stake});
  if(tradeError)return Response.json({error:tradeError.message},{status:400,headers:cors});
  return Response.json({ok:true,trade},{headers:cors});
 });
