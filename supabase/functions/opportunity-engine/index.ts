@@ -17,7 +17,7 @@ Deno.serve(async(req)=>{
  if(req.method!=="POST")return Response.json({error:"POST required"},{status:405});
  const supplied=req.headers.get("apikey")??req.headers.get("authorization")?.replace(/^Bearer\s+/i,"")??"";
  if(!supplied||supplied!==publishableKey)return Response.json({error:"Unauthorized"},{status:401});
- const now=new Date(),starts=new Date(Math.ceil((Date.now()+60000)/60000)*60000),closes=new Date(starts.getTime()+DURATION_SECONDS*1000),results=[];
+ const now=new Date(),starts=new Date(Math.floor(Date.now()/60000)*60000),closes=new Date(starts.getTime()+DURATION_SECONDS*1000),results=[];
  for(const symbol of SYMBOLS){
   const {data:rows,error}=await admin.from("market_features").select("*").eq("symbol",symbol).in("interval",["1m","5m","15m","1h"]).order("candle_open_time",{ascending:false}).limit(100);
   if(error)throw error;
@@ -35,7 +35,7 @@ Deno.serve(async(req)=>{
   const direction=weighted>0?"up":"down",entry=n(latest["1m"].close_price);
   const snapshot={generated_at:now.toISOString(),direction,combined_signal:+weighted.toFixed(6),timeframe_alignment:+alignment.toFixed(6),regime_consistency:+regime.toFixed(6),volatility_quality:+vol.toFixed(6),volume_quality:+volm.toFixed(6),features:Object.fromEntries(reqd.map(i=>[i,{candle_open_time:latest[i].candle_open_time,close_price:latest[i].close_price,trend_score:latest[i].trend_score,momentum_score:latest[i].momentum_score,structure_score:latest[i].structure_score,volatility_20:latest[i].volatility_20,volume_change_20:latest[i].volume_change_20}]))};
   const {data:existing}=await admin.from("ai_opportunities").select("id").eq("symbol",symbol).eq("entry_window_start",starts.toISOString()).eq("model_version",VERSION).limit(1);if(existing?.length){results.push({symbol,status:"already_exists"});continue;}
-  const {data,error:ie}=await admin.from("ai_opportunities").insert({symbol,direction,duration_seconds:DURATION_SECONDS,entry_window_start:starts.toISOString(),entry_window_end:closes.toISOString(),signal_score:+confidence.toFixed(6),model_version:VERSION,status:"scheduled",entry_price:entry,metadata:{engine:VERSION,reason:String(Math.round(alignment*100))+"% timeframe alignment • regime consistency • volatility and volume quality",signal:+weighted.toFixed(6),feature_snapshot:snapshot}}).select("id,symbol,direction,entry_window_start,entry_window_end,signal_score").single();
+  const {data,error:ie}=await admin.from("ai_opportunities").insert({symbol,direction,duration_seconds:DURATION_SECONDS,entry_window_start:starts.toISOString(),entry_window_end:closes.toISOString(),signal_score:+confidence.toFixed(6),model_version:VERSION,status:"open",entry_price:entry,metadata:{engine:VERSION,reason:String(Math.round(alignment*100))+"% timeframe alignment • regime consistency • volatility and volume quality",signal:+weighted.toFixed(6),feature_snapshot:snapshot}}).select("id,symbol,direction,entry_window_start,entry_window_end,signal_score").single();
   if(ie)throw ie;results.push({symbol,status:"created",opportunity:data});
  }
  return Response.json({engine:VERSION,generated_at:now.toISOString(),target_start:starts.toISOString(),target_close:closes.toISOString(),results});
