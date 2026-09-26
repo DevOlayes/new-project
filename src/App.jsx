@@ -473,19 +473,17 @@ function Home({ account, loading, setPage, claimReward, rewardBusy, startAiScan,
   const usdtBalance = Number(account.wallets.find((item) => item.asset === "USDT")?.available_balance || 0);
   const reward = account.rewards?.find((r) => ["available", "active"].includes(r.status));
   const rewardRemaining = Number(reward?.remaining_reward || 0);
-  const totalVisibleBalance = usdtBalance + rewardRemaining;
+  const rewardProfit = Number(reward?.profit_withdrawable || 0);
 
   return <>
     <section className="balance-hero home-balance">
       <div>
-        <small>AVAILABLE TO TRADE</small>
-        <strong>{totalVisibleBalance.toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong>
+        <small>AVAILABLE BALANCE</small>
+        <strong>{usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong>
         <span className="balance-caption">
           {reward?.status === "active"
-            ? `Wallet ${usdtBalance.toFixed(2)} + welcome credit ${rewardRemaining.toFixed(2)}`
-            : reward?.status === "available"
-              ? "Your $50 welcome credit is ready to claim"
-              : "Available wallet balance"}
+            ? `Your deposited wallet funds. Welcome bonus is shown separately below.`
+            : "Your deposited wallet balance"}
         </span>
       </div>
       <div className="balance-actions">
@@ -670,8 +668,13 @@ function Trade({ account }) {
   const dir = opportunity?.direction === "down" ? "DOWN" : "UP";
   const duration = opportunity ? String(Math.round(opportunity.duration_seconds / 60)) : "60";
   const usdt = account.wallets.find((item) => item.asset === "USDT");
+  const reward = account.rewards?.find((item) => item.status === "active");
+  const walletBalance = Number(usdt?.available_balance || 0);
+  const bonusBalance = Number(reward?.remaining_reward || 0);
+  const rewardProfit = Number(reward?.profit_withdrawable || 0);
   const numericAmount = Number(amount);
-  const canTrade = Boolean(account.tradingAccess?.has_access) && Number(usdt?.available_balance || 0) >= numericAmount;
+  const tradingFunds = walletBalance + bonusBalance;
+  const canTrade = Boolean(account.tradingAccess?.has_access) && tradingFunds >= numericAmount;
 
   function updateAmount(value) {
     if (value === "" || /^\d*(\.\d{0,2})?$/.test(value)) setAmount(value);
@@ -722,7 +725,16 @@ function Trade({ account }) {
     </section>
 
     <section className="card trade-ticket">
-      <div className="trade-balance"><span>AVAILABLE USDT</span><strong>{Number(usdt?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div>
+      <div className="trade-balance">
+        <span>TRADING FUNDS</span>
+        <strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong>
+        <small>Wallet {walletBalance.toFixed(2)} USDT · Welcome bonus {bonusBalance.toFixed(2)} USDT</small>
+      </div>
+      <div className="trade-funds-breakdown">
+        <div><span>MAIN BALANCE</span><strong>{walletBalance.toFixed(2)} USDT</strong><small>Deposited funds</small></div>
+        <div><span>WELCOME BONUS</span><strong>{bonusBalance.toFixed(2)} USDT</strong><small>Non-withdrawable bonus</small></div>
+        {rewardProfit > 0 && <div><span>ELIGIBLE PROFIT</span><strong>{rewardProfit.toFixed(2)} USDT</strong><small>Reward profit available</small></div>}
+      </div>
       <div className="stake-heading"><div><small>YOUR STAKE</small><strong>How much do you want to use?</strong></div><span>USDT</span></div>
       <div className="stake-presets">{["10","25","50","100"].map((v)=><button type="button" key={v} className={amount===v ? "selected" : "choice"} onClick={()=>setAmount(v)} disabled={busy}>${v}</button>)}</div>
       <label className="custom-amount-label">Or enter your own amount</label>
@@ -734,7 +746,7 @@ function Trade({ account }) {
       {notice&&<div className="notice" role="status">{notice}</div>}
       {!account.tradingAccess?.has_access&&<div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a Flexa Pro plan to continue using the trading engine.</span><button className="secondary" onClick={()=>setNotice("Subscription checkout is not connected yet.")}>View plans</button></div>}
       {!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}
-      {usdt&&account.tradingAccess?.has_access&&!canTrade&&numericAmount>0&&<p className="helper">Your stake is higher than your available USDT balance.</p>}
+      {usdt&&account.tradingAccess?.has_access&&!canTrade&&numericAmount>0&&<p className="helper">Your stake is higher than your combined trading funds. Your main balance and welcome bonus remain separate.</p>}
       <p className="demo-note">The AI direction, duration and your stake are shown again before confirmation.</p>
     </section>
   </>;
