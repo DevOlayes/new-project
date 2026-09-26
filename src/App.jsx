@@ -222,8 +222,28 @@ export default function App() {
       const { data, error } = await supabase.functions.invoke("opportunity-engine", {
         body: { source: "user", requested_at: new Date().toISOString() }
       });
-      if (error || data?.error) throw new Error(data?.error || error?.message || "The AI engine could not start.");
+      if (error) {
+        let message = error.message || "The AI engine could not start.";
+        try {
+          const payload = await error.context?.json?.();
+          message = payload?.error || payload?.message || message;
+        } catch {}
+        throw new Error(message);
+      }
+      if (data?.error) throw new Error(data.error);
+
+      const created = (data?.results || []).filter((item) => item?.status === "created");
+      const alreadyExists = (data?.results || []).filter((item) => item?.status === "already_exists");
       await refreshAccount();
+
+      if (!created.length && !alreadyExists.length) {
+        setAiEngineActive(false);
+        try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
+        setGlobalNotice("Flexa AI is scanning, but there is no fresh high-quality opportunity right now. Try again when the next signal is ready.");
+        setPage("trade");
+        return;
+      }
+
       setPage("trade");
       setGlobalNotice("Flexa AI is active. Your AI-selected opportunity is ready.");
     } catch(error) {
