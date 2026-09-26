@@ -553,6 +553,56 @@ function RewardBanner({ reward, onClaim, busy }) {
     </div></div>}
   </div>;
 }
+function OpportunityCard({ item, setPage }) {
+  const score = Math.round(Number(item.signal_score || 0) * 100);
+  return <article className="opportunity-card"><div className="opp-top"><div><small>{item.symbol}</small><strong>AI opportunity</strong></div><span className={item.direction === "up" ? "green" : "red"}>{item.direction === "up" ? "UP ↗" : "DOWN ↘"}</span></div><div className="opp-meta"><span>{Math.round(item.duration_seconds / 60)} min</span><span>Signal {score}%</span><span>{item.status.toUpperCase()}</span></div><button onClick={() => setPage("trade")}>Review opportunity →</button></article>;
+}
+function ActivityRows({ account }) {
+  const items = [...account.trades.map((t) => ({date:t.opened_at,text:t.asset+" · "+t.direction.toUpperCase()+" · "+t.status,value:t.result_amount ?? t.potential_payout ?? t.stake})), ...account.transactions.map((t) => ({date:t.created_at,text:t.type.replace("_"," ")+" · "+t.status,value:t.amount}))].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
+  if (!items.length) return <div className="empty-state"><strong>No activity yet</strong><p>Your trades and wallet transactions will appear here.</p></div>;
+  return <div className="list">{items.map((item,index)=><div className="row" key={item.date+index}><span>{item.text}</span><strong className="green">{Number(item.value||0).toLocaleString(undefined,{maximumFractionDigits:4})}</strong></div>)}</div>;
+}
+
+function Trade({ account }) {
+  const [amount,setAmount]=useState("25");
+  const [notice,setNotice]=useState("");
+  const opportunity=account.opportunities?.[0] || null;
+  const dir=opportunity?.direction === "down" ? "DOWN" : "UP";
+  const duration=opportunity ? String(Math.round(opportunity.duration_seconds/60)) : "60";
+  const usdt=account.wallets.find((item)=>item.asset==="USDT"); const canTrade=Boolean(account.tradingAccess?.has_access) && Number(usdt?.available_balance||0)>=Number(amount);
+  return <><section className="intro"><small>AI TRADE TERMINAL</small><h1>{opportunity ? "AI-selected opportunity." : "Waiting for the next setup."}</h1><p>{opportunity ? "Flexa AI selected this market from the supported pair feed. The engine handles the complex analysis underneath." : "Flexa AI is scanning the supported crypto and forex pairs for a qualifying setup."}</p></section>
+    <section className="trade-market"><div className="market-head"><div><small>{opportunity?.symbol || account.markets?.[0]?.display_symbol || "MARKET"}</small><strong>{opportunity?.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong><span className={dir==="UP" ? "green" : "red"}>{opportunity ? dir : "SCANNING"}</span></div><span className="live-badge">● LIVE ENGINE</span></div><Chart/><div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div></section>
+    <section className="card"><div className="trade-balance"><span>Available USDT</span><strong>{Number(usdt?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div>
+      <div className="ai-selected-trade"><small>AI DIRECTION</small><strong className={dir==="UP"?"green":"red"}>{dir==="UP"?"↗ UP":"↘ DOWN"}</strong><span>{duration} min · {opportunity ? Math.round(Number(opportunity.signal_score||0)*100) : 0}% signal confidence</span></div>
+      <label>Stake</label><div className="grid four">{["10","25","50","100"].map((v)=><button key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)}>${v}</button>)}</div>
+      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration} min · ${amount}</strong></div><button className="full" disabled={!canTrade || !opportunity} onClick={()=>setNotice("Trade execution is not enabled yet. No balance has been changed.")}>{opportunity ? "Confirm " + dir + " trade →" : "Waiting for AI opportunity…"}</button>
+      {notice&&<div className="notice" role="status">{notice}</div>}
+      {!account.tradingAccess?.has_access&&<div className="subscription-lock"><b>Your trading trial has ended.</b><span>Choose a Flexa Pro plan to continue using the trading engine.</span><button className="secondary" onClick={()=>setNotice("Subscription checkout is not connected yet.")}>View plans</button></div>}{!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}{usdt&&account.tradingAccess?.has_access&&!canTrade&&<p className="helper">Stake exceeds your available USDT balance.</p>}<p className="demo-note">Trading access is controlled server-side. Execution remains locked until the settlement flow is enabled.</p>
+    </section></>;
+}
+
+function Chart() {
+  // Lightweight SVG chart so the landing/trading UI never depends on a missing chart library.
+  // Replace the data points with live market candles when the market-data service is connected.
+  const points = "0,122 34,116 68,126 102,92 136,100 170,78 204,88 238,61 272,72 306,48 340,56 374,31 408,42 442,20";
+  return <div className="chart-wrap" aria-label="Market price chart">
+    <svg viewBox="0 0 442 150" preserveAspectRatio="none" role="img">
+      <defs>
+        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(124,255,156,.24)" />
+          <stop offset="100%" stopColor="rgba(124,255,156,0)" />
+        </linearGradient>
+      </defs>
+      <path d={`M 0 122 L 34 116 L 68 126 L 102 92 L 136 100 L 170 78 L 204 88 L 238 61 L 272 72 L 306 48 L 340 56 L 374 31 L 408 42 L 442 20 L 442 150 L 0 150 Z`} fill="url(#chartFill)" />
+      <polyline points={points} fill="none" stroke="#7cff9c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="0" y1="128" x2="442" y2="128" stroke="rgba(124,255,156,.08)" />
+      <line x1="0" y1="82" x2="442" y2="82" stroke="rgba(124,255,156,.08)" />
+      <line x1="0" y1="36" x2="442" y2="36" stroke="rgba(124,255,156,.08)" />
+    </svg>
+  </div>;
+}
+
+
 function Activity({ account }) {
   const trades=account.trades||[];
   const wins=trades.filter(t=>t.status==="won").length;
