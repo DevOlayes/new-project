@@ -26,6 +26,7 @@ export default function App() {
   });
   const [globalNotice, setGlobalNotice] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [tradeSuccess, setTradeSuccess] = useState(null);
 
   const refreshAccount = useCallback(async () => {
     if (!supabase || !user) return;
@@ -264,7 +265,10 @@ export default function App() {
   }
 
   useEffect(() => {
-    const handleTradeStarted = () => refreshAccount();
+    const handleTradeStarted = async (event) => {
+      await refreshAccount();
+      setTradeSuccess(event.detail || null);
+    };
     window.addEventListener("flexa-trade-started", handleTradeStarted);
     return () => window.removeEventListener("flexa-trade-started", handleTradeStarted);
   }, [refreshAccount]);
@@ -313,7 +317,7 @@ export default function App() {
       </AppErrorBoundary>
     </main>
     <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
-    {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
+    {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}\n    {tradeSuccess && <TradeSuccessModal trade={tradeSuccess} onClose={() => setTradeSuccess(null)} onViewActive={() => { setTradeSuccess(null); setPage("activity"); }} />}
   </div>;
 }
 
@@ -344,6 +348,25 @@ class AppErrorBoundary extends Component {
   }
 }
 
+function TradeSuccessModal({ trade, onClose, onViewActive }) {
+  const direction = trade.direction === "down" ? "DOWN" : "UP";
+  return <div className="trade-success-backdrop" onClick={onClose}>
+    <section className="trade-success-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="trade-success-title">
+      <div className="trade-success-icon">✓</div>
+      <small className="trade-success-eyebrow">TRADE CONFIRMED</small>
+      <h2 id="trade-success-title">Your trade is active.</h2>
+      <p>Your trade was placed successfully and is now being tracked by Flexa AI.</p>
+      <div className="trade-success-details">
+        <div><span>MARKET</span><strong>{trade.symbol || "—"}</strong></div>
+        <div><span>DIRECTION</span><strong className={direction === "UP" ? "green" : "red"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</strong></div>
+        <div><span>STAKE</span><strong>$ {Number(trade.stake || 0).toFixed(2)} USDT</strong></div>
+        <div><span>DURATION</span><strong>{trade.duration || "—"} min</strong></div>
+      </div>
+      <button type="button" className="trade-success-primary" onClick={onViewActive}>View active trade →</button>
+      <button type="button" className="trade-success-secondary" onClick={onClose}>Continue trading</button>
+    </section>
+  </div>;
+}
 function NotificationPanel({ notifications, onClose }) {
   return <div className="notification-backdrop" onClick={onClose}>
     <aside className="notification-panel" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Notifications">
@@ -784,9 +807,17 @@ function Trade({ account }) {
       }
       if (data?.error) throw new Error(data.error);
 
-      setNotice("Trade started: " + activeDir + " " + numericAmount.toFixed(2) + " USDT on " + activeSymbol + " for " + activeDuration + " minutes.");
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      window.dispatchEvent(new CustomEvent("flexa-trade-started"));
+      const tradeDetails = {
+        tradeId: data?.trade_id || null,
+        symbol: data?.symbol || activeSymbol,
+        direction: data?.direction || activeDir.toLowerCase(),
+        stake: Number(data?.stake ?? numericAmount),
+        duration: data?.duration_seconds ? Math.round(Number(data.duration_seconds) / 60) : Number(activeDuration),
+        fundingSource: data?.funding_source || null
+      };
+      setNotice("Trade placed successfully.");
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      window.dispatchEvent(new CustomEvent("flexa-trade-started", { detail: tradeDetails }));
       if (mode === "ai") setMode("manual");
     } catch (error) {
       setNotice(error.message || "The trade could not be started.");
