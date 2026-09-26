@@ -21,31 +21,170 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [rewardBusy, setRewardBusy] = useState(false);
 
-  const refreshAccount = useCallback(async () => { if (!supabase || !user) return; setLoading(true); const result = await getAccountData(); setAccount(result); setLoading(false); }, [user]);
+  const refreshAccount = useCallback(async () => {
+    if (!supabase || !user) return;
+    setLoading(true);
+    try {
+      const result = await getAccountData();
+      setAccount(result);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
+  // Keep market polling and auth subscription independent from user state.
+  // The previous implementation depended on refreshAccount, which depended on
+  // the user object. Every auth refresh recreated the effect, re-subscribed,
+  // and called getClaims again. That could create a render/auth loop and make
+  // the whole authenticated UI feel frozen.
   useEffect(() => {
     let cancelled = false;
-    const loadMarket = () => fetch("https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT").then((r) => r.ok ? r.json() : null).then((data) => { if (!cancelled && data) setMarket({ price: Number(data.lastPrice), change: Number(data.priceChangePercent) }); }).catch(() => {});
+    const loadMarket = () => fetch("https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!cancelled && data) {
+          setMarket({ price: Number(data.lastPrice), change: Number(data.priceChangePercent) });
+        }
+      })
+      .catch(() => {});
     loadMarket();
     const timer = setInterval(loadMarket, 30000);
-    return () => { cancelled = true; clearInterval(timer); };
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, []);
+
   useEffect(() => {
-    window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); setInstallPrompt(event); });
+    const handleInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    window.addEventListener("beforeinstallprompt", handleInstallPrompt);
+
     const miniApp = getTelegramWebApp();
     setInMiniApp(isTelegramMiniApp());
-    if (miniApp) { miniApp.ready(); miniApp.expand(); }
-    if (!supabase) { setLoading(false); return; }
+    if (miniApp) {
+      miniApp.ready();
+      miniApp.expand();
+    }
+
+    if (!supabase) {
+      setLoading(false);
+      return () => window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+    }
+
     let mounted = true;
-    if (miniApp && miniApp.initData) { supabase.functions.invoke("telegram-auth", { body: { initData: miniApp.initData } }).then(async ({ data, error }) => { if (!mounted) return; if (error || data?.error) { setAuthError(data?.error || error?.message || "Telegram authentication failed."); setLoading(false); return; } if (!data?.session?.access_token || !data?.session?.refresh_token) { setAuthError("Telegram authentication returned no session."); setLoading(false); return; } const { error: sessionError } = await supabase.auth.setSession({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }); if (sessionError) { setAuthError(sessionError.message || "Could not establish your Flexa AI session."); setLoading(false); return; } setAuthError(""); refreshAccount(); }).catch((error) => { if (mounted) { setAuthError(error.message || "Telegram authentication failed."); setLoading(false); } }); }
-    supabase.auth.getClaims().then(({ data }) => { if (!mounted) return; const claims=data?.claims; setUser(claims?.sub ? { id: claims.sub, claims } : null); if (claims?.sub) loadProfile(claims.sub); else setLoading(false); });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+
+    const { data: authSubscription } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
+
       setUser(session?.user || null);
-      if (session?.user) { loadProfile(session.user.id); provisionAccount(session.user.id); } else setProfile(null);
+
+      if (event === "SIGNED_OUT") {
+        setProfile(null);
+        setAccount(EMPTY_ACCOUNT);
+        setLoading(false);
+      }
     });
-    return () => { mounted = false; data.subscription.unsubscribe(); };
-  }, [refreshAccount]);
+
+    // Supabase emits INITIAL_SESSION after the client restores an existing
+    // session. This is the single initial auth source; don't run getClaims in
+    // the same effect because doing both creates duplicate state updates.
+    const initialize = async () => {
+      if (miniApp?.initData) {
+        const { data, error } = await supabase.functions.invoke("telegram-auth", {
+          body: { initData: miniApp.initData },
+        });
+
+        if (!mounted) return;
+
+        if (error || data?.error) {
+          setAuthError(data?.error || error?.message || "Telegram authentication failed.");
+          setLoading(false);
+        } else if (data?.session?.access_token && data?.session?.refresh_token) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+          if (sessionError) {
+            setAuthError(sessionError.message || "Could not establish your Flexa AI session.");
+            setLoading(false);
+          } else {
+            setAuthError("");
+          }
+        }
+      } else {
+        const { data, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (error) {
+          setAuthError(error.message || "Could not restore your Flexa AI session.");
+        }
+        if (!data?.session) setLoading(false);
+      }
+    };
+
+    initialize();
+
+    return () => {
+      mounted = false;
+      authSubscription.subscription.unsubscribe();
+      window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      if (!loading) setAccount(EMPTY_ACCOUNT);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadAccount = async () => {
+      setLoading(true);
+
+      const [{ data: profileData }, onboarding] = await Promise.all([
+        supabase.from("profiles")
+          .select("display_name,telegram_username,avatar_url,referral_code,is_admin")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase.functions.invoke("account-onboarding", {
+          body: {
+            referral_code:
+              new URLSearchParams(window.location.search).get("ref") ||
+              localStorage.getItem("flexa_referral_code") ||
+              "",
+          },
+        }),
+      ]);
+
+      if (cancelled) return;
+
+      if (profileData) setProfile(profileData);
+      if (onboarding.error || onboarding.data?.error) {
+        setAuthError(onboarding.data?.error || onboarding.error?.message || "");
+      } else {
+        setAuthError("");
+      }
+
+      const result = await getAccountData();
+      if (cancelled) return;
+      setAccount(result);
+      setLoading(false);
+    };
+
+    loadAccount().catch((error) => {
+      if (cancelled) return;
+      setAuthError(error.message || "Could not load your Flexa AI account.");
+      setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   async function provisionAccount(id) {
     if (!supabase) return;
