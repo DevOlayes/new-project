@@ -36,12 +36,20 @@ Deno.serve(async (req: Request) => {
     if (referrer && referrer.id !== user.id) referredBy = referrer.id;
   }
 
-  await admin.from("profiles").upsert({
+  const profilePatch: Record<string, unknown> = {
     id: user.id,
     display_name: displayName,
     avatar_url: avatarUrl,
-    referred_by: referredBy,
-  }, { onConflict: "id" });
+  };
+  // Only attach a referral when a valid referral code was supplied.
+  // Re-running onboarding must never erase an existing referral relationship.
+  if (referredBy) profilePatch.referred_by = referredBy;
+
+  const { error: profileError } = await admin.from("profiles").upsert(
+    profilePatch,
+    { onConflict: "id" },
+  );
+  if (profileError) throw profileError;
 
   for (const wallet of [
     { user_id: user.id, asset: "TON", network: "TON" },
@@ -68,6 +76,35 @@ Deno.serve(async (req: Request) => {
     }).select("id,status,expires_at,remaining_reward,profit_withdrawable,profit_cap").single();
     if (rewardError) return Response.json({ error: "Could not provision welcome reward." }, { status: 500 });
     reward = created;
+  }
+
+  if (body.action === "claim") {
+    if (!reward) return Response.json({ error: "Welcome reward is unavailable." }, { status: 404 });
+
+    if (reward.status === "available") {
+      const { data: claimed, error: claimError } = await admin
+        .from("user_rewards")
+        .update({
+          status: "active",
+          claimed_at: new Date().toISOString(),
+        })
+        .eq("id", reward.id)
+        .eq("user_id", user.id)
+        .eq("status", "available")
+        .select("id,status,expires_at,remaining_reward,profit_withdrawable,profit_cap")
+        .maybeSingle();
+
+      if (claimError) return Response.json({ error: "Could not claim welcome reward." }, { status: 500 });
+      if (claimed) reward = claimed;
+    }
+
+    return Response.json({
+      ok: true,
+      user_id: user.id,
+      brand: "Flexa AI",
+      reward,
+      message: reward.status === "active" ? "Welcome reward claimed." : "Welcome reward is no longer available.",
+    });
   }
 
   if (referredBy) {
