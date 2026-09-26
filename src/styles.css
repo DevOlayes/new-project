@@ -286,3 +286,13 @@ body{background:radial-gradient(circle at 50% -10%,rgba(124,255,156,.08),transpa
 .active-trade-row span{font-size:9px;font-weight:900}
 .active-trade-row small{width:100%;color:var(--muted);font-size:8px}
 .active-trade-row>strong{white-space:nowrap;color:var(--green)}
+
+
+/* Unified trade ticket: selection and confirmation live in one entity */
+.trade-selection-block{margin:0 0 18px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.trade-selection-block .section-heading{margin-bottom:14px}
+.ai-inline-selection{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px}
+.ai-inline-selection>div{padding:12px;border-radius:12px;background:rgba(124,255,156,.045);border:1px solid rgba(124,255,156,.1)}
+.ai-inline-selection small{display:block;color:var(--muted);font-size:7px;letter-spacing:.12em}
+.ai-inline-selection strong{display:block;margin-top:5px;font-size:12px}
+@media(max-width:560px){.ai-inline-selection{grid-template-columns:1fr 1fr}.ai-inline-selection>div:last-child{grid-column:1/-1}}
