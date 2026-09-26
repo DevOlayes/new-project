@@ -20,6 +20,8 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [rewardBusy, setRewardBusy] = useState(false);
+  const [aiScanning, setAiScanning] = useState(false);
+  const [globalNotice, setGlobalNotice] = useState("");
 
   const refreshAccount = useCallback(async () => {
     if (!supabase || !user) return;
@@ -203,6 +205,8 @@ export default function App() {
       setRewardBusy(false);
     }
   }
+
+  async function startAiScan() { if (!supabase || aiScanning) return; setAiScanning(true); setGlobalNotice(""); try { const { data, error } = await supabase.functions.invoke("opportunity-engine",{body:{source:"user",requested_at:new Date().toISOString()}}); if(error||data?.error) throw new Error(data?.error||error?.message||"The AI engine could not start."); await refreshAccount(); setPage("trade"); setGlobalNotice("AI scan complete. Flexa is reviewing the latest qualifying setup."); } catch(error){setGlobalNotice(error.message||"The AI engine could not start.");} finally{setAiScanning(false);} }
 
   async function installFlexa() {
     if (!installPrompt) return;
@@ -389,7 +393,7 @@ function getBestPerformingPair(trades) {
   return Object.entries(totals).sort((a, b) => b[1] - a[1])[0] || null;
 }
 
-function Home({ account, loading, setPage, claimReward, rewardBusy }) {
+function Home({ account, loading, setPage, claimReward, rewardBusy, startAiScan, aiScanning }) {
   const active = account.trades.filter((trade) => trade.status === "active");
   const unread = account.notifications.filter((item) => !item.is_read).length;
   const opportunities = account.opportunities || [];
@@ -403,7 +407,7 @@ function Home({ account, loading, setPage, claimReward, rewardBusy }) {
 
     <section className="ai-start-card">
       <div className="ai-start-copy"><small>FLEXA AI ENGINE</small><h1>Let AI find<br /><span>the opportunity.</span></h1><p>Start the AI trading center to review the strongest market setup currently available.</p></div>
-      <button type="button" className="start-ai-button" onClick={() => setPage("trade")}><span>Start AI</span><b>→</b></button>
+      <button type="button" className="start-ai-button" onClick={startAiScan} disabled={aiScanning}><span>{aiScanning ? "Scanning…" : "Start AI"}</span><b>{aiScanning ? "◌" : "→"}</b></button>
       <div className="engine-status"><i /> Engine ready</div>
     </section>
 
@@ -412,7 +416,7 @@ function Home({ account, loading, setPage, claimReward, rewardBusy }) {
       <article className="home-insight-card"><small>ACTIVE TRADES</small><strong>{loading ? "…" : active.length}</strong><span>{unread ? `${unread} unread alert${unread === 1 ? "" : "s"}` : "No unread alerts"}</span></article>
     </section>
 
-    {account.rewards?.find((r) => r.status === "available") && <RewardBanner reward={account.rewards.find((r) => r.status === "available")} onClaim={claimReward} busy={rewardBusy} />}
+    {account.rewards?.find((r) => ["available","active"].includes(r.status)) && <RewardBanner reward={account.rewards.find((r) => ["available","active"].includes(r.status))} onClaim={claimReward} busy={rewardBusy} />}
 
     <section className="home-opportunities">
       <div className="section-heading"><div><small>AI OPPORTUNITIES</small><h2>Ready to review</h2></div><button type="button" onClick={() => setPage("trade")}>Trading center →</button></div>
@@ -424,96 +428,9 @@ function Home({ account, loading, setPage, claimReward, rewardBusy }) {
   </>;
 }
 
-function RewardBanner({ reward, onClaim, busy }) {
-  const daysLeft = Math.max(0, Math.ceil((new Date(reward.expires_at) - Date.now()) / 86400000));
-  const expired = new Date(reward.expires_at).getTime() <= Date.now();
-  return <section className="reward-banner"><div><small>WELCOME REWARD</small><strong>$50 <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : "Use within " + daysLeft + " days. The $50 itself is non-withdrawable; only eligible profit from reward trades can be withdrawn before expiry."}</p></div><button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim $50 →"}</button></section>;
+function RewardBanner({ reward, onClaim, busy }) {\n  const daysLeft = Math.max(0, Math.ceil((new Date(reward.expires_at) - Date.now()) / 86400000));\n  const expired = new Date(reward.expires_at).getTime() <= Date.now();\n  const claimed = reward.status === "active";\n  const remaining = Number(reward.remaining_reward || 0);\n  const withdrawable = Number(reward.profit_withdrawable || 0);\n  return <section className="reward-banner"><div className="reward-glow" /><div className="reward-copy"><small>{claimed ? "REWARD CREDIT ACTIVE" : "WELCOME REWARD"}</small><strong>${Number(reward.reward_amount || 50).toFixed(0)} <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : claimed ? "$"+remaining.toFixed(2)+" credit remaining · $"+withdrawable.toFixed(2)+" eligible profit." : "Use within "+daysLeft+" days. The reward itself is non-withdrawable; eligible profit can be withdrawn before expiry."}</p></div>{claimed ? <div className="reward-state"><b>ACTIVE</b><span>{daysLeft}d left</span></div> : <button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim reward →"}</button>}</section>;\n}function Profile({ user, profile, signOut }) {
+  const name=profile?.display_name||"Flexa AI user";
+  const initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+  const referral=profile?.referral_code||"—";
+  return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXA AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section><section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of Flexa AI</button></div>;
 }
-
-function AdminDashboard({ onExit }) {
-  const [data,setData]=useState(null), [tab,setTab]=useState("overview"), [busy,setBusy]=useState(false), [error,setError]=useState("");
-  const load=useCallback(async()=>{if(!supabase)return;setBusy(true);const result=await supabase.functions.invoke("admin-control",{body:{action:"overview"}});setBusy(false);if(result.error||result.data?.error)setError(result.data?.error||result.error?.message||"Could not load admin data.");else{setError("");setData(result.data);}},[]);
-  useEffect(()=>{load();},[load]);
-  async function act(action,payload={}){setBusy(true);const result=await supabase.functions.invoke("admin-control",{body:{action,...payload}});setBusy(false);if(result.error||result.data?.error){setError(result.data?.error||result.error?.message||"Action failed.");return false;}await load();return true;}
-  if(!data)return <div className="admin-shell"><header className="admin-header"><div><small>FLEXA AI CONTROL CENTER</small><h1>Admin Dashboard</h1></div></header><div className="admin-card">{error||"Loading control center…"}</div></div>;
-  const users=data.users||[], tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[], markets=data.markets||[], plans=data.plans||[], subs=data.subscriptions||[], learning=data.learning||[], adaptive=data.adaptive||[];
-  const won=learning.filter(x=>x.outcome==="won").length, lost=learning.filter(x=>x.outcome==="lost").length;
-  const money=tx.filter(x=>x.direction==="credit"&&x.status==="completed").reduce((s,x)=>s+Number(x.amount||0),0);
-  const tabs=[["overview","Overview"],["users","Users"],["transactions","Transactions"],["trading","Trading"],["markets","Markets"],["ai","AI Engine"],["subscriptions","Subscriptions"],["settings","Settings"]];
-  return <div className="admin-shell"><header className="admin-header"><div><small>FLEXA AI CONTROL CENTER</small><h1>Admin Dashboard</h1><p>Users, money flow, trading, AI intelligence and product controls.</p></div><button className="secondary" onClick={onExit}>Exit admin</button></header>
-  <div className="admin-tabs">{tabs.map(t=><button key={t[0]} className={tab===t[0]?"active":""} onClick={()=>setTab(t[0])}>{t[1]}</button>)}</div>{error&&<div className="admin-alert">{error}</div>}
-  {tab==="overview"&&<><div className="admin-kpis"><Kpi label="Users" value={users.length}/><Kpi label="Transactions" value={tx.length}/><Kpi label="Trading records" value={trades.length}/><Kpi label="AI opportunities" value={opp.length}/><Kpi label="Learning rows" value={learning.length}/><Kpi label="Credit volume" value={money.toFixed(2)}/></div><div className="admin-grid"><AdminPanel title="Engine health"><p>Markets: <b>{markets.filter(x=>x.active).length}/{markets.length}</b> active</p><p>Adaptive profiles: <b>{adaptive.length}</b></p><p>Learning outcomes: <b>{won} wins / {lost} losses</b></p><p>Model: <b>opportunity-v2</b></p></AdminPanel><AdminPanel title="Recent activity">{tx.slice(0,8).map(x=><div className="admin-row" key={x.id}><span>{x.type}</span><b>{x.direction} {Number(x.amount).toFixed(2)}</b></div>)}</AdminPanel></div></>}
-  {tab==="users"&&<AdminTable title="Users" columns={["Name","Email","Provider","Joined","Admin"]}>{users.map(x=><div className="admin-row" key={x.id}><span>{x.display_name||x.telegram_username||"User"}<small>{x.id.slice(0,8)}…</small></span><span>{x.email||"—"}</span><span>{x.last_login_provider||"—"}</span><span>{new Date(x.created_at).toLocaleDateString()}</span><button className="mini-action" onClick={()=>act("set_user_admin",{user_id:x.id,is_admin:!x.is_admin})}>{x.is_admin?"Remove":"Make admin"}</button></div>)}</AdminTable>}
-  {tab==="transactions"&&<AdminTable title="Financial activity" columns={["Type","Direction","Amount","Status","Time"]}>{tx.map(x=><div className="admin-row" key={x.id}><span>{x.type}</span><span>{x.direction}</span><span>{Number(x.amount).toFixed(4)}</span><span>{x.status}</span><span>{new Date(x.created_at).toLocaleString()}</span></div>)}</AdminTable>}
-  {tab==="trading"&&<AdminTable title="Trading activity" columns={["Asset","Direction","Stake","Status","Result","Opened"]}>{trades.map(x=><div className="admin-row" key={x.id}><span>{x.asset}</span><span>{x.direction}</span><span>{Number(x.stake).toFixed(2)}</span><span>{x.status}</span><span>{x.result_amount??"—"}</span><span>{new Date(x.opened_at).toLocaleString()}</span></div>)}</AdminTable>}
-  {tab==="markets"&&<AdminTable title="Market controls" columns={["Pair","Type","Source","Active","Tradable"]}>{markets.map(x=><div className="admin-row" key={x.symbol}><span><b>{x.display_symbol}</b><small>{x.symbol}</small></span><span>{x.market_type}</span><span>{x.source}</span><button className="mini-action" onClick={()=>act("update_market",{symbol:x.symbol,active:!x.active})}>{x.active?"Disable":"Enable"}</button><button className="mini-action" onClick={()=>act("update_market",{symbol:x.symbol,tradable:!x.tradable})}>{x.tradable?"Tradable":"Locked"}</button></div>)}</AdminTable>}
-  {tab==="ai"&&<><AdminTable title="Latest AI opportunities" columns={["Pair","Direction","Confidence","Status","Outcome"]}>{opp.slice(0,50).map(x=><div className="admin-row" key={x.id}><span>{x.symbol}</span><span>{x.direction}</span><span>{Math.round(Number(x.signal_score)*100)}%</span><span>{x.status}</span><span>{x.outcome||"pending"}</span></div>)}</AdminTable><AdminTable title="Adaptive model profiles" columns={["Pair","Samples","Weights","Floor"]}>{adaptive.map(x=><div className="admin-row" key={x.id}><span>{x.symbol}</span><span>{x.sample_size}</span><span>{JSON.stringify(x.weights)}</span><span>{x.confidence_floor}</span></div>)}</AdminTable></>}
-  {tab==="subscriptions"&&<><div className="admin-kpis"><Kpi label="Plans" value={plans.length}/><Kpi label="Active subscriptions" value={subs.filter(x=>x.status==="active").length}/><Kpi label="Trials" value={subs.filter(x=>x.status==="trialing").length}/></div><AdminTable title="Plans" columns={["Plan","Monthly","Quarterly","Annual","Trial","Status"]}>{plans.map(x=><div className="admin-row" key={x.id}><span><b>{x.name}</b><small>{x.code}</small></span><span>${x.monthly_price}</span><span>${x.quarterly_price}</span><span>${x.annual_price}</span><span>{x.trial_days} days</span><button className="mini-action" onClick={()=>act("update_plan",{id:x.id,patch:{active:!x.active}})}>{x.active?"Active":"Off"}</button></div>)}</AdminTable><AdminTable title="Recent subscriptions" columns={["User","Status","Cycle","Ends"]}>{subs.slice(0,50).map(x=><div className="admin-row" key={x.id}><span>{x.user_id.slice(0,8)}…</span><span>{x.status}</span><span>{x.billing_cycle}</span><span>{x.ends_at?new Date(x.ends_at).toLocaleDateString():"—"}</span></div>)}</AdminTable></>}
-  {tab==="settings"&&<AdminSettings settings={data.settings} onSave={act}/>} {busy&&<div className="admin-busy">Updating…</div>}</div>;
-}
-function Kpi({label,value}){return <div className="admin-kpi"><small>{label}</small><strong>{value}</strong></div>}
-function AdminPanel({title,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div>{children}</section>}
-function AdminTable({title,columns,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div><div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>{children}</section>}
-function AdminSettings({settings,onSave}){const [values,setValues]=useState(Object.fromEntries((settings||[]).map(x=>[x.key,JSON.stringify(x.value)])));return <AdminPanel title="Application controls"><p className="helper">Central product settings can be changed here without rebuilding the frontend.</p>{Object.entries(values).map(([key,value])=><div className="admin-setting" key={key}><label>{key}</label><input value={value} onChange={e=>setValues({...values,[key]:e.target.value})}/><button className="mini-action" onClick={()=>{try{onSave("update_setting",{key,value:JSON.parse(value)})}catch{}}}>Save</button></div>)}</AdminPanel>;}
-function MarketsMonitored({ markets }) {
-  if (!markets?.length) return null;
-  return <section className="markets-monitored"><div className="section-heading"><div><small>MARKETS MONITORED</small><h2>Supported pairs</h2></div><span className="live-chip">AI SCAN</span></div><div className="market-pair-grid">{markets.map((market) => <div className="market-pair" key={market.symbol}><span>{market.market_type === "forex" ? "FX" : "CRYPTO"}</span><strong>{market.display_symbol}</strong><small>{market.source === "yahoo_finance" ? "Yahoo Finance" : "Binance"}</small></div>)}</div></section>;
-}
-function OpportunityCard({ item, setPage }) {
-  const score = Math.round(Number(item.signal_score || 0) * 100);
-  return <article className="opportunity-card"><div className="opp-top"><div><small>{item.symbol}</small><strong>AI opportunity</strong></div><span className={item.direction === "up" ? "green" : "red"}>{item.direction === "up" ? "UP ↗" : "DOWN ↘"}</span></div><div className="opp-meta"><span>{Math.round(item.duration_seconds / 60)} min</span><span>Signal {score}%</span><span>{item.status.toUpperCase()}</span></div><button onClick={() => setPage("trade")}>Review opportunity →</button></article>;
-}
-function BalanceCard({ asset, wallet }) { return <div className="stat"><small>{asset} · {wallet?.network || (asset === "TON" ? "TON" : "TRC-20")}</small><strong>{Number(wallet?.available_balance || 0).toLocaleString(undefined,{maximumFractionDigits:4})} {asset}</strong></div>; }
-function ActivityRows({ account }) {
-  const items = [...account.trades.map((t) => ({date:t.opened_at,text:t.asset+" · "+t.direction.toUpperCase()+" · "+t.status,value:t.result_amount ?? t.potential_payout ?? t.stake})), ...account.transactions.map((t) => ({date:t.created_at,text:t.type.replace("_"," ")+" · "+t.status,value:t.amount}))].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
-  if (!items.length) return <div className="empty-state"><strong>No activity yet</strong><p>Your trades and wallet transactions will appear here.</p></div>;
-  return <div className="list">{items.map((item,index)=><div className="row" key={item.date+index}><span>{item.text}</span><strong className="green">{Number(item.value||0).toLocaleString(undefined,{maximumFractionDigits:4})}</strong></div>)}</div>;
-}
-
-function Trade({ account }) {
-  const [amount,setAmount]=useState("25");
-  const [notice,setNotice]=useState("");
-  const opportunity=account.opportunities?.[0] || null;
-  const dir=opportunity?.direction === "down" ? "DOWN" : "UP";
-  const duration=opportunity ? String(Math.round(opportunity.duration_seconds/60)) : "60";
-  const usdt=account.wallets.find((item)=>item.asset==="USDT"); const canTrade=Boolean(account.tradingAccess?.has_access) && Number(usdt?.available_balance||0)>=Number(amount);
-  return <><section className="intro"><small>AI TRADE TERMINAL</small><h1>{opportunity ? "AI-selected opportunity." : "Waiting for the next setup."}</h1><p>{opportunity ? "Flexa AI selected this market from the supported pair feed. The engine handles the complex analysis underneath." : "Flexa AI is scanning the supported crypto and forex pairs for a qualifying setup."}</p></section>
-    <section className="trade-market"><div className="market-head"><div><small>{opportunity?.symbol || account.markets?.[0]?.display_symbol || "MARKET"}</small><strong>{opportunity?.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong><span className={dir==="UP" ? "green" : "red"}>{opportunity ? dir : "SCANNING"}</span></div><span className="live-badge">● LIVE ENGINE</span></div><Chart/><div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div></section>
-    <section className="card"><div className="trade-balance"><span>Available USDT</span><strong>{Number(usdt?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div>
-      <div className="ai-selected-trade"><small>AI DIRECTION</small><strong className={dir==="UP"?"green":"red"}>{dir==="UP"?"↗ UP":"↘ DOWN"}</strong><span>{duration} min · {opportunity ? Math.round(Number(opportunity.signal_score||0)*100) : 0}% signal confidence</span></div>
-      <label>Stake</label><div className="grid four">{["10","25","50","100"].map((v)=><button key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)}>${v}</button>)}</div>
-      <div className="trade-summary"><span>Trade setup</span><strong>{dir} · {duration} min · ${amount}</strong></div><button className="full" disabled={!canTrade || !opportunity} onClick={()=>setNotice("Trade execution is not enabled yet. No balance has been changed.")}>{opportunity ? "Confirm " + dir + " trade →" : "Waiting for AI opportunity…"}</button>
-      {notice&&<div className="notice" role="status">{notice}</div>}
-      {!account.tradingAccess?.has_access&&<div className="subscription-lock"><b>Your trading trial has ended.</b><span>Choose a Flexa Pro plan to continue using the trading engine.</span><button className="secondary" onClick={()=>setNotice("Subscription checkout is not connected yet.")}>View plans</button></div>}{!usdt&&<p className="helper">Connect Telegram to initialize your wallet.</p>}{usdt&&account.tradingAccess?.has_access&&!canTrade&&<p className="helper">Stake exceeds your available USDT balance.</p>}<p className="demo-note">Trading access is controlled server-side. Execution remains locked until the settlement flow is enabled.</p>
-    </section></>;
-}
-
-function Activity({ account }) { return <><section className="intro"><small>ACTIVITY</small><h1>Your account history.</h1><p>Trades and wallet transactions are loaded from Supabase.</p></section><ActivityRows account={account} /></>; }
-
-function Wallet({ account }) {
-  const [notice,setNotice]=useState("");
-  return <><section className="intro"><small>WALLET</small><h1>Your funds, connected.</h1><p>Balances below are read directly from Supabase.</p></section><div className="grid">{account.wallets.map((wallet)=><BalanceCard key={wallet.id} asset={wallet.asset} wallet={wallet} />)}</div><div className="actions"><button onClick={()=>setNotice("Deposit flow is being prepared. No balance can be changed from the browser.")}>Deposit</button><button className="secondary" onClick={()=>setNotice("Withdrawal flow is being prepared. No balance can be changed from the browser.")}>Withdraw</button></div>{notice&&<div className="notice" role="status">{notice}</div>}<div className="notice">Deposit verification and withdrawals are server-controlled. The browser cannot edit balances.</div></>; }
-function Profile({ user, profile, signOut }) { return <><section className="profile"><div>{(profile?.display_name || "F").slice(0,1).toUpperCase()}</div><p><small>{profile?.telegram_username ? "@" + profile.telegram_username : "Flexa AI account"}</small><strong>{user ? profile?.display_name || "Connected account" : "Telegram authentication pending"}</strong></p>{user ? <button className="secondary" onClick={signOut}>Sign out</button> : <span className="pending-badge">PENDING</span>}</section><div className="list"><Row text="Notifications" value="Telegram + app" /><Row text="Security" value="Protected" /><Row text="Referral code" value={profile?.referral_code || "—"} /><Row text="Referral sharing" value="Invite friends · earn after qualification" /></div></>; }
-
-function Chart() {
-  // Lightweight SVG chart so the landing/trading UI never depends on a missing chart library.
-  // Replace the data points with live market candles when the market-data service is connected.
-  const points = "0,122 34,116 68,126 102,92 136,100 170,78 204,88 238,61 272,72 306,48 340,56 374,31 408,42 442,20";
-  return <div className="chart-wrap" aria-label="Market price chart">
-    <svg viewBox="0 0 442 150" preserveAspectRatio="none" role="img">
-      <defs>
-        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(124,255,156,.24)" />
-          <stop offset="100%" stopColor="rgba(124,255,156,0)" />
-        </linearGradient>
-      </defs>
-      <path d={`M 0 122 L 34 116 L 68 126 L 102 92 L 136 100 L 170 78 L 204 88 L 238 61 L 272 72 L 306 48 L 340 56 L 374 31 L 408 42 L 442 20 L 442 150 L 0 150 Z`} fill="url(#chartFill)" />
-      <polyline points={points} fill="none" stroke="#7cff9c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <line x1="0" y1="128" x2="442" y2="128" stroke="rgba(124,255,156,.08)" />
-      <line x1="0" y1="82" x2="442" y2="82" stroke="rgba(124,255,156,.08)" />
-      <line x1="0" y1="36" x2="442" y2="36" stroke="rgba(124,255,156,.08)" />
-    </svg>
-  </div>;
-}
-
-function Row({ text, value, bad }) { return <div className="row"><span>{text}</span><strong className={bad ? "red" : "green"}>{value}</strong></div>; }
