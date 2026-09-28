@@ -868,7 +868,6 @@ function Kpi({label,value}){return <div className="admin-kpi"><small>{label}</sm
 function AdminPanel({title,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div>{children}</section>}
 function AdminTable({title,columns,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div><div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>{children}</section>}
 function AdminSettings({settings,onSave}){const [values,setValues]=useState(Object.fromEntries((settings||[]).map(x=>[x.key,JSON.stringify(x.value)])));return <AdminPanel title="Application controls"><p className="helper">Central product settings can be changed here without rebuilding the frontend.</p>{Object.entries(values).map(([key,value])=><div className="admin-setting" key={key}><label>{key}</label><input value={value} onChange={e=>setValues({...values,[key]:e.target.value})}/><button className="mini-action" onClick={()=>{try{onSave("update_setting",{key,value:JSON.parse(value)})}catch{}}}>Save</button></div>)}</AdminPanel>}
-}
 
 function OpportunityCard({ item, setPage }) {
   const score = Math.round(Number(item.signal_score || 0) * 100);
