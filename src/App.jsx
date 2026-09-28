@@ -3,7 +3,7 @@ import { supabase } from "./lib/supabase";
 import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
 
-const nav = [["home","⌂","Home"],["trade","↗","Trade"],["activity","◷","Activity"],["wallet","▣","Wallet"],["profile","◉","Profile"]];
+const nav = [["home","⌂","Home"],["trade","✦","AI Trade"],["activity","◷","Activity"],["wallet","▣","Wallet"],["profile","◉","Profile"]];
 
 const FLEXA_APP_URL = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "");
 
@@ -309,7 +309,7 @@ export default function App() {
       <AppErrorBoundary page={page}>
         <div key={page} className="page-transition" aria-live="polite">
           {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
-          {page === "trade" && <Trade account={account} />}
+          {page === "trade" && <Trade account={account} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
           {page === "activity" && <Activity account={account} />}
           {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} />}
           {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
@@ -734,12 +734,8 @@ function ActivityRows({ account }) {
   return <div className="list">{items.map((item,index)=><div className="row" key={item.date+index}><span>{item.text}</span><strong className="green">{Number(item.value||0).toLocaleString(undefined,{maximumFractionDigits:4})}</strong></div>)}</div>;
 }
 
-function Trade({ account }) {
-  const [mode,setMode] = useState("manual");
+function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
   const [amount,setAmount] = useState("25");
-  const [manualSymbol,setManualSymbol] = useState("BTCUSDT");
-  const [manualDirection,setManualDirection] = useState("up");
-  const [manualDuration,setManualDuration] = useState(3600);
   const [notice,setNotice] = useState("");
   const [busy,setBusy] = useState(false);
 
@@ -751,24 +747,11 @@ function Trade({ account }) {
     return Number.isFinite(end) && end > now && Number.isFinite(start) && start <= now;
   }) || null;
 
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem("flexa_open_ai_trade") === "true" && opportunity) {
-        setMode("ai");
-        sessionStorage.removeItem("flexa_open_ai_trade");
-      }
-    } catch {}
-  }, [opportunity]);
-
-  const aiDir = opportunity?.direction === "down" ? "DOWN" : "UP";
-  const aiDuration = opportunity ? String(Math.round(opportunity.duration_seconds / 60)) : "60";
-  const manualDir = manualDirection === "down" ? "DOWN" : "UP";
-  const activeDir = mode === "ai" ? aiDir : manualDir;
-  const activeDuration = mode === "ai" ? aiDuration : String(Number(manualDuration) / 60);
-  const activeSymbol = mode === "ai" ? opportunity?.symbol : manualSymbol;
-  const signalScore = Math.round(Number(opportunity?.signal_score || 0) * 100);
-  const aiTakeProfit = opportunity?.entry_price ? (Number(opportunity.entry_price) * (opportunity.direction === "down" ? 0.992 : 1.008)) : null;
-  const aiStopLoss = opportunity?.entry_price ? (Number(opportunity.entry_price) * (opportunity.direction === "down" ? 1.004 : 0.996)) : null;
+  const direction = opportunity?.direction === "down" ? "DOWN" : "UP";
+  const duration = opportunity ? Math.round(Number(opportunity.duration_seconds || 3600) / 60) : 60;
+  const score = Math.round(Number(opportunity?.signal_score || 0) * 100);
+  const symbol = opportunity?.symbol || "—";
+  const price = Number(opportunity?.entry_price || 0);
 
   const usdt = account.wallets.find((item) => item.asset === "USDT");
   const reward = account.rewards?.find((item) => item.status === "active");
@@ -778,133 +761,114 @@ function Trade({ account }) {
   const tradingFunds = walletBalance + bonusBalance;
   const canTrade = Boolean(account.tradingAccess?.has_access) && tradingFunds >= numericAmount;
 
+  const marketIcons = {
+    BTCUSDT:"₿", ETHUSDT:"Ξ", SOLUSDT:"S", BNBUSDT:"◆", XRPUSDT:"X",
+    DOGEUSDT:"Ð", EURUSD:"€", GBPUSD:"£", USDJPY:"¥", AUDUSD:"A$"
+  };
+
   function updateAmount(value) {
     if (value === "" || /^\d*(\.\d{0,2})?$/.test(value)) setAmount(value);
   }
 
-  async function confirmTrade() {
-    if (!supabase || busy || !canTrade || numericAmount <= 0) return;
-    if (mode === "ai" && !opportunity) return;
+  async function confirmAiTrade() {
+    if (!supabase || busy || !canTrade || numericAmount <= 0 || !opportunity) return;
     setBusy(true);
     setNotice("");
     try {
-      const body = mode === "ai"
-        ? { mode:"ai", opportunity_id: opportunity.id, stake: numericAmount }
-        : { mode:"manual", symbol:manualSymbol, direction:manualDirection, duration_seconds:Number(manualDuration), stake:numericAmount };
-      const { data, error } = await supabase.functions.invoke("execute-trade", { body });
+      const { data, error } = await supabase.functions.invoke("execute-trade", {
+        body: { mode:"ai", opportunity_id:opportunity.id, stake:numericAmount }
+      });
       if (error) {
-        let message = error.message || "The trade could not be started.";
+        let message = error.message || "The AI trade could not be started.";
         try { const payload = await error.context?.json?.(); message = payload?.error || payload?.message || message; } catch {}
         throw new Error(message);
       }
       if (data?.error) throw new Error(data.error);
       const tradeResult = data?.trade || data || {};
-      const tradeDetails = {
-        tradeId:tradeResult?.trade_id || null,
-        symbol:tradeResult?.symbol || activeSymbol,
-        direction:tradeResult?.direction || activeDir.toLowerCase(),
-        stake:Number(tradeResult?.stake ?? numericAmount),
-        duration:tradeResult?.duration_seconds ? Math.round(Number(tradeResult.duration_seconds)/60) : Number(activeDuration),
-        fundingSource:tradeResult?.funding_source || null,
-        takeProfitPrice:tradeResult?.take_profit_price || null,
-        stopLossPrice:tradeResult?.stop_loss_price || null
-      };
-      await new Promise((resolve)=>setTimeout(resolve,150));
-      window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:tradeDetails}));
-      if (mode === "ai") setMode("manual");
+      window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{
+        tradeId:tradeResult.trade_id || null,
+        symbol:tradeResult.symbol || symbol,
+        direction:tradeResult.direction || opportunity.direction,
+        stake:Number(tradeResult.stake ?? numericAmount),
+        duration:tradeResult.duration_seconds ? Math.round(Number(tradeResult.duration_seconds)/60) : duration,
+        fundingSource:tradeResult.funding_source || null,
+        takeProfitPrice:tradeResult.take_profit_price || null,
+        stopLossPrice:tradeResult.stop_loss_price || null
+      }}));
     } catch(error) {
-      setNotice(error.message || "The trade could not be started.");
+      setNotice(error.message || "The AI trade could not be started.");
     } finally {
       setBusy(false);
     }
   }
 
-  return <div className="trade-engine-page">
-    <section className="engine-hero">
-      <div className="engine-hero-copy">
-        <div className="engine-kicker"><span className="engine-pulse" /> FLEXA AI TRADING ENGINE</div>
-        <h1>Trade with a signal.<br /><span>Stay in control.</span></h1>
-        <p>Flexa AI finds a high-quality market setup, then puts the decision in your hands. Nothing is opened without your confirmation.</p>
+  return <div className="ai-trade-page">
+    <section className="ai-page-hero">
+      <div>
+        <div className="engine-kicker"><span className="engine-pulse" /> FLEXA AI TRADING</div>
+        <h1>Let the machine<br /><span>find the trade.</span></h1>
+        <p>Start the AI engine. When a qualifying setup appears, Flexa presents it here for your approval. You stay in control of the capital.</p>
       </div>
-      <div className={opportunity ? "engine-status-card live" : "engine-status-card"}>
+      <div className={aiEngineActive ? "ai-engine-state active" : "ai-engine-state"}>
         <span className="engine-status-dot" />
-        <div><small>ENGINE STATUS</small><strong>{opportunity ? "SIGNAL READY" : "READY TO SCAN"}</strong></div>
-        <em>{opportunity ? "1 live setup" : "No active setup"}</em>
+        <div><small>ENGINE</small><strong>{aiEngineActive ? "SCANNING" : "STANDBY"}</strong></div>
       </div>
     </section>
 
-    <section className="engine-console">
-      <div className="console-topline">
-        <div><small>MARKET INTELLIGENCE</small><strong>{opportunity ? "A fresh setup is waiting." : "Waiting for a high-quality setup."}</strong></div>
-        <span className="console-live"><i /> LIVE DATA</span>
+    <div className="ai-trade-menu">
+      <button type="button" className="active">AI Trade</button>
+      <button type="button" onClick={()=>window.scrollTo({top:650,behavior:"smooth"})}>Signal</button>
+      <button type="button" onClick={()=>window.scrollTo({top:1200,behavior:"smooth"})}>Order</button>
+      <button type="button" onClick={()=>window.scrollTo({top:1750,behavior:"smooth"})}>Markets</button>
+    </div>
+
+    {!opportunity ? <section className="ai-start-panel">
+      <div className="ai-start-icon">✦</div>
+      <div className="ai-start-copy">
+        <small>AI MARKET SCAN</small>
+        <h2>{aiScanning ? "Scanning the markets…" : aiEngineActive ? "The engine is watching." : "Start your AI trading machine."}</h2>
+        <p>{aiScanning ? "Flexa is comparing live market conditions across supported instruments." : aiEngineActive ? "Flexa will surface one qualifying setup when the signal rules are met." : "One tap starts the scan. No trade is opened automatically."}</p>
       </div>
-
-      {opportunity ? <div className={mode === "ai" ? "signal-card selected" : "signal-card"}>
-        <div className="signal-main">
-          <div className="signal-eyebrow">✦ FLEXA AI SIGNAL <span>MODEL {opportunity.model_version || "LIVE"}</span></div>
-          <div className="signal-market"><strong>{opportunity.symbol}</strong><span className={aiDir === "UP" ? "signal-up" : "signal-down"}>{aiDir === "UP" ? "↗ LONG" : "↘ SHORT"}</span></div>
-          <p>AI has identified this as the strongest currently qualifying setup. Review the levels and choose your stake.</p>
-        </div>
-        <div className="signal-score">
-          <span>SIGNAL</span><strong>{signalScore}%</strong><small>CONFIDENCE</small>
-        </div>
-        <div className="signal-metrics">
-          <div><small>ENTRY</small><strong>{Number(opportunity.entry_price || 0).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
-          <div><small>WINDOW</small><strong>{aiDuration} MIN</strong></div>
-          <div><small>STATUS</small><strong>LIVE</strong></div>
-        </div>
-        {mode !== "ai" && <button type="button" className="signal-action" onClick={()=>{setMode("ai");setNotice("");}} disabled={busy}>Review AI setup <b>→</b></button>}
-        {mode === "ai" && <div className="signal-selected"><span>✓</span> AI setup selected — finish your order below.</div>}
-      </div> : <div className="engine-empty">
-        <div className="engine-empty-icon">✦</div>
-        <div><strong>No AI signal is live right now.</strong><p>The engine only publishes a setup when its quality rules are met. Check back when the next signal is ready.</p></div>
-      </div>}
-
-      <div className="engine-chart-shell">
-        <div className="engine-chart-head"><div><small>{activeSymbol || "BTCUSDT"} · MARKET VIEW</small><strong>{mode === "ai" && opportunity?.entry_price ? Number(opportunity.entry_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "LIVE PRICE"}</strong></div><span>1M</span></div>
-        <Chart />
-        <div className="chart-selector"><span className="active">1m</span><span>5m</span><span>15m</span><span>1h</span></div>
+      <button type="button" className="ai-start-button" onClick={startAiScan} disabled={aiScanning || aiEngineActive}>
+        {aiScanning ? "Scanning…" : aiEngineActive ? "AI is watching" : "Start AI machine →"}
+      </button>
+    </section> : <section className="ai-signal-panel">
+      <div className="signal-panel-top">
+        <div><small>AI SIGNAL · READY FOR REVIEW</small><strong>{symbol}</strong><span>{direction === "UP" ? "↗ LONG" : "↘ SHORT"} · {duration} MIN</span></div>
+        <div className="signal-score-large"><strong>{score}%</strong><small>CONFIDENCE</small></div>
       </div>
-    </section>
-
-    <section className="order-workstation">
-      <div className="workstation-head">
-        <div><small>ORDER WORKSTATION</small><h2>{mode === "ai" ? "Confirm the AI setup." : "Build your own trade."}</h2><p>{mode === "ai" ? "The engine controls the signal. You control the capital." : "Manual trading stays available for traders who want to make their own call."}</p></div>
-        <div className="workstation-mode"><button type="button" className={mode==="manual"?"active":""} onClick={()=>setMode("manual")} disabled={busy}>MANUAL</button><button type="button" className={mode==="ai"?"active":""} onClick={()=>opportunity&&setMode("ai")} disabled={busy || !opportunity}>AI SIGNAL</button></div>
+      <div className="signal-market-row">
+        <div className="market-identity"><span className="market-icon">{marketIcons[symbol] || "◈"}</span><div><strong>{symbol}</strong><small>{symbol.includes("USD") && !symbol.includes("USDT") ? "FOREX" : "CRYPTO"}</small></div></div>
+        <div className={direction === "UP" ? "signal-direction up" : "signal-direction down"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</div>
       </div>
-
-      {mode === "manual" ? <div className="manual-workflow">
-        <label className="workflow-field"><span>MARKET</span><select value={manualSymbol} onChange={e=>setManualSymbol(e.target.value)} disabled={busy}>{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(symbol=><option key={symbol} value={symbol}>{symbol}</option>)}</select></label>
-        <div className="workflow-group"><span>DIRECTION</span><div className="direction-pair"><button type="button" className={manualDirection==="up"?"selected up":""} onClick={()=>setManualDirection("up")} disabled={busy}>↗ <b>UP</b><small>Price rises</small></button><button type="button" className={manualDirection==="down"?"selected down":""} onClick={()=>setManualDirection("down")} disabled={busy}>↘ <b>DOWN</b><small>Price falls</small></button></div></div>
-        <div className="workflow-group"><span>DURATION</span><div className="duration-pair">{[[900,"15 min"],[1800,"30 min"],[3600,"60 min"]].map(([value,label])=><button key={value} type="button" className={Number(manualDuration)===value?"selected":""} onClick={()=>setManualDuration(value)} disabled={busy}>{label}</button>)}</div></div>
-      </div> : <div className="ai-workflow">
-        <div className="ai-locked-row"><span>AI SELECTED MARKET</span><strong>{activeSymbol}</strong></div>
-        <div className="ai-locked-row"><span>AI DIRECTION</span><strong className={activeDir==="UP"?"green":"red"}>{activeDir==="UP"?"↗ UP":"↘ DOWN"}</strong></div>
-        <div className="ai-locked-row"><span>DURATION</span><strong>{activeDuration} min</strong></div>
-        <div className="risk-levels"><div><span>TAKE PROFIT</span><strong>{aiTakeProfit ? Number(aiTakeProfit).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong><small>+0.80% target</small></div><div><span>STOP LOSS</span><strong>{aiStopLoss ? Number(aiStopLoss).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong><small>-0.40% protection</small></div></div>
-      </div>}
-
-      <div className="capital-row">
-        <div><span>AVAILABLE TO TRADE</span><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong><small>Wallet {walletBalance.toFixed(2)} · Bonus {bonusBalance.toFixed(2)}</small></div>
-        <div className="capital-badge">USDT</div>
+      <div className="signal-level-grid">
+        <div><small>ENTRY</small><strong>{price.toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
+        <div><small>TAKE PROFIT</small><strong>{(price*(direction==="UP"?1.008:.992)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
+        <div><small>STOP LOSS</small><strong>{(price*(direction==="UP"?.996:1.004)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
+        <div><small>WINDOW</small><strong>{duration} MIN</strong></div>
       </div>
+      <div className="ai-approval-note"><span>✓</span><p><strong>AI selected this setup.</strong> Review the signal, choose your stake, then approve the trade.</p></div>
+    </section>}
 
-      <div className="stake-workspace">
-        <div className="stake-workspace-head"><div><span>POSITION SIZE</span><strong>How much capital?</strong></div><small>USDT</small></div>
-        <div className="stake-presets">{["10","25","50","100"].map(v=><button type="button" key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)} disabled={busy}>$ {v}</button>)}</div>
-        <div className="amount-input-wrap"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} placeholder="0.00" aria-label="Trade amount" disabled={busy}/><small>USDT</small></div>
-      </div>
-
-      <div className="order-review">
-        <div><span>ORDER</span><strong>{activeSymbol} · {activeDir} · {activeDuration} min</strong></div>
-        <div><span>STAKE</span><strong>$ {amount || "0.00"}</strong></div>
-      </div>
-      <button className="workstation-confirm" disabled={busy || !canTrade || (mode==="ai" && !opportunity) || numericAmount<=0} onClick={confirmTrade}>{busy ? "Opening position…" : mode==="ai" ? "Confirm AI trade  →" : "Place manual trade  →"}</button>
+    <section className="ai-order-panel">
+      <div className="panel-heading"><div><small>CAPITAL</small><h2>Approve the trade</h2><p>Only the stake is yours to decide.</p></div><span className="capital-badge">USDT</span></div>
+      <div className="capital-summary"><div><small>AVAILABLE</small><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div><span>Wallet {walletBalance.toFixed(2)} · Bonus {bonusBalance.toFixed(2)}</span></div>
+      <div className="stake-presets">{["10","25","50","100"].map(v=><button type="button" key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)} disabled={busy}>$ {v}</button>)}</div>
+      <div className="amount-input-wrap"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} placeholder="0.00" aria-label="AI trade stake" disabled={busy}/><small>USDT</small></div>
+      <button className="ai-approve-button" disabled={busy || !canTrade || !opportunity || numericAmount<=0} onClick={confirmAiTrade}>
+        {busy ? "Opening AI trade…" : "Approve AI trade →"}
+      </button>
       {notice && <div className="notice" role="status">{notice}</div>}
-      {!account.tradingAccess?.has_access && <div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a Flexa Pro plan to continue trading.</span><button className="secondary" onClick={()=>setNotice("Subscription checkout is not connected yet.")}>View plans</button></div>}
-      {usdt && account.tradingAccess?.has_access && !canTrade && numericAmount>0 && <p className="helper">Your stake is higher than your available trading funds.</p>}
-      <p className="engine-disclaimer">{mode==="ai" ? "AI selects the market, direction and duration. You approve the stake and open the trade." : "Manual mode gives you direct control over the market, direction, duration and stake."}</p>
+      {!account.tradingAccess?.has_access && <div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a Flexa Pro plan to continue trading.</span></div>}
+      {account.tradingAccess?.has_access && !canTrade && numericAmount>0 && <p className="helper">Your stake is higher than your available trading funds.</p>}
     </section>
+
+    <section className="ai-markets-panel">
+      <div className="panel-heading"><div><small>SUPPORTED MARKETS</small><h2>Know what the AI is watching.</h2><p>Flexa uses clear symbols so each market is easy to recognize.</p></div></div>
+      <div className="market-grid">{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item => <div className="market-chip" key={item}><span className="market-icon">{marketIcons[item]}</span><div><strong>{item}</strong><small>{item.includes("USD") && !item.includes("USDT") ? "Forex" : "Crypto"}</small></div></div>){"}"}</div>
+    </section>
+
+    <p className="engine-disclaimer">Flexa AI does not open a trade automatically. The engine finds the setup; you approve the capital.</p>
   </div>;
 }
 function Chart() {
