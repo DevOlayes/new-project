@@ -83,6 +83,27 @@ export default function App() {
   }, [installPrompt, notificationAsked]);
 
   useEffect(() => {
+    let cancelled=false;
+    const loadAssetPrices=async()=>{
+      try{
+        const response=await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin%2Cthe-open-network%2Csolana%2Cbinancecoin&vs_currencies=usd");
+        if(!response.ok) return;
+        const data=await response.json();
+        if(!cancelled) setAssetPrices({
+          USDT:1,
+          BTC:Number(data?.bitcoin?.usd||0),
+          TON:Number(data?.["the-open-network"]?.usd||0),
+          SOL:Number(data?.solana?.usd||0),
+          BNB:Number(data?.binancecoin?.usd||0)
+        });
+      }catch{}
+    };
+    loadAssetPrices();
+    const timer=window.setInterval(loadAssetPrices,60000);
+    return()=>{cancelled=true;window.clearInterval(timer);};
+  }, []);
+
+  useEffect(() => {
     const handleInstallPrompt = (event) => {
       event.preventDefault();
       setInstallPrompt(event);
