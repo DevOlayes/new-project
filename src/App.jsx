@@ -729,11 +729,11 @@ function RewardBanner({ reward, onClaim, busy }) {
 
   const reward=account.rewards?.find((r)=>["available","active"].includes(r.status) && Number(r.remaining_reward||0)>0);
   const supported=[
-    {asset:"BTC",label:"Bitcoin",symbol:"BTC",network:"Internal",price:Number(assetPrices.BTC||0),icon:"₿"},
-    {asset:"USDT",label:"Tether USD",symbol:"USDT",network:"TRC-20",price:1,icon:"₮"},
-    {asset:"TON",label:"Gram",symbol:"GRAM",network:"TON",price:Number(assetPrices.TON||0),icon:"G"},
-    {asset:"SOL",label:"Solana",symbol:"SOL",network:"Internal",price:Number(assetPrices.SOL||0),icon:"S"},
-    {asset:"BNB",label:"BNB",symbol:"BNB",network:"Internal",price:Number(assetPrices.BNB||0),icon:"B"},
+    {asset:"BTC",label:"Bitcoin",symbol:"BTC",network:"Internal",price:Number(assetPrices.BTC||0),icon:"https://cdn.simpleicons.org/bitcoin"},
+    {asset:"USDT",label:"Tether USD",symbol:"USDT",network:"TRC-20",price:1,icon:"https://cdn.simpleicons.org/tether"},
+    {asset:"TON",label:"Gram",symbol:"GRAM",network:"TON",price:Number(assetPrices.TON||0),icon:"https://cdn.simpleicons.org/ton"},
+    {asset:"SOL",label:"Solana",symbol:"SOL",network:"Internal",price:Number(assetPrices.SOL||0),icon:"https://cdn.simpleicons.org/solana"},
+    {asset:"BNB",label:"BNB",symbol:"BNB",network:"Internal",price:Number(assetPrices.BNB||0),icon:"https://cdn.simpleicons.org/binance"},
   ];
   const balances=supported.map(asset=>({...asset,wallet:account.wallets.find(w=>w.asset===asset.asset)}));
   const portfolioValue=balances.reduce((sum,item)=>sum + Number(item.wallet?.available_balance||0)*Number(item.price||0),0);
@@ -804,7 +804,7 @@ function RewardBanner({ reward, onClaim, busy }) {
       <div className="section-heading"><div><small>PORTFOLIO</small><h2>Your assets</h2></div><button className="asset-swap-link" onClick={()=>setModal("swap")}>Swap assets ↗</button></div>
       <div className="asset-list">
         {balances.map(wallet=><div className="asset-row" key={wallet.asset}>
-          <div className={"asset-icon asset-"+wallet.asset.toLowerCase()}>{wallet.icon}</div>
+          <div className={"asset-icon asset-"+wallet.asset.toLowerCase()}><img src={wallet.icon} alt="" loading="lazy" /></div>
           <div><strong>{wallet.label}</strong><small>{wallet.symbol} · {wallet.asset==="TON"?"TON network":wallet.network}</small></div>
           <div className="asset-balance"><b>{Number(wallet.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {wallet.symbol}</b><small>\${(Number(wallet.wallet?.available_balance||0)*wallet.price).toLocaleString(undefined,{maximumFractionDigits:2})}</small></div>
         </div>)}
