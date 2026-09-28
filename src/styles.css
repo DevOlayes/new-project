@@ -648,3 +648,5 @@ body{background:radial-gradient(circle at 72% -10%,rgba(124,255,156,.07),transpa
 .flexar-attention-card small{color:#7cff9c;font-size:7px;font-weight:900;letter-spacing:.14em}.flexar-attention-card h2{margin:7px 35px 6px 0;font-size:23px;letter-spacing:-.04em}.flexar-attention-card p{margin:0;color:rgba(255,255,255,.4);font-size:8px;line-height:1.7}.flexar-attention-card>div{display:flex;gap:8px;margin-top:16px}.flexar-attention-card>div button{flex:1;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.08);font-size:8px;font-weight:900}.flexar-attention-card .secondary{background:#111612;color:#fff}.flexar-attention-card .primary{border:0;background:#7cff9c;color:#061009}
 @keyframes flexarAttentionIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @media(max-width:600px){.funding-routes{grid-template-columns:1fr}.swap-modal{padding:19px}.flexar-attention-card h2{font-size:21px}}
+
+.asset-icon img{width:23px;height:23px;display:block}.asset-icon.asset-ton img{filter:brightness(0) invert(1)}
