@@ -838,7 +838,7 @@ function RewardBanner({ reward, onClaim, busy }) {
 
     {modal==="withdraw"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
       <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button><div className="eyebrow">WITHDRAW</div><h2>Move funds out.</h2>
-      <form onSubmit={submitWithdrawal}><label>Asset<select value={selectedAsset} onChange={e=>setSelectedAsset(e.target.value)}>{balances.filter(a=>Number(a.wallet?.available_balance||0)>0).map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></label><label>Amount<input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00"/></label><label>Destination address<textarea value={address} onChange={e=>setAddress(e.target.value)} /></label><button className="primary" disabled={busy}>{busy?"Submitting…":"Submit withdrawal"}</button></form>
+      <form onSubmit={submitWithdrawal}><label>Asset<select value={selectedAsset} onChange={e=>setSelectedAsset(e.target.value)}>{balances.filter(a=>["USDT","TON"].includes(a.asset)&&Number(a.wallet?.available_balance||0)>0).map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></label><label>Amount<input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00"/></label><label>Destination address<textarea value={address} onChange={e=>setAddress(e.target.value)} /></label><button className="primary" disabled={busy}>{busy?"Submitting…":"Submit withdrawal"}</button></form>
     </div></div>}
   </div>;
 }
