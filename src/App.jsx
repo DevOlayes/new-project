@@ -1024,7 +1024,7 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
 
     <section className="ai-markets-panel">
       <div className="panel-heading"><div><small>SUPPORTED MARKETS</small><h2>Know what the AI is watching.</h2><p>Flexa uses clear symbols so each market is easy to recognize.</p></div></div>
-      <div className="market-grid">{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item => <div className="market-chip" key={item}><span className="market-icon">{marketIcons[item]}</span><div><strong>{item}</strong><small>{item.includes("USD") && !item.includes("USDT") ? "Forex" : "Crypto"}</small></div></div>){"}"}</div>
+      <div className="market-grid">{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item => <div className="market-chip" key={item}><span className="market-icon">{marketIcons[item]}</span><div><strong>{item}</strong><small>{item.includes("USD") && !item.includes("USDT") ? "Forex" : "Crypto"}</small></div></div>)}</div>
     </section>
 
     <p className="engine-disclaimer">Flexa AI does not open a trade automatically. The engine finds the setup; you approve the capital.</p>
