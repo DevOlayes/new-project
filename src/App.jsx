@@ -19,6 +19,10 @@ export default function App() {
   const [market, setMarket] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
+  const [installNotice, setInstallNotice] = useState(false);
+  const [notificationPrompt, setNotificationPrompt] = useState(false);
+  const [notificationAsked, setNotificationAsked] = useState(false);
+  const [assetPrices, setAssetPrices] = useState({USDT:1,TON:1.41,BTC:83928.34,SOL:119.79,BNB:770.09});
   const [rewardBusy, setRewardBusy] = useState(false);
   const [aiScanning, setAiScanning] = useState(false);
   const [aiEngineActive, setAiEngineActive] = useState(() => {
@@ -61,6 +65,22 @@ export default function App() {
       clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    const dayKey = new Date().toISOString().slice(0,10);
+    const installed = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone;
+    if (!installed && installPrompt === null) {
+      try {
+        if (localStorage.getItem("flexar_install_dismissed") !== dayKey) setInstallNotice(true);
+      } catch {}
+    }
+    const timer = window.setTimeout(() => {
+      try {
+        if (!notificationAsked && localStorage.getItem("flexar_notification_dismissed") !== dayKey) setNotificationPrompt(true);
+      } catch {}
+    }, 45000);
+    return () => window.clearTimeout(timer);
+  }, [installPrompt, notificationAsked]);
 
   useEffect(() => {
     const handleInstallPrompt = (event) => {
@@ -311,7 +331,7 @@ export default function App() {
           {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
           {page === "trade" && <Trade account={account} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
           {page === "activity" && <Activity account={account} />}
-          {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} />}
+          {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} setPage={setPage} />}
           {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
         </div>
       </AppErrorBoundary>
