@@ -693,317 +693,133 @@ function RewardBanner({ reward, onClaim, busy }) {
   const initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
   const referral=profile?.referral_code||"—";
   return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXA AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section><section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button></div>;
-}function Wallet({ account, refreshAccount }) {
+}function Wallet({ account, refreshAccount, assetPrices = {}, setPage }) {
   const [modal, setModal] = useState("");
   const [walletInfo, setWalletInfo] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState("USDT");
+  const [swapFrom, setSwapFrom] = useState("USDT");
+  const [swapTo, setSwapTo] = useState("BTC");
+  const [swapAmount, setSwapAmount] = useState("");
   const [amount, setAmount] = useState("");
   const [address, setAddress] = useState("");
   const [busy, setBusy] = useState(false);
+  const [swapBusy, setSwapBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
-  const reward=account.rewards?.find((r)=>["available","active"].includes(r.status));
-  const usdt=account.wallets.find(w=>w.asset==="USDT");
-  const total=Number(usdt?.available_balance||0)+Number(reward?.profit_withdrawable||0);
+  const reward=account.rewards?.find((r)=>["available","active"].includes(r.status) && Number(r.remaining_reward||0)>0);
+  const supported=[
+    {asset:"BTC",label:"Bitcoin",symbol:"BTC",network:"Internal",price:Number(assetPrices.BTC||0),icon:"₿"},
+    {asset:"USDT",label:"Tether USD",symbol:"USDT",network:"TRC-20",price:1,icon:"₮"},
+    {asset:"TON",label:"Gram",symbol:"GRAM",network:"TON",price:Number(assetPrices.TON||0),icon:"G"},
+    {asset:"SOL",label:"Solana",symbol:"SOL",network:"Internal",price:Number(assetPrices.SOL||0),icon:"S"},
+    {asset:"BNB",label:"BNB",symbol:"BNB",network:"Internal",price:Number(assetPrices.BNB||0),icon:"B"},
+  ];
+  const balances=supported.map(asset=>({...asset,wallet:account.wallets.find(w=>w.asset===asset.asset)}));
+  const portfolioValue=balances.reduce((sum,item)=>sum + Number(item.wallet?.available_balance||0)*Number(item.price||0),0);
+  const fromAsset=balances.find(item=>item.asset===swapFrom)||balances[1];
+  const toAsset=balances.find(item=>item.asset===swapTo)||balances[0];
+  const numericSwap=Number(swapAmount||0);
+  const receiveQuote=numericSwap>0 && fromAsset.price>0 && toAsset.price>0 ? (numericSwap*fromAsset.price/toAsset.price) : 0;
 
   async function openDeposit() {
-    setNotice("");
-    setModal("deposit");
+    setNotice(""); setModal("deposit");
     if (walletInfo) return;
     const { data, error } = await supabase.functions.invoke("wallet-info");
-    if (error || data?.error) {
-      setNotice(data?.error || error?.message || "Could not load deposit details.");
-      return;
-    }
-    setWalletInfo(data);
+    if (error || data?.error) setNotice(data?.error || error?.message || "Could not load deposit details.");
+    else setWalletInfo(data);
+  }
+
+  async function submitSwap(event) {
+    event.preventDefault();
+    setNotice("");
+    if (!Number.isFinite(numericSwap) || numericSwap <= 0) return setNotice("Enter a valid amount to swap.");
+    if (swapFrom === swapTo) return setNotice("Choose two different assets.");
+    if (numericSwap > Number(fromAsset.wallet?.available_balance||0)) return setNotice("Insufficient available balance.");
+    setSwapBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("swap-assets", { body:{from_asset:swapFrom,to_asset:swapTo,amount:numericSwap} });
+      if (error || data?.error) throw new Error(data?.error || error?.message || "Swap failed.");
+      setSwapAmount(""); setModal("");
+      setNotice("Swap completed. Your portfolio has been updated.");
+      await refreshAccount();
+    } catch (error) { setNotice(error.message || "Swap failed."); }
+    finally { setSwapBusy(false); }
   }
 
   async function submitWithdrawal(event) {
     event.preventDefault();
     setNotice("");
     const numericAmount = Number(amount);
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setNotice("Enter a valid withdrawal amount.");
-      return;
-    }
-    if (!address.trim()) {
-      setNotice("Enter the destination wallet address.");
-      return;
-    }
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setNotice("Enter a valid withdrawal amount.");
+    if (!address.trim()) return setNotice("Enter the destination wallet address.");
     setBusy(true);
     try {
       const wallet = account.wallets.find((item) => item.asset === selectedAsset);
       const { data, error } = await supabase.functions.invoke("request-withdrawal", {
-        body: {
-          asset: selectedAsset,
-          network: wallet?.network,
-          amount: numericAmount,
-          address: address.trim(),
-        },
+        body:{asset:selectedAsset,network:wallet?.network,amount:numericAmount,address:address.trim()}
       });
       if (error || data?.error) throw new Error(data?.error || error?.message || "Withdrawal request failed.");
-      setAmount("");
-      setAddress("");
-      setModal("");
+      setAmount(""); setAddress(""); setModal("");
       setNotice("Withdrawal request submitted. Your funds are now locked while the request is reviewed.");
       await refreshAccount();
-    } catch (error) {
-      setNotice(error.message || "Withdrawal request failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return <div className="wallet-page">
-    <section className="wallet-hero"><div><small>PORTFOLIO VALUE</small><strong>${total.toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong><span>Cash balance + eligible reward profit</span></div><div className="wallet-orbit">◎</div></section>
-    <div className="wallet-actions">
-      <button onClick={openDeposit}>＋ Deposit</button>
-      <button className="secondary" onClick={()=>{setNotice("");setModal("withdraw");}}>↗ Withdraw</button>
-    </div>
-    {reward&&<section className="wallet-reward"><div><small>FLEXA WELCOME CREDIT</small><strong>${Number(reward.remaining_reward||0).toFixed(2)} <span>REMAINING</span></strong><p>{reward.status==="available"?"Claim it on Home to activate your trade credit.":"Trade credit is active. Profit generated from it becomes eligible wallet profit."}</p></div><span className="credit-pill">{reward.status.toUpperCase()}</span></section>}
-    <section className="asset-section"><div className="section-heading"><div><small>ASSETS</small><h2>Your balances</h2></div></div><div className="asset-list">{account.wallets.map(wallet=><div className="asset-row" key={wallet.id}><div className="asset-icon">{wallet.asset==="USDT"?"₮":"T"}</div><div><strong>{wallet.asset}</strong><small>{wallet.network}</small></div><b>{Number(wallet.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:4})}</b></div>)}</div></section>
-    <section className="asset-section"><div className="section-heading"><div><small>RECENT</small><h2>Wallet activity</h2></div></div><ActivityRows account={{...account,trades:[]}} /></section>
-    {notice&&<div className="notice" role="status">{notice}</div>}
-    {modal==="deposit"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
-      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button>
-      <div className="eyebrow">DEPOSIT</div><h2>Fund your wallet.</h2>
-      <p>Send funds only on the network shown below. Deposits are credited after the transaction is verified.</p>
-      <div className="wallet-network-list">
-        {Object.entries(walletInfo?.deposit_addresses||{}).map(([asset, info])=><div className="wallet-address-card" key={asset}><strong>{asset}</strong><small>{info?.network || "Network"}</small><code>{info?.address || "Deposit address is being configured."}</code>{info?.address&&<button type="button" onClick={()=>navigator.clipboard?.writeText(info.address)}>Copy address</button>}</div>)}
-        {!walletInfo && <div className="empty-state"><strong>Loading deposit details…</strong></div>}
-        {walletInfo && !Object.keys(walletInfo.deposit_addresses||{}).length && <div className="empty-state"><strong>Deposit addresses are not configured yet.</strong><p>The wallet screen is working; an admin must add the receiving addresses before deposits can be credited.</p></div>}
-      </div>
-    </div></div>}
-    {modal==="withdraw"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
-      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button>
-      <div className="eyebrow">WITHDRAW</div><h2>Send funds out.</h2><p>Withdrawal requests are processed server-side. Your balance is locked when the request is accepted.</p>
-      <form onSubmit={submitWithdrawal} className="wallet-form">
-        <label>Asset<select value={selectedAsset} onChange={e=>setSelectedAsset(e.target.value)}><option value="USDT">USDT</option><option value="TON">TON</option></select></label>
-        <label>Amount<input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" /></label>
-        <label>Destination address<input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Paste wallet address" autoComplete="off" /></label>
-        <button className="landing-cta" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit withdrawal →"}</button>
-      </form>
-    </div></div>}
-  </div>;
-}
-function OpportunityCard({ item, setPage }) {
-  const score = Math.round(Number(item.signal_score || 0) * 100);
-  const direction = item.direction === "down" ? "DOWN" : "UP";
-  return <article className="opportunity-card ai-opportunity-card">
-    <div className="ai-opportunity-label">FLEXA AI SELECTED</div>
-    <div className="opp-top">
-      <div><small>{item.symbol}</small><strong>AI trade suggestion</strong></div>
-      <span className={direction === "UP" ? "green" : "red"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</span>
-    </div>
-    <div className="ai-opportunity-direction">
-      <span>AI expects the market to move</span>
-      <strong className={direction === "UP" ? "green" : "red"}>{direction}</strong>
-    </div>
-    <div className="opp-meta"><span>{Math.round(item.duration_seconds / 60)} min</span><span>{score}% signal</span><span>{item.status.toUpperCase()}</span></div>
-    <button onClick={() => { try { sessionStorage.setItem("flexa_open_ai_trade", "true"); } catch {} setPage("trade"); }}>Trade this AI setup →</button>
-  </article>;
-}
-function ActivityRows({ account }) {
-  const items = [...account.trades.map((t) => ({date:t.opened_at,text:(t.metadata?.market_symbol || t.asset)+" · "+t.direction.toUpperCase()+" · "+t.status,value:t.result_amount ?? t.potential_payout ?? t.stake})), ...account.transactions.map((t) => ({date:t.created_at,text:t.type.replace("_"," ")+" · "+t.status,value:t.amount}))].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
-  if (!items.length) return <div className="empty-state"><strong>No activity yet</strong><p>Your trades and wallet transactions will appear here.</p></div>;
-  return <div className="list">{items.map((item,index)=><div className="row" key={item.date+index}><span>{item.text}</span><strong className="green">{Number(item.value||0).toLocaleString(undefined,{maximumFractionDigits:4})}</strong></div>)}</div>;
-}
-
-function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
-  const [amount,setAmount] = useState("25");
-  const [notice,setNotice] = useState("");
-  const [busy,setBusy] = useState(false);
-  const [execution,setExecution] = useState("native");
-  const [control,setControl] = useState("approval");
-
-  const opportunity = account.opportunities?.find((item) => {
-    if (!["scheduled","open"].includes(item.status)) return false;
-    const endAt = new Date(item.entry_window_end || 0).getTime();
-    const startAt = new Date(item.entry_window_start || 0).getTime();
-    const now = Date.now();
-    return Number.isFinite(endAt) && endAt > now && Number.isFinite(startAt) && startAt <= now;
-  }) || null;
-
-  const direction = opportunity?.direction === "down" ? "DOWN" : "UP";
-  const duration = opportunity ? Math.round(Number(opportunity.duration_seconds || 3600) / 60) : 60;
-  const score = Math.round(Number(opportunity?.signal_score || 0) * 100);
-  const symbol = opportunity?.symbol || "—";
-  const price = Number(opportunity?.entry_price || 0);
-  const metadata = opportunity?.metadata || {};
-  const timeToEntry = opportunity?.entry_window_start
-    ? Math.max(0, Math.round((new Date(opportunity.entry_window_start).getTime() - Date.now()) / 60000))
-    : null;
-
-  const usdt = account.wallets.find((item) => item.asset === "USDT");
-  const reward = account.rewards?.find((item) => item.status === "active");
-  const walletBalance = Number(usdt?.available_balance || 0);
-  const bonusBalance = Number(reward?.remaining_reward || 0);
-  const numericAmount = Number(amount);
-  const tradingFunds = walletBalance + bonusBalance;
-  const canTrade = Boolean(account.tradingAccess?.has_access) && tradingFunds >= numericAmount;
-
-  const marketIcons = { BTCUSDT:"₿", ETHUSDT:"Ξ", SOLUSDT:"S", BNBUSDT:"◆", XRPUSDT:"X", DOGEUSDT:"Ð", EURUSD:"€", GBPUSD:"£", USDJPY:"¥", AUDUSD:"A$" };
-  const stage = !opportunity ? "SCANNING" : timeToEntry && timeToEntry > 0 ? "EARLY SETUP" : "TRADE READY";
-  const tp = Number(metadata.take_profit_price || (price ? price * (direction === "UP" ? 1.008 : .992) : 0));
-  const sl = Number(metadata.stop_loss_price || (price ? price * (direction === "UP" ? .996 : 1.004) : 0));
-
-  function updateAmount(value) {
-    if (value === "" || /^\d*(\.\d{0,2})?$/.test(value)) setAmount(value);
-  }
-
-  async function copyTrade() {
-    if (!opportunity) return;
-    const text = ["FLEXAR AI SIGNAL",symbol,direction,"Entry: " + price,"TP: " + tp,"SL: " + sl,"Duration: " + duration + " min"].join("\n");
-    try { await navigator.clipboard.writeText(text); setNotice("Signal copied. You can paste it into another trading platform."); }
-    catch { setNotice("Signal is ready to copy manually."); }
-  }
-
-  async function confirmAiTrade() {
-    if (!supabase || busy || execution !== "native" || !canTrade || numericAmount <= 0 || !opportunity) return;
-    setBusy(true); setNotice("");
-    try {
-      const { data, error } = await supabase.functions.invoke("execute-trade", { body:{ mode:"ai", opportunity_id:opportunity.id, stake:numericAmount } });
-      if (error) {
-        let message = error.message || "The FLEXAR AI trade could not be started.";
-        try { const payload = await error.context?.json?.(); message = payload?.error || payload?.message || message; } catch {}
-        throw new Error(message);
-      }
-      if (data?.error) throw new Error(data.error);
-      const tradeResult = data?.trade || data || {};
-      window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{
-        tradeId:tradeResult.trade_id || null, symbol:tradeResult.symbol || symbol, direction:tradeResult.direction || opportunity.direction,
-        stake:Number(tradeResult.stake ?? numericAmount),
-        duration:tradeResult.duration_seconds ? Math.round(Number(tradeResult.duration_seconds)/60) : duration,
-        fundingSource:tradeResult.funding_source || null, takeProfitPrice:tradeResult.take_profit_price || tp, stopLossPrice:tradeResult.stop_loss_price || sl
-      }}));
-    } catch(error) { setNotice(error.message || "The FLEXAR AI trade could not be started."); }
+    } catch (error) { setNotice(error.message || "Withdrawal request failed."); }
     finally { setBusy(false); }
   }
 
-  return <div className="flexar-ai-page">
-    <section className="flexar-ai-hero">
-      <div>
-        <div className="flexar-kicker"><span className="flexar-live-dot" /> FLEXAR AI · MARKET INTELLIGENCE</div>
-        <h1>Intelligence before<br /><span>the market moves.</span></h1>
-        <p>FLEXAR AI continuously scans supported markets, identifies developing setups and brings validated opportunities to you before the entry window.</p>
-      </div>
-      <div className={aiEngineActive ? "flexar-engine-card active" : "flexar-engine-card"}>
-        <div className="flexar-engine-orbit">✦</div><div><small>FLEXAR AI ENGINE</small><strong>{aiEngineActive ? "SCANNING" : "STANDBY"}</strong><span>{aiEngineActive ? "Watching multiple markets" : "Ready to scan"}</span></div>
-      </div>
+  return <div className="wallet-page">
+    <section className="wallet-hero">
+      <div><small>PORTFOLIO VALUE</small><strong>\${portfolioValue.toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong><span>Live value of available balances · bonus principal excluded</span></div>
+      <div className="wallet-orbit">◎</div>
     </section>
+    <div className="wallet-actions">
+      <button onClick={openDeposit}>＋ Deposit</button>
+      <button className="secondary" onClick={()=>{setNotice("");setModal("withdraw");}}>↗ Withdraw</button>
+      <button className="secondary" onClick={()=>{setNotice("");setModal("swap");}}>⇄ Swap</button>
+    </div>
 
-    <section className="flexar-command-strip">
-      <div><span className={aiEngineActive ? "dot active" : "dot"} /> <b>{aiEngineActive ? "ENGINE ACTIVE" : "ENGINE STANDBY"}</b><span> · </span><span>Signals require your permission unless autonomous mode is enabled.</span></div>
-      <button type="button" onClick={startAiScan} disabled={aiScanning || aiEngineActive}>{aiScanning ? "Scanning…" : aiEngineActive ? "AI is watching" : "Start AI machine →"}</button>
-    </section>
+    {reward&&<section className="wallet-reward"><div><small>FLEXAR WELCOME CREDIT</small><strong>\${Number(reward.remaining_reward||0).toFixed(2)} <span>REMAINING</span></strong><p>Trading credit only. It is not included in your portfolio balance and cannot be reused after it is spent.</p></div><span className="credit-pill">{reward.status.toUpperCase()}</span></section>}
 
-    <section className="flexar-intelligence-layout">
-      <div>
-        <div className="flexar-section-label"><span>01</span> SIGNAL RADAR</div>
-        <div className={opportunity ? "flexar-signal-card ready" : "flexar-signal-card empty"}>
-          {!opportunity ? <div className="flexar-empty-radar"><div className="radar-visual">✦</div><div><small>{aiScanning ? "SCANNING ALL AVAILABLE DATA" : "NO ACTIVE OPPORTUNITY"}</small><h2>{aiScanning ? "FLEXAR is reading the market." : "Start the engine to activate the radar."}</h2><p>The AI compares multiple timeframes, market conditions and signal quality before surfacing a trade.</p></div></div> :
-          <>
-            <div className="signal-card-head">
-              <div className="signal-market-title"><span className="flexar-market-icon">{marketIcons[symbol] || "◈"}</span><div><small>{stage} · AI SIGNAL</small><h2>{symbol}</h2><span>{symbol.includes("USD") && !symbol.includes("USDT") ? "FOREX" : "CRYPTO"} · {duration} MIN</span></div></div>
-              <div className={direction === "UP" ? "flexar-direction up" : "flexar-direction down"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</div>
-            </div>
-            <div className="signal-confidence-row"><div><small>AI CONFIDENCE</small><strong>{score}%</strong></div><div className="confidence-track"><span style={{width:Math.min(100,score) + "%"}} /></div><div className="signal-window">{timeToEntry && timeToEntry > 0 ? <><small>ENTRY IN</small><strong>~{timeToEntry}m</strong></> : <><small>STATUS</small><strong>READY</strong></>}</div></div>
-            <div className="flexar-levels"><div><small>ENTRY</small><strong>{price ? price.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div><div><small>TAKE PROFIT</small><strong>{tp ? tp.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div><div><small>STOP LOSS</small><strong>{sl ? sl.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div></div>
-            <div className="signal-reason-row"><span>AI validation</span><b>Trend</b><b>Momentum</b><b>Structure</b><b>Regime</b></div>
-          </>}
-        </div>
-        <div className="flexar-stage-line"><span className="done">MARKET SCAN</span><i>→</i><span className={opportunity ? "done" : "current"}>SETUP FORMING</span><i>→</i><span className={opportunity ? "current" : ""}>VALIDATED</span><i>→</i><span>TRADE READY</span><i>→</i><span>MANAGED</span></div>
-      </div>
-
-      <aside>
-        <div className="flexar-section-label"><span>02</span> EXECUTION CONTROL</div>
-        <div className="flexar-control-card">
-          <div className="control-title"><div><small>EXECUTION ROUTE</small><h3>Where should FLEXAR execute?</h3></div><span>CONNECTED</span></div>
-          <div className="execution-tabs">
-            <button type="button" className={execution==="native" ? "selected" : ""} onClick={()=>setExecution("native")}><b>◈ FLEXAR</b><small>Native markets</small></button>
-            <button type="button" className={execution==="mt5" ? "selected" : ""} onClick={()=>setExecution("mt5")}><b>▦ MT5</b><small>Broker account</small></button>
-          </div>
-
-          <div className="control-title mode-title"><div><small>PERMISSION</small><h3>How much control do you want?</h3></div></div>
-          <div className="permission-tabs">
-            <button type="button" className={control==="signal" ? "selected" : ""} onClick={()=>setControl("signal")}><b>ALERT</b><small>You execute</small></button>
-            <button type="button" className={control==="approval" ? "selected" : ""} onClick={()=>setControl("approval")}><b>APPROVE</b><small>One tap</small></button>
-            <button type="button" className="locked" onClick={()=>setControl("auto")}><b>AUTO</b><small>Permission required</small><em>SOON</em></button>
-          </div>
-
-          {execution==="mt5" ? <div className="route-message"><span>◎</span><div><b>MT5 connection</b><p>Connect a broker account to route approved or autonomous FLEXAR AI trades to MT5. The interface will adapt to that broker's available symbols.</p><button type="button" onClick={()=>setNotice("MT5 connection is the next execution layer. The FLEXAR AI signal engine remains available now.")}>Learn about MT5 →</button></div></div> :
-          <div className="route-message native"><span>✓</span><div><b>FLEXAR Native</b><p>Your current FLEXAR wallet is the execution account. AI signals can be approved here without leaving the platform.</p></div></div>}
-
-          {control==="signal" ? <div className="copy-trade-box"><div><b>Signal only</b><span>Copy the complete setup to another platform.</span></div><button type="button" onClick={copyTrade} disabled={!opportunity}>Copy signal</button></div> :
-          <div className="approval-box">
-            <div className="approval-header"><div><small>TRADE APPROVAL</small><b>{execution==="native" ? "Approve on FLEXAR" : "Approve on MT5"}</b></div><span>{opportunity ? "READY" : "WAITING"}</span></div>
-            <div className="capital-summary"><div><small>AVAILABLE</small><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div><span>Wallet {walletBalance.toFixed(2)} · Bonus {bonusBalance.toFixed(2)}</span></div>
-            <div className="flexar-stake-row">{["10","25","50","100"].map(v=><button type="button" key={v} className={amount===v?"selected":""} onClick={()=>setAmount(v)} disabled={busy || execution!=="native"}>$ {v}</button>)}</div>
-            <div className="flexar-amount"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} disabled={busy || execution!=="native"} /><small>USDT</small></div>
-            <button className="flexar-approve" type="button" disabled={busy || execution!=="native" || !canTrade || !opportunity} onClick={confirmAiTrade}>{busy ? "Opening trade…" : execution==="native" ? "Approve AI trade →" : "MT5 not connected"}</button>
-            {!account.tradingAccess?.has_access && <p className="flexar-control-note">Trading access is inactive. Activate a FLEXAR plan to execute signals.</p>}
-            {execution==="mt5" && <p className="flexar-control-note">MT5 execution will activate when the broker bridge is connected.</p>}
-          </div>}
-          {notice && <div className="flexar-notice" role="status">{notice}</div>}
-        </div>
-      </aside>
-    </section>
-
-    <section className="flexar-market-intelligence">
-      <div className="flexar-section-label"><span>03</span> MARKET INTELLIGENCE</div>
-      <div className="market-intel-head"><div><h2>FLEXAR AI watches beyond one chart.</h2><p>Trend, momentum, structure, volatility and multi-timeframe context feed the signal engine.</p></div><span>LIVE RADAR</span></div>
-      <div className="intel-grid"><div><b>◌ Multi-timeframe</b><small>1m · 5m · 15m · 1h</small></div><div><b>↗ Trend & momentum</b><small>Direction · acceleration</small></div><div><b>⌁ Market structure</b><small>Breaks · zones · regime</small></div><div><b>◉ Volatility & flow</b><small>Expansion · activity</small></div></div>
-      <div className="flexar-market-groups">
-        <div><small>CRYPTO</small><div>{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT"].map(item=><span key={item}><i>{marketIcons[item]}</i>{item}</span>)}</div></div>
-        <div><small>FOREX</small><div>{["EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item=><span key={item}><i>{marketIcons[item]}</i>{item}</span>)}</div></div>
-        <div><small>MT5 / BROKER SYMBOLS</small><div><span><i>◎</i>Dynamic</span><span><i>+</i>Broker markets</span></div></div>
+    <section className="asset-section">
+      <div className="section-heading"><div><small>PORTFOLIO</small><h2>Your assets</h2></div><button className="asset-swap-link" onClick={()=>setModal("swap")}>Swap assets ↗</button></div>
+      <div className="asset-list">
+        {balances.map(wallet=><div className="asset-row" key={wallet.asset}>
+          <div className={"asset-icon asset-"+wallet.asset.toLowerCase()}>{wallet.icon}</div>
+          <div><strong>{wallet.label}</strong><small>{wallet.symbol} · {wallet.asset==="TON"?"TON network":wallet.network}</small></div>
+          <div className="asset-balance"><b>{Number(wallet.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {wallet.symbol}</b><small>\${(Number(wallet.wallet?.available_balance||0)*wallet.price).toLocaleString(undefined,{maximumFractionDigits:2})}</small></div>
+        </div>)}
       </div>
     </section>
 
-    <section className="flexar-ai-policy"><div><span>✦</span><div><b>Your capital. Your permission.</b><p>FLEXAR AI can surface the opportunity, prepare the order and eventually manage execution according to permissions you explicitly configure. Autonomous execution is not enabled by default.</p></div></div><button type="button" onClick={()=>setNotice("Planned risk controls: stake limits, daily loss limits, market permissions and execution permissions.")}>Risk controls →</button></section>
-  </div>;
-}
-function Chart() {
-  // Lightweight SVG chart so the landing/trading UI never depends on a missing chart library.
-  // Replace the data points with live market candles when the market-data service is connected.
-  const points = "0,122 34,116 68,126 102,92 136,100 170,78 204,88 238,61 272,72 306,48 340,56 374,31 408,42 442,20";
-  return <div className="chart-wrap" aria-label="Market price chart">
-    <svg viewBox="0 0 442 150" preserveAspectRatio="none" role="img">
-      <defs>
-        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(124,255,156,.24)" />
-          <stop offset="100%" stopColor="rgba(124,255,156,0)" />
-        </linearGradient>
-      </defs>
-      <path d={`M 0 122 L 34 116 L 68 126 L 102 92 L 136 100 L 170 78 L 204 88 L 238 61 L 272 72 L 306 48 L 340 56 L 374 31 L 408 42 L 442 20 L 442 150 L 0 150 Z`} fill="url(#chartFill)" />
-      <polyline points={points} fill="none" stroke="#7cff9c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <line x1="0" y1="128" x2="442" y2="128" stroke="rgba(124,255,156,.08)" />
-      <line x1="0" y1="82" x2="442" y2="82" stroke="rgba(124,255,156,.08)" />
-      <line x1="0" y1="36" x2="442" y2="36" stroke="rgba(124,255,156,.08)" />
-    </svg>
+    <section className="asset-section">
+      <div className="section-heading"><div><small>FUNDING ROUTES</small><h2>Deposit availability</h2></div></div>
+      <div className="funding-routes"><div><b>USDT</b><span>TRC-20 deposit</span></div><div><b>GRAM</b><span>TON network deposit</span></div><p>BTC, SOL and BNB are portfolio assets created through swaps. Direct deposits for those assets are not enabled.</p></div>
+    </section>
+
+    <section className="asset-section"><div className="section-heading"><div><small>RECENT</small><h2>Wallet activity</h2></div></div><ActivityRows account={{...account,trades:[]}} /></section>
+    {notice&&<div className="notice" role="status">{notice}</div>}
+
+    {modal==="swap"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="swap-modal" onClick={e=>e.stopPropagation()}>
+      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button>
+      <div className="eyebrow">PORTFOLIO SWAP</div><h2>Move value between assets.</h2><p>Swap is internal to FLEXAR. The quote uses current market reference prices and the conversion is applied atomically to your portfolio.</p>
+      <form onSubmit={submitSwap}>
+        <div className="swap-box"><small>You pay</small><div><input inputMode="decimal" value={swapAmount} onChange={e=>setSwapAmount(e.target.value)} placeholder="0.00"/><select value={swapFrom} onChange={e=>setSwapFrom(e.target.value)}>{balances.map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></div><span>Available {Number(fromAsset.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {fromAsset.symbol}</span></div>
+        <button type="button" className="swap-flip" onClick={()=>{setSwapFrom(swapTo);setSwapTo(swapFrom);}}>↓</button>
+        <div className="swap-box"><small>You receive</small><div><strong>{receiveQuote.toLocaleString(undefined,{maximumFractionDigits:8})}</strong><select value={swapTo} onChange={e=>setSwapTo(e.target.value)}>{balances.map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></div><span>1 {fromAsset.symbol} ≈ {(fromAsset.price/toAsset.price||0).toLocaleString(undefined,{maximumFractionDigits:8})} {toAsset.symbol}</span></div>
+        <button className="swap-submit" disabled={swapBusy}>{swapBusy?"Swapping…":"Swap now ↗"}</button>
+      </form>
+    </div></div>}
+
+    {modal==="deposit"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
+      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button>
+      <div className="eyebrow">DEPOSIT</div><h2>Fund your wallet.</h2><p>Send funds only on the network shown below. Deposits are credited after the transaction is verified.</p>
+      <div className="wallet-network-list">{Object.entries(walletInfo?.deposit_addresses||{}).map(([asset,info])=><div className="wallet-address-card" key={asset}><strong>{asset==="TON"?"GRAM":asset}</strong><small>{info?.network||"Network"}</small><code>{info?.address||"Deposit address is being configured."}</code>{info?.address&&<button type="button" onClick={()=>navigator.clipboard?.writeText(info.address)}>Copy address</button>}</div>)}{!walletInfo&&<div className="empty-state"><strong>Loading deposit details…</strong></div>}</div>
+    </div></div>}
+
+    {modal==="withdraw"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
+      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button><div className="eyebrow">WITHDRAW</div><h2>Move funds out.</h2>
+      <form onSubmit={submitWithdrawal}><label>Asset<select value={selectedAsset} onChange={e=>setSelectedAsset(e.target.value)}>{balances.filter(a=>Number(a.wallet?.available_balance||0)>0).map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></label><label>Amount<input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00"/></label><label>Destination address<textarea value={address} onChange={e=>setAddress(e.target.value)} /></label><button className="primary" disabled={busy}>{busy?"Submitting…":"Submit withdrawal"}</button></form>
+    </div></div>}
   </div>;
 }
 
 
-function Activity({ account }) {
-  const trades=account.trades||[];
-  const activeTrades=trades.filter(t=>t.status==="active");
-  const wins=trades.filter(t=>t.status==="won").length;
-  const losses=trades.filter(t=>t.status==="lost").length;
-  const profit=trades.reduce((sum,t)=>sum+Number(t.result_amount||0)-Number(t.stake||0),0);
-  return <div className="activity-page"><section className="intro"><small>ACTIVITY CENTER</small><h1>Everything that happened.</h1><p>Your trade outcomes and wallet events are kept together so you can follow every change to your account.</p></section>
-    {activeTrades.length>0&&<section className="active-trades-card"><div className="section-heading"><div><small>LIVE NOW</small><h2>Active trade</h2></div><span className="live-badge">● ACTIVE</span></div>{activeTrades.map(t=><div className="active-trade-row" key={t.id}>
-  <div>
-    <strong>{t.metadata?.market_symbol || t.asset}</strong>
-    <span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ UP":"↘ DOWN"}</span>
-    <small>Opened {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} · {Math.round(Number(t.duration_seconds||0)/60)} min · settles {new Date(t.closes_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</small>
-    {t.metadata?.trade_mode==="ai" && <div className="active-risk-row">
-      <span>TP {t.metadata?.take_profit_price ? Number(t.metadata.take_profit_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</span>
-      <span>SL {t.metadata?.stop_loss_price ? Number(t.metadata.stop_loss_price).toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</span>
-    </div>}
-  </div>
-  <strong>{Number(t.stake||0).toFixed(2)} USDT</strong>
-</div>)}</section>}
-    <section className="activity-stats"><div><small>TRADES</small><strong>{trades.length}</strong></div><div><small>WINS</small><strong>{wins}</strong></div><div><small>LOSSES</small><strong>{losses}</strong></div><div><small>NET</small><strong className={profit>=0?"green":"red"}>{profit>=0?"+":""}{profit.toFixed(2)}</strong></div></section><section className="activity-section"><div className="section-heading"><div><small>TRADE HISTORY</small><h2>Recent trades</h2></div></div>{trades.length?<div className="timeline">{trades.map(t=><div className="timeline-row" key={t.id}><div className="timeline-dot" /><div className="timeline-main"><div><strong>{t.metadata?.market_symbol || t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction.toUpperCase()}</span></div><small>{new Date(t.opened_at).toLocaleString()} · {Math.round(Number(t.duration_seconds||0)/60)} min</small></div><div className="timeline-value"><strong className={t.status==="won"?"green":t.status==="lost"?"red":""}>{t.status==="won"?"+":""}{Number(t.result_amount??t.potential_payout??t.stake).toFixed(2)}</strong><small>{t.status.toUpperCase()}</small></div></div>)}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your trades will appear here.</p></div>}</section><section className="activity-section"><div className="section-heading"><div><small>WALLET LEDGER</small><h2>Recent transactions</h2></div></div><ActivityRows account={{...account,trades:[]}} /></section></div>;
-
-}
