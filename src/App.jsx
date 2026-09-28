@@ -547,63 +547,118 @@ function Home({ account, loading, setPage, claimReward, rewardBusy, startAiScan,
   const usdtBalance = Number(account.wallets.find((item) => item.asset === "USDT")?.available_balance || 0);
   const reward = account.rewards?.find((r) => ["available", "active"].includes(r.status));
   const rewardRemaining = Number(reward?.remaining_reward || 0);
+  const rewardOriginal = Number(reward?.reward_amount || 50);
+  const rewardUsed = Math.max(0, rewardOriginal - rewardRemaining);
   const rewardProfit = Number(reward?.profit_withdrawable || 0);
+  const activeTrade = active[0];
+  const activeMarket = activeTrade?.metadata?.market_symbol || activeTrade?.asset || "—";
+  const activeDirection = String(activeTrade?.direction || "").toUpperCase();
+  const activeCloses = activeTrade?.closes_at ? new Date(activeTrade.closes_at) : null;
+  const activeMinutes = activeCloses ? Math.max(0, Math.ceil((activeCloses.getTime() - Date.now()) / 60000)) : 0;
+  const bonusUsedPct = rewardOriginal ? Math.min(100, (rewardUsed / rewardOriginal) * 100) : 0;
 
-  return <>
-    <section className="balance-hero home-balance">
-      <div>
-        <small>AVAILABLE BALANCE</small>
-        <strong>{usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong>
-        <span className="balance-caption">
-          {reward?.status === "active"
-            ? `Your deposited wallet funds. Welcome bonus is shown separately below.`
-            : "Your deposited wallet balance"}
-        </span>
+  return <div className="flexar-home">
+    <section className="flexar-home-hero">
+      <div className="flexar-home-identity">
+        <small>FLEXAR AI · INTELLIGENCE TERMINAL</small>
+        <h1>Your capital.<br /><span>AI in control.</span></h1>
+        <p>One place to monitor your wallet, discover high-conviction opportunities and decide how FLEXAR AI should execute them.</p>
       </div>
-      <div className="balance-actions">
-        <button type="button" onClick={() => setPage("wallet")}>Wallet</button>
+      <div className="flexar-balance-orbit">
+        <small>AVAILABLE BALANCE</small>
+        <strong>{usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})}</strong>
+        <span>USDT</span>
+        <i>{active.length ? active.length + " active trade" + (active.length > 1 ? "s" : "") : "No active trades"}</i>
       </div>
     </section>
 
-    {reward && <section className="home-reward-card">
-      <div>
-        <small>{reward.status === "active" ? "WELCOME CREDIT ACTIVE" : "YOUR $50 WELCOME CREDIT"}</small>
-        <strong>${Number(reward.reward_amount || 50).toFixed(0)}</strong>
-        <span>{reward.status === "active" ? `${rewardRemaining.toFixed(2)} credit remaining · profit can become eligible for withdrawal` : "Claim it here before you start trading."}</span>
+    <section className="flexar-home-actions">
+      <button className="primary" type="button" onClick={() => setPage("trade")}><span>↗</span><b>AI Trade</b><small>Find a setup</small></button>
+      <button type="button" onClick={() => setPage("wallet")}><span>＋</span><b>Deposit</b><small>Fund wallet</small></button>
+      <button type="button" onClick={() => setPage("wallet")}><span>↗</span><b>Withdraw</b><small>Move funds</small></button>
+      <button type="button" onClick={() => setPage("activity")}><span>◷</span><b>History</b><small>Track results</small></button>
+    </section>
+
+    {reward && <section className="flexar-bonus-panel">
+      <div className="bonus-main">
+        <div className="bonus-badge">BONUS</div>
+        <div>
+          <small>{reward.status === "active" ? "WELCOME CREDIT · ACTIVE" : "WELCOME CREDIT · READY"}</small>
+          <h2>&#36;{rewardRemaining.toFixed(2)} <em>remaining</em></h2>
+          <p>{reward.status === "active"
+            ? "You have used $" + rewardUsed.toFixed(2) + " of your $" + rewardOriginal.toFixed(2) + " trading credit."
+            : "Claim your $" + rewardOriginal.toFixed(2) + " trading credit before it expires."}</p>
+        </div>
+      </div>
+      <div className="bonus-progress">
+        <div className="bonus-progress-head"><span>Credit used</span><b>{bonusUsedPct.toFixed(0)}%</b></div>
+        <div className="bonus-track"><span style={{width: bonusUsedPct + "%"}} /></div>
+        <div className="bonus-values"><span>&#36;{rewardUsed.toFixed(2)} used</span><span>&#36;{rewardOriginal.toFixed(2)} issued</span></div>
+      </div>
+      <div className="bonus-profit">
+        <small>PROFIT MOVED TO WALLET</small>
+        <strong>&#36;{rewardProfit.toFixed(2)}</strong>
+        <span>{reward.status === "active" ? "Bonus principal cannot be reused once spent." : "Claim to activate."}</span>
       </div>
       {reward.status === "active"
-        ? <button type="button" className="reward-active-button" onClick={() => setPage("trade")}>Trade with credit →</button>
-        : <button type="button" onClick={claimReward} disabled={rewardBusy}>{rewardBusy ? "Claiming…" : "Claim $50 →"}</button>}
+        ? <button className="bonus-action" type="button" onClick={() => setPage("trade")}>Use remaining →</button>
+        : <button className="bonus-action" type="button" onClick={claimReward} disabled={rewardBusy}>{rewardBusy ? "Claiming…" : "Claim bonus →"}</button>}
     </section>}
 
-    <section className="ai-start-card">
-      <div className="ai-start-copy">
-        <small>FLEXA AI ENGINE</small>
-        <h1>{aiEngineActive ? <>AI is <span>working.</span></> : <>Let AI find<br /><span>the opportunity.</span></>}</h1>
-        <p>{aiEngineActive
-          ? "FLEXAR AI is already active. You cannot start another scan while the current opportunity window is active."
-          : "Start the AI trading center and FLEXAR will find the strongest qualifying market setup for you."}</p>
+    <section className="flexar-home-grid">
+      <div className="flexar-ai-pulse">
+        <div className="home-section-head">
+          <div><small>FLEXAR AI ENGINE</small><h2>{aiEngineActive ? "Machine is watching." : "Let the machine find the trade."}</h2></div>
+          <span className={aiEngineActive ? "live" : ""}><i /> {aiEngineActive ? "LIVE" : "READY"}</span>
+        </div>
+        <div className="ai-pulse-body">
+          <div className="pulse-ring"><span>AI</span></div>
+          <div className="pulse-copy">
+            <strong>{aiScanning ? "Scanning markets…" : aiEngineActive ? "Monitoring the active opportunity window" : opportunities.length ? "A signal is waiting for your approval" : "Start the engine when you want a fresh signal"}</strong>
+            <p>{aiEngineActive ? "FLEXAR evaluates crypto, forex and supported market feeds before presenting a trade. Nothing is executed without your configured permission." : "The engine looks for selective setups instead of flooding you with trade ideas."}</p>
+            <button type="button" onClick={() => setPage("trade")}>Open AI Trade →</button>
+          </div>
+        </div>
+        <div className="ai-pulse-metrics"><span><b>24/7</b> market watch</span><span><b>1</b> strongest signal</span><span><b>AI</b> risk controls</span></div>
       </div>
-      <button type="button" className={aiEngineActive ? "start-ai-button active" : "start-ai-button"} onClick={startAiScan} disabled={aiScanning || aiEngineActive}>
-        <span>{aiScanning ? "Scanning…" : aiEngineActive ? "ENGINE ACTIVE" : "Start AI"}</span>
-        <b>{aiScanning ? "◌" : aiEngineActive ? "●" : "→"}</b>
-      </button>
-      <div className="engine-status"><i /> {aiScanning ? "Analyzing market conditions…" : aiEngineActive ? "Engine active · monitoring opportunity" : "Engine ready"}</div>
+
+      <aside className="flexar-home-side">
+        <div className="home-side-card">
+          <small>PORTFOLIO SIGNAL</small>
+          <strong>{bestPair ? bestPair[0] : "—"}</strong>
+          <span>{bestPair ? (bestPair[1] >= 0 ? "+" : "") + bestPair[1].toFixed(2) + " USDT realized" : "Complete a trade to build your performance view."}</span>
+        </div>
+        <div className="home-side-card">
+          <small>ACTIVE TRADES</small>
+          <strong>{loading ? "…" : active.length}</strong>
+          <span>{activeTrade ? activeMarket + " · " + activeDirection + " · " + activeMinutes + "m remaining" : unread ? unread + " unread alert" + (unread === 1 ? "" : "s") : "Your account is clear."}</span>
+        </div>
+      </aside>
     </section>
 
-    <section className="home-insights">
-      <article className="home-insight-card"><small>BEST PERFORMING PAIR</small><strong>{bestPair ? bestPair[0] : "—"}</strong><span>{bestPair ? `${bestPair[1] >= 0 ? "+" : ""}${bestPair[1].toFixed(2)} USDT realized` : "Complete a trade to see performance"}</span></article>
-      <article className="home-insight-card"><small>ACTIVE TRADES</small><strong>{loading ? "…" : active.length}</strong><span>{unread ? `${unread} unread alert${unread === 1 ? "" : "s"}` : "No unread alerts"}</span></article>
+    {activeTrade && <section className="flexar-active-strip">
+      <div className="active-symbol"><span>{activeMarket.slice(0,1)}</span><div><small>ACTIVE POSITION</small><strong>{activeMarket}</strong></div></div>
+      <div><small>DIRECTION</small><b className={activeDirection === "UP" ? "up" : "down"}>{activeDirection}</b></div>
+      <div><small>STAKE</small><b>&#36;{Number(activeTrade.stake || 0).toFixed(2)}</b></div>
+      <div><small>STATUS</small><b>MONITORING</b></div>
+      <button type="button" onClick={() => setPage("activity")}>View trade →</button>
+    </section>}
+
+    <section className="flexar-opportunity-panel">
+      <div className="home-section-head">
+        <div><small>AI OPPORTUNITY FEED</small><h2>{opportunities.length ? "A signal is ready." : "Waiting for the next setup."}</h2></div>
+        <button type="button" onClick={() => setPage("trade")}>AI Trade →</button>
+      </div>
+      {opportunities.length
+        ? <div className="opportunity-list">{opportunities.slice(0,1).map(item => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div>
+        : <div className="flexar-opportunity-empty"><div>◎</div><p>{loading ? "Loading the latest market intelligence…" : "No qualifying opportunity is currently available. FLEXAR will surface one when the engine finds the right conditions."}</p></div>}
     </section>
 
-    <section className="home-opportunities">
-      <div className="section-heading"><div><small>AI OPPORTUNITIES</small><h2>{opportunities.length ? "AI-selected trades" : "Waiting for AI"}</h2></div><button type="button" onClick={() => setPage("trade")}>Trading center →</button></div>
-      {opportunities.length ? <div className="opportunity-list">{opportunities.slice(0,2).map((item) => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div> : <div className="empty-state opportunity-empty"><strong>{loading ? "Preparing the AI feed" : "No AI trade is ready yet"}</strong><p>{loading ? "FLEXAR is loading the latest market state." : "Start the AI engine when you are ready. You will be shown the direction and stake before anything is confirmed."}</p></div>}
+    <section className="flexar-home-footer-grid">
+      <div><small>ACCOUNT ACTIVITY</small><h2>Recent movement</h2><ActivityRows account={account} /></div>
+      <div className="flexar-home-note"><small>HOW FLEXAR WORKS</small><h2>Signal first.<br />Execution second.</h2><p>FLEXAR AI studies the market, surfaces the setup early, then lets you choose the execution route: native FLEXAR trading, connected MT5, or a signal you copy elsewhere.</p><button type="button" onClick={() => setPage("trade")}>Explore AI Trade →</button></div>
     </section>
-
-    <section className="home-activity-head"><div><small>ACCOUNT ACTIVITY</small><h2>Recent activity</h2></div><button type="button" onClick={() => setPage("activity")}>View all →</button></section>
-    <ActivityRows account={account} />
-  </>;
+  </div>;
 }
 
 function RewardBanner({ reward, onClaim, busy }) {
