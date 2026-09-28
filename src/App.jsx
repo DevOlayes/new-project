@@ -738,13 +738,15 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
   const [amount,setAmount] = useState("25");
   const [notice,setNotice] = useState("");
   const [busy,setBusy] = useState(false);
+  const [execution,setExecution] = useState("native");
+  const [control,setControl] = useState("approval");
 
   const opportunity = account.opportunities?.find((item) => {
     if (!["scheduled","open"].includes(item.status)) return false;
-    const end = new Date(item.entry_window_end || 0).getTime();
-    const start = new Date(item.entry_window_start || 0).getTime();
+    const endAt = new Date(item.entry_window_end || 0).getTime();
+    const startAt = new Date(item.entry_window_start || 0).getTime();
     const now = Date.now();
-    return Number.isFinite(end) && end > now && Number.isFinite(start) && start <= now;
+    return Number.isFinite(endAt) && endAt > now && Number.isFinite(startAt) && startAt <= now;
   }) || null;
 
   const direction = opportunity?.direction === "down" ? "DOWN" : "UP";
@@ -752,6 +754,10 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
   const score = Math.round(Number(opportunity?.signal_score || 0) * 100);
   const symbol = opportunity?.symbol || "—";
   const price = Number(opportunity?.entry_price || 0);
+  const metadata = opportunity?.metadata || {};
+  const timeToEntry = opportunity?.entry_window_start
+    ? Math.max(0, Math.round((new Date(opportunity.entry_window_start).getTime() - Date.now()) / 60000))
+    : null;
 
   const usdt = account.wallets.find((item) => item.asset === "USDT");
   const reward = account.rewards?.find((item) => item.status === "active");
@@ -761,114 +767,125 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
   const tradingFunds = walletBalance + bonusBalance;
   const canTrade = Boolean(account.tradingAccess?.has_access) && tradingFunds >= numericAmount;
 
-  const marketIcons = {
-    BTCUSDT:"₿", ETHUSDT:"Ξ", SOLUSDT:"S", BNBUSDT:"◆", XRPUSDT:"X",
-    DOGEUSDT:"Ð", EURUSD:"€", GBPUSD:"£", USDJPY:"¥", AUDUSD:"A$"
-  };
+  const marketIcons = { BTCUSDT:"₿", ETHUSDT:"Ξ", SOLUSDT:"S", BNBUSDT:"◆", XRPUSDT:"X", DOGEUSDT:"Ð", EURUSD:"€", GBPUSD:"£", USDJPY:"¥", AUDUSD:"A$" };
+  const stage = !opportunity ? "SCANNING" : timeToEntry && timeToEntry > 0 ? "EARLY SETUP" : "TRADE READY";
+  const tp = Number(metadata.take_profit_price || (price ? price * (direction === "UP" ? 1.008 : .992) : 0));
+  const sl = Number(metadata.stop_loss_price || (price ? price * (direction === "UP" ? .996 : 1.004) : 0));
 
   function updateAmount(value) {
     if (value === "" || /^\d*(\.\d{0,2})?$/.test(value)) setAmount(value);
   }
 
+  async function copyTrade() {
+    if (!opportunity) return;
+    const text = ["FLEXAR AI SIGNAL",symbol,direction,"Entry: " + price,"TP: " + tp,"SL: " + sl,"Duration: " + duration + " min"].join("\n");
+    try { await navigator.clipboard.writeText(text); setNotice("Signal copied. You can paste it into another trading platform."); }
+    catch { setNotice("Signal is ready to copy manually."); }
+  }
+
   async function confirmAiTrade() {
-    if (!supabase || busy || !canTrade || numericAmount <= 0 || !opportunity) return;
-    setBusy(true);
-    setNotice("");
+    if (!supabase || busy || execution !== "native" || !canTrade || numericAmount <= 0 || !opportunity) return;
+    setBusy(true); setNotice("");
     try {
-      const { data, error } = await supabase.functions.invoke("execute-trade", {
-        body: { mode:"ai", opportunity_id:opportunity.id, stake:numericAmount }
-      });
+      const { data, error } = await supabase.functions.invoke("execute-trade", { body:{ mode:"ai", opportunity_id:opportunity.id, stake:numericAmount } });
       if (error) {
-        let message = error.message || "The AI trade could not be started.";
+        let message = error.message || "The FLEXAR AI trade could not be started.";
         try { const payload = await error.context?.json?.(); message = payload?.error || payload?.message || message; } catch {}
         throw new Error(message);
       }
       if (data?.error) throw new Error(data.error);
       const tradeResult = data?.trade || data || {};
       window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{
-        tradeId:tradeResult.trade_id || null,
-        symbol:tradeResult.symbol || symbol,
-        direction:tradeResult.direction || opportunity.direction,
+        tradeId:tradeResult.trade_id || null, symbol:tradeResult.symbol || symbol, direction:tradeResult.direction || opportunity.direction,
         stake:Number(tradeResult.stake ?? numericAmount),
         duration:tradeResult.duration_seconds ? Math.round(Number(tradeResult.duration_seconds)/60) : duration,
-        fundingSource:tradeResult.funding_source || null,
-        takeProfitPrice:tradeResult.take_profit_price || null,
-        stopLossPrice:tradeResult.stop_loss_price || null
+        fundingSource:tradeResult.funding_source || null, takeProfitPrice:tradeResult.take_profit_price || tp, stopLossPrice:tradeResult.stop_loss_price || sl
       }}));
-    } catch(error) {
-      setNotice(error.message || "The AI trade could not be started.");
-    } finally {
-      setBusy(false);
-    }
+    } catch(error) { setNotice(error.message || "The FLEXAR AI trade could not be started."); }
+    finally { setBusy(false); }
   }
 
-  return <div className="ai-trade-page">
-    <section className="ai-page-hero">
+  return <div className="flexar-ai-page">
+    <section className="flexar-ai-hero">
       <div>
-        <div className="engine-kicker"><span className="engine-pulse" /> FLEXA AI TRADING</div>
-        <h1>Let the machine<br /><span>find the trade.</span></h1>
-        <p>Start the AI engine. When a qualifying setup appears, Flexa presents it here for your approval. You stay in control of the capital.</p>
+        <div className="flexar-kicker"><span className="flexar-live-dot" /> FLEXAR AI · MARKET INTELLIGENCE</div>
+        <h1>Intelligence before<br /><span>the market moves.</span></h1>
+        <p>FLEXAR AI continuously scans supported markets, identifies developing setups and brings validated opportunities to you before the entry window.</p>
       </div>
-      <div className={aiEngineActive ? "ai-engine-state active" : "ai-engine-state"}>
-        <span className="engine-status-dot" />
-        <div><small>ENGINE</small><strong>{aiEngineActive ? "SCANNING" : "STANDBY"}</strong></div>
+      <div className={aiEngineActive ? "flexar-engine-card active" : "flexar-engine-card"}>
+        <div className="flexar-engine-orbit">✦</div><div><small>FLEXAR AI ENGINE</small><strong>{aiEngineActive ? "SCANNING" : "STANDBY"}</strong><span>{aiEngineActive ? "Watching multiple markets" : "Ready to scan"}</span></div>
       </div>
     </section>
 
-    <div className="ai-trade-menu">
-      <button type="button" className="active">AI Trade</button>
-      <button type="button" onClick={()=>window.scrollTo({top:650,behavior:"smooth"})}>Signal</button>
-      <button type="button" onClick={()=>window.scrollTo({top:1200,behavior:"smooth"})}>Order</button>
-      <button type="button" onClick={()=>window.scrollTo({top:1750,behavior:"smooth"})}>Markets</button>
-    </div>
-
-    {!opportunity ? <section className="ai-start-panel">
-      <div className="ai-start-icon">✦</div>
-      <div className="ai-start-copy">
-        <small>AI MARKET SCAN</small>
-        <h2>{aiScanning ? "Scanning the markets…" : aiEngineActive ? "The engine is watching." : "Start your AI trading machine."}</h2>
-        <p>{aiScanning ? "Flexa is comparing live market conditions across supported instruments." : aiEngineActive ? "Flexa will surface one qualifying setup when the signal rules are met." : "One tap starts the scan. No trade is opened automatically."}</p>
-      </div>
-      <button type="button" className="ai-start-button" onClick={startAiScan} disabled={aiScanning || aiEngineActive}>
-        {aiScanning ? "Scanning…" : aiEngineActive ? "AI is watching" : "Start AI machine →"}
-      </button>
-    </section> : <section className="ai-signal-panel">
-      <div className="signal-panel-top">
-        <div><small>AI SIGNAL · READY FOR REVIEW</small><strong>{symbol}</strong><span>{direction === "UP" ? "↗ LONG" : "↘ SHORT"} · {duration} MIN</span></div>
-        <div className="signal-score-large"><strong>{score}%</strong><small>CONFIDENCE</small></div>
-      </div>
-      <div className="signal-market-row">
-        <div className="market-identity"><span className="market-icon">{marketIcons[symbol] || "◈"}</span><div><strong>{symbol}</strong><small>{symbol.includes("USD") && !symbol.includes("USDT") ? "FOREX" : "CRYPTO"}</small></div></div>
-        <div className={direction === "UP" ? "signal-direction up" : "signal-direction down"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</div>
-      </div>
-      <div className="signal-level-grid">
-        <div><small>ENTRY</small><strong>{price.toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
-        <div><small>TAKE PROFIT</small><strong>{(price*(direction==="UP"?1.008:.992)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
-        <div><small>STOP LOSS</small><strong>{(price*(direction==="UP" ? .996 : 1.004)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
-        <div><small>WINDOW</small><strong>{duration} MIN</strong></div>
-      </div>
-      <div className="ai-approval-note"><span>✓</span><p><strong>AI selected this setup.</strong> Review the signal, choose your stake, then approve the trade.</p></div>
-    </section>}
-
-    <section className="ai-order-panel">
-      <div className="panel-heading"><div><small>CAPITAL</small><h2>Approve the trade</h2><p>Only the stake is yours to decide.</p></div><span className="capital-badge">USDT</span></div>
-      <div className="capital-summary"><div><small>AVAILABLE</small><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div><span>Wallet {walletBalance.toFixed(2)} · Bonus {bonusBalance.toFixed(2)}</span></div>
-      <div className="stake-presets">{["10","25","50","100"].map(v=><button type="button" key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)} disabled={busy}>$ {v}</button>)}</div>
-      <div className="amount-input-wrap"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} placeholder="0.00" aria-label="AI trade stake" disabled={busy}/><small>USDT</small></div>
-      <button className="ai-approve-button" disabled={busy || !canTrade || !opportunity || numericAmount<=0} onClick={confirmAiTrade}>
-        {busy ? "Opening AI trade…" : "Approve AI trade →"}
-      </button>
-      {notice && <div className="notice" role="status">{notice}</div>}
-      {!account.tradingAccess?.has_access && <div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a Flexa Pro plan to continue trading.</span></div>}
-      {account.tradingAccess?.has_access && !canTrade && numericAmount>0 && <p className="helper">Your stake is higher than your available trading funds.</p>}
+    <section className="flexar-command-strip">
+      <div><span className={aiEngineActive ? "dot active" : "dot"} /> <b>{aiEngineActive ? "ENGINE ACTIVE" : "ENGINE STANDBY"}</b><span> · </span><span>Signals require your permission unless autonomous mode is enabled.</span></div>
+      <button type="button" onClick={startAiScan} disabled={aiScanning || aiEngineActive}>{aiScanning ? "Scanning…" : aiEngineActive ? "AI is watching" : "Start AI machine →"}</button>
     </section>
 
-    <section className="ai-markets-panel">
-      <div className="panel-heading"><div><small>SUPPORTED MARKETS</small><h2>Know what the AI is watching.</h2><p>Flexa uses clear symbols so each market is easy to recognize.</p></div></div>
-      <div className="market-grid">{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item => <div className="market-chip" key={item}><span className="market-icon">{marketIcons[item]}</span><div><strong>{item}</strong><small>{item.includes("USD") && !item.includes("USDT") ? "Forex" : "Crypto"}</small></div></div>)}</div>
+    <section className="flexar-intelligence-layout">
+      <div>
+        <div className="flexar-section-label"><span>01</span> SIGNAL RADAR</div>
+        <div className={opportunity ? "flexar-signal-card ready" : "flexar-signal-card empty"}>
+          {!opportunity ? <div className="flexar-empty-radar"><div className="radar-visual">✦</div><div><small>{aiScanning ? "SCANNING ALL AVAILABLE DATA" : "NO ACTIVE OPPORTUNITY"}</small><h2>{aiScanning ? "FLEXAR is reading the market." : "Start the engine to activate the radar."}</h2><p>The AI compares multiple timeframes, market conditions and signal quality before surfacing a trade.</p></div></div> :
+          <>
+            <div className="signal-card-head">
+              <div className="signal-market-title"><span className="flexar-market-icon">{marketIcons[symbol] || "◈"}</span><div><small>{stage} · AI SIGNAL</small><h2>{symbol}</h2><span>{symbol.includes("USD") && !symbol.includes("USDT") ? "FOREX" : "CRYPTO"} · {duration} MIN</span></div></div>
+              <div className={direction === "UP" ? "flexar-direction up" : "flexar-direction down"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</div>
+            </div>
+            <div className="signal-confidence-row"><div><small>AI CONFIDENCE</small><strong>{score}%</strong></div><div className="confidence-track"><span style={{width:Math.min(100,score) + "%"}} /></div><div className="signal-window">{timeToEntry && timeToEntry > 0 ? <><small>ENTRY IN</small><strong>~{timeToEntry}m</strong></> : <><small>STATUS</small><strong>READY</strong></>}</div></div>
+            <div className="flexar-levels"><div><small>ENTRY</small><strong>{price ? price.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div><div><small>TAKE PROFIT</small><strong>{tp ? tp.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div><div><small>STOP LOSS</small><strong>{sl ? sl.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</strong></div></div>
+            <div className="signal-reason-row"><span>AI validation</span><b>Trend</b><b>Momentum</b><b>Structure</b><b>Regime</b></div>
+          </>}
+        </div>
+        <div className="flexar-stage-line"><span className="done">MARKET SCAN</span><i>→</i><span className={opportunity ? "done" : "current"}>SETUP FORMING</span><i>→</i><span className={opportunity ? "current" : ""}>VALIDATED</span><i>→</i><span>TRADE READY</span><i>→</i><span>MANAGED</span></div>
+      </div>
+
+      <aside>
+        <div className="flexar-section-label"><span>02</span> EXECUTION CONTROL</div>
+        <div className="flexar-control-card">
+          <div className="control-title"><div><small>EXECUTION ROUTE</small><h3>Where should FLEXAR execute?</h3></div><span>CONNECTED</span></div>
+          <div className="execution-tabs">
+            <button type="button" className={execution==="native" ? "selected" : ""} onClick={()=>setExecution("native")}><b>◈ FLEXAR</b><small>Native markets</small></button>
+            <button type="button" className={execution==="mt5" ? "selected" : ""} onClick={()=>setExecution("mt5")}><b>▦ MT5</b><small>Broker account</small></button>
+          </div>
+
+          <div className="control-title mode-title"><div><small>PERMISSION</small><h3>How much control do you want?</h3></div></div>
+          <div className="permission-tabs">
+            <button type="button" className={control==="signal" ? "selected" : ""} onClick={()=>setControl("signal")}><b>ALERT</b><small>You execute</small></button>
+            <button type="button" className={control==="approval" ? "selected" : ""} onClick={()=>setControl("approval")}><b>APPROVE</b><small>One tap</small></button>
+            <button type="button" className="locked" onClick={()=>setControl("auto")}><b>AUTO</b><small>Permission required</small><em>SOON</em></button>
+          </div>
+
+          {execution==="mt5" ? <div className="route-message"><span>◎</span><div><b>MT5 connection</b><p>Connect a broker account to route approved or autonomous FLEXAR AI trades to MT5. The interface will adapt to that broker's available symbols.</p><button type="button" onClick={()=>setNotice("MT5 connection is the next execution layer. The FLEXAR AI signal engine remains available now.")}>Learn about MT5 →</button></div></div> :
+          <div className="route-message native"><span>✓</span><div><b>FLEXAR Native</b><p>Your current FLEXAR wallet is the execution account. AI signals can be approved here without leaving the platform.</p></div></div>}
+
+          {control==="signal" ? <div className="copy-trade-box"><div><b>Signal only</b><span>Copy the complete setup to another platform.</span></div><button type="button" onClick={copyTrade} disabled={!opportunity}>Copy signal</button></div> :
+          <div className="approval-box">
+            <div className="approval-header"><div><small>TRADE APPROVAL</small><b>{execution==="native" ? "Approve on FLEXAR" : "Approve on MT5"}</b></div><span>{opportunity ? "READY" : "WAITING"}</span></div>
+            <div className="capital-summary"><div><small>AVAILABLE</small><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div><span>Wallet {walletBalance.toFixed(2)} · Bonus {bonusBalance.toFixed(2)}</span></div>
+            <div className="flexar-stake-row">{["10","25","50","100"].map(v=><button type="button" key={v} className={amount===v?"selected":""} onClick={()=>setAmount(v)} disabled={busy || execution!=="native"}>$ {v}</button>)}</div>
+            <div className="flexar-amount"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} disabled={busy || execution!=="native"} /><small>USDT</small></div>
+            <button className="flexar-approve" type="button" disabled={busy || execution!=="native" || !canTrade || !opportunity} onClick={confirmAiTrade}>{busy ? "Opening trade…" : execution==="native" ? "Approve AI trade →" : "MT5 not connected"}</button>
+            {!account.tradingAccess?.has_access && <p className="flexar-control-note">Trading access is inactive. Activate a FLEXAR plan to execute signals.</p>}
+            {execution==="mt5" && <p className="flexar-control-note">MT5 execution will activate when the broker bridge is connected.</p>}
+          </div>}
+          {notice && <div className="flexar-notice" role="status">{notice}</div>}
+        </div>
+      </aside>
     </section>
 
-    <p className="engine-disclaimer">Flexa AI does not open a trade automatically. The engine finds the setup; you approve the capital.</p>
+    <section className="flexar-market-intelligence">
+      <div className="flexar-section-label"><span>03</span> MARKET INTELLIGENCE</div>
+      <div className="market-intel-head"><div><h2>FLEXAR AI watches beyond one chart.</h2><p>Trend, momentum, structure, volatility and multi-timeframe context feed the signal engine.</p></div><span>LIVE RADAR</span></div>
+      <div className="intel-grid"><div><b>◌ Multi-timeframe</b><small>1m · 5m · 15m · 1h</small></div><div><b>↗ Trend & momentum</b><small>Direction · acceleration</small></div><div><b>⌁ Market structure</b><small>Breaks · zones · regime</small></div><div><b>◉ Volatility & flow</b><small>Expansion · activity</small></div></div>
+      <div className="flexar-market-groups">
+        <div><small>CRYPTO</small><div>{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT"].map(item=><span key={item}><i>{marketIcons[item]}</i>{item}</span>)}</div></div>
+        <div><small>FOREX</small><div>{["EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item=><span key={item}><i>{marketIcons[item]}</i>{item}</span>)}</div></div>
+        <div><small>MT5 / BROKER SYMBOLS</small><div><span><i>◎</i>Dynamic</span><span><i>+</i>Broker markets</span></div></div>
+      </div>
+    </section>
+
+    <section className="flexar-ai-policy"><div><span>✦</span><div><b>Your capital. Your permission.</b><p>FLEXAR AI can surface the opportunity, prepare the order and eventually manage execution according to permissions you explicitly configure. Autonomous execution is not enabled by default.</p></div></div><button type="button" onClick={()=>setNotice("Planned risk controls: stake limits, daily loss limits, market permissions and execution permissions.")}>Risk controls →</button></section>
   </div>;
 }
 function Chart() {
