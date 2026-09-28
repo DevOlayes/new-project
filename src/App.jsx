@@ -115,7 +115,7 @@ export default function App() {
             refresh_token: data.session.refresh_token,
           });
           if (sessionError) {
-            setAuthError(sessionError.message || "Could not establish your Flexa AI session.");
+            setAuthError(sessionError.message || "Could not establish your FLEXAR AI session.");
             setLoading(false);
           } else {
             setAuthError("");
@@ -125,7 +125,7 @@ export default function App() {
         const { data, error } = await supabase.auth.getSession();
         if (!mounted) return;
         if (error) {
-          setAuthError(error.message || "Could not restore your Flexa AI session.");
+          setAuthError(error.message || "Could not restore your FLEXAR AI session.");
         }
         if (!data?.session) setLoading(false);
       }
@@ -187,7 +187,7 @@ export default function App() {
 
     loadAccount().catch((error) => {
       if (cancelled) return;
-      setAuthError(error.message || "Could not load your Flexa AI account.");
+      setAuthError(error.message || "Could not load your FLEXAR AI account.");
       setLoading(false);
     });
 
@@ -240,14 +240,14 @@ export default function App() {
       if (!created.length && !alreadyExists.length) {
         setAiEngineActive(false);
         try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
-        setGlobalNotice("Flexa AI is scanning, but there is no fresh high-quality opportunity right now. Try again when the next signal is ready.");
+        setGlobalNotice("FLEXAR AI is scanning, but there is no fresh high-quality opportunity right now. Try again when the next signal is ready.");
         setPage("trade");
         return;
       }
 
       try { sessionStorage.setItem("flexa_open_ai_trade", "true"); } catch {}
       setPage("trade");
-      setGlobalNotice("Flexa AI is active. Your AI-selected opportunity is ready.");
+      setGlobalNotice("FLEXAR AI is active. Your AI-selected opportunity is ready.");
     } catch(error) {
       // If the backend rejected the start, release the lock so the user can retry.
       setAiEngineActive(false);
@@ -258,7 +258,7 @@ export default function App() {
     }
   }
 
-  async function installFlexa() {
+  async function installFLEXAR() {
     if (!installPrompt) return;
     await installPrompt.prompt();
     setInstallPrompt(null);
@@ -295,15 +295,15 @@ export default function App() {
   }
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => setPage("home")} />;
-  if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFlexa={installFlexa} />;
-  if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexa-symbol.webp" alt="Flexa AI" /><strong>Connecting your Flexa AI account…</strong><span>Loading your account data…</span></div>;
-  if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open Flexa AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
+  if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
+  if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexa-symbol.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
+  if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open FLEXAR AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
 
   const notifications = account.notifications || [];
   const unreadNotifications = notifications.filter((item) => !item.is_read).length;
 
   return <div className="app-shell">
-    <header className="topbar"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="Flexa AI" /><div><strong>Flexa AI</strong><small>AI Trades</small></div></div><button type="button" className="icon-button notification-button" onClick={() => setShowNotifications(true)} aria-label="Open notifications"><span className="bell-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></span>{unreadNotifications > 0 && <b className="notification-dot">{unreadNotifications > 9 ? "9+" : unreadNotifications}</b>}</button></header>
+    <header className="topbar"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI Trades</small></div></div><button type="button" className="icon-button notification-button" onClick={() => setShowNotifications(true)} aria-label="Open notifications"><span className="bell-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></span>{unreadNotifications > 0 && <b className="notification-dot">{unreadNotifications > 9 ? "9+" : unreadNotifications}</b>}</button></header>
     <main className="content">
       {authError && <div className="error-banner">{authError}</div>}
       <AppErrorBoundary page={page}>
@@ -333,16 +333,16 @@ class AppErrorBoundary extends Component {
   }
 
   componentDidCatch(error) {
-    console.error("Flexa page error:", error);
+    console.error("FLEXAR page error:", error);
   }
 
   render() {
     if (this.state.hasError) {
       return <section className="empty-state page-error-state">
         <strong>This page hit an unexpected error.</strong>
-        <p>The rest of Flexa is still protected. Reload this page to try again.</p>
+        <p>The rest of FLEXAR is still protected. Reload this page to try again.</p>
         <small>{this.state.message}</small>
-        <button type="button" className="landing-cta" onClick={() => window.location.reload()}>Reload Flexa →</button>
+        <button type="button" className="landing-cta" onClick={() => window.location.reload()}>Reload FLEXAR →</button>
       </section>;
     }
     return this.props.children;
@@ -356,7 +356,7 @@ function TradeSuccessModal({ trade, onClose, onViewActive }) {
       <div className="trade-success-icon">✓</div>
       <small className="trade-success-eyebrow">TRADE CONFIRMED</small>
       <h2 id="trade-success-title">Your trade is active.</h2>
-      <p>Your trade was placed successfully and is now being tracked by Flexa AI.</p>
+      <p>Your trade was placed successfully and is now being tracked by FLEXAR AI.</p>
       <div className="trade-success-details">
         <div><span>MARKET</span><strong>{trade.symbol || "—"}</strong></div>
         <div><span>DIRECTION</span><strong className={direction === "UP" ? "green" : "red"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</strong></div>
@@ -374,22 +374,22 @@ function NotificationPanel({ notifications, onClose }) {
       <div className="notification-panel-head"><div><small>FLEXA AI</small><h2>Notifications</h2></div><button type="button" className="auth-close" onClick={onClose} aria-label="Close notifications">×</button></div>
       <div className="notification-list">
         {notifications.length ? notifications.slice(0, 20).map((item) => <article className={item.is_read ? "notification-item" : "notification-item unread"} key={item.id || item.created_at}>
-          <span className="notification-mark">•</span><div><strong>{item.title || item.type || "Account update"}</strong><p>{item.message || item.body || "You have a new Flexa AI update."}</p><small>{item.created_at ? new Date(item.created_at).toLocaleString() : "Just now"}</small></div>
+          <span className="notification-mark">•</span><div><strong>{item.title || item.type || "Account update"}</strong><p>{item.message || item.body || "You have a new FLEXAR AI update."}</p><small>{item.created_at ? new Date(item.created_at).toLocaleString() : "Just now"}</small></div>
         </article>) : <div className="empty-state"><strong>No notifications yet</strong><p>Important account and trading updates will appear here.</p></div>}
       </div>
     </aside>
   </div>;
 }
 
-function Landing({ market, showAuth, setShowAuth, installPrompt, installFlexa }) {
+function Landing({ market, showAuth, setShowAuth, installPrompt, installFLEXAR }) {
   const price = market?.price;
   const change = market?.change;
   return <div className="landing"><div className="landing-orb orb-one" /><div className="landing-orb orb-two" />
-    <header className="landing-topbar"><img className="landing-wordmark" src="/flexa-wordmark.svg" alt="Flexa AI" /><span className="live-chip">● WEB PLATFORM</span></header>
+    <header className="landing-topbar"><img className="landing-wordmark" src="/flexa-wordmark.svg" alt="FLEXAR AI" /><span className="live-chip">● WEB PLATFORM</span></header>
     <main className="landing-content">
-      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>Flexa AI continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta" onClick={() => setShowAuth(true)}>Get started <b>→</b></button>{installPrompt && <button className="install-cta" onClick={installFlexa}>Install Flexa AI</button>}<div className="landing-trust">Free account · Google or Telegram · No Flexa AI password</div><span className="hero-status"><i /> Market data connected</span></div></section>
+      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>FLEXAR AI continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta" onClick={() => setShowAuth(true)}>Get started <b>→</b></button>{installPrompt && <button className="install-cta" onClick={installFLEXAR}>Install FLEXAR AI</button>}<div className="landing-trust">Free account · Google or Telegram · No FLEXAR AI password</div><span className="hero-status"><i /> Market data connected</span></div></section>
       <section className="landing-terminal"><div className="terminal-top"><div><small>LIVE MARKET</small><strong>BTC / USDT</strong></div><span className={change >= 0 ? "green" : "red"}>{change == null ? "—" : (change >= 0 ? "+" : "") + change.toFixed(2) + "%"}</span></div><Chart /><div className="terminal-bottom"><strong>{price == null ? "Loading…" : "$" + price.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>PUBLIC MARKET DATA</span></div><div className="floating-card float-card-a">AI OPPORTUNITY <b>SCANNING</b></div><div className="floating-card float-card-b">NEXT WINDOW <b>60 MIN</b></div></section>
-      <section className="welcome-campaign"><div><span className="eyebrow">NEW USER CAMPAIGN</span><h2>Claim your <b>$50</b> welcome reward.</h2><p>Use the reward to trade. The reward itself cannot be withdrawn; only eligible profit generated from it can be withdrawn before the 12-day deadline.</p></div><span className="campaign-badge">12 DAYS</span></section><section className="opportunity-preview"><div><div className="eyebrow">AI OPPORTUNITY FEED</div><h2>Users do not hunt for trades. Flexa AI finds them.</h2></div><div className="opportunity-demo"><div><span>BTC / USDT</span><strong>AI opportunity detected</strong></div><b>UP ↗</b><small>60 MIN · REVIEW READY</small></div></section>
+      <section className="welcome-campaign"><div><span className="eyebrow">NEW USER CAMPAIGN</span><h2>Claim your <b>$50</b> welcome reward.</h2><p>Use the reward to trade. The reward itself cannot be withdrawn; only eligible profit generated from it can be withdrawn before the 12-day deadline.</p></div><span className="campaign-badge">12 DAYS</span></section><section className="opportunity-preview"><div><div className="eyebrow">AI OPPORTUNITY FEED</div><h2>Users do not hunt for trades. FLEXAR AI finds them.</h2></div><div className="opportunity-demo"><div><span>BTC / USDT</span><strong>AI opportunity detected</strong></div><b>UP ↗</b><small>60 MIN · REVIEW READY</small></div></section>
       <section className="landing-section"><div className="eyebrow">HOW FLEXAR WORKS</div><h2>Simple on the surface. Intelligent underneath.</h2><div className="landing-steps"><LandingStep n="01" title="Scan" text="Market data is continuously collected and analyzed across supported markets."/><LandingStep n="02" title="Select" text="The engine filters signals and turns stronger setups into user-friendly opportunities."/><LandingStep n="03" title="Trade" text="You review the opportunity, choose your stake and confirm when ready." /></div></section>
       <section className="landing-section"><div className="feature-row"><LandingFeature title="AI-first trading" text="The system does the heavy market analysis before presenting an opportunity."/><LandingFeature title="Real market data" text="Charts and future signals are designed around real market pricing, not invented demo prices."/><LandingFeature title="Transparent activity" text="Trades, balances and wallet events remain connected to your account ledger." /></div></section>
     </main>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</div>;
@@ -397,7 +397,7 @@ function Landing({ market, showAuth, setShowAuth, installPrompt, installFlexa })
 function AuthModal({ onClose }) {
   const [mode, setMode] = useState("signup");
   const [error, setError] = useState("");
-  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="Flexa AI" /><div className="eyebrow">WELCOME TO FLEXA AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your Flexa AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to Flexa AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use Flexa AI responsibly and follow applicable terms.</small></div></div>;
+  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="FLEXAR AI" /><div className="eyebrow">WELCOME TO FLEXA AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your FLEXAR AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to FLEXAR AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use FLEXAR AI responsibly and follow applicable terms.</small></div></div>;
 }
 
 function AuthOptions({ setAuthError, authError }) {
@@ -581,8 +581,8 @@ function Home({ account, loading, setPage, claimReward, rewardBusy, startAiScan,
         <small>FLEXA AI ENGINE</small>
         <h1>{aiEngineActive ? <>AI is <span>working.</span></> : <>Let AI find<br /><span>the opportunity.</span></>}</h1>
         <p>{aiEngineActive
-          ? "Flexa AI is already active. You cannot start another scan while the current opportunity window is active."
-          : "Start the AI trading center and Flexa will find the strongest qualifying market setup for you."}</p>
+          ? "FLEXAR AI is already active. You cannot start another scan while the current opportunity window is active."
+          : "Start the AI trading center and FLEXAR will find the strongest qualifying market setup for you."}</p>
       </div>
       <button type="button" className={aiEngineActive ? "start-ai-button active" : "start-ai-button"} onClick={startAiScan} disabled={aiScanning || aiEngineActive}>
         <span>{aiScanning ? "Scanning…" : aiEngineActive ? "ENGINE ACTIVE" : "Start AI"}</span>
@@ -598,7 +598,7 @@ function Home({ account, loading, setPage, claimReward, rewardBusy, startAiScan,
 
     <section className="home-opportunities">
       <div className="section-heading"><div><small>AI OPPORTUNITIES</small><h2>{opportunities.length ? "AI-selected trades" : "Waiting for AI"}</h2></div><button type="button" onClick={() => setPage("trade")}>Trading center →</button></div>
-      {opportunities.length ? <div className="opportunity-list">{opportunities.slice(0,2).map((item) => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div> : <div className="empty-state opportunity-empty"><strong>{loading ? "Preparing the AI feed" : "No AI trade is ready yet"}</strong><p>{loading ? "Flexa is loading the latest market state." : "Start the AI engine when you are ready. You will be shown the direction and stake before anything is confirmed."}</p></div>}
+      {opportunities.length ? <div className="opportunity-list">{opportunities.slice(0,2).map((item) => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div> : <div className="empty-state opportunity-empty"><strong>{loading ? "Preparing the AI feed" : "No AI trade is ready yet"}</strong><p>{loading ? "FLEXAR is loading the latest market state." : "Start the AI engine when you are ready. You will be shown the direction and stake before anything is confirmed."}</p></div>}
     </section>
 
     <section className="home-activity-head"><div><small>ACCOUNT ACTIVITY</small><h2>Recent activity</h2></div><button type="button" onClick={() => setPage("activity")}>View all →</button></section>
@@ -614,10 +614,10 @@ function RewardBanner({ reward, onClaim, busy }) {
   const withdrawable = Number(reward.profit_withdrawable || 0);
   return <section className="reward-banner"><div className="reward-glow" /><div className="reward-copy"><small>{claimed ? "REWARD CREDIT ACTIVE" : "WELCOME REWARD"}</small><strong>${Number(reward.reward_amount || 50).toFixed(0)} <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : claimed ? "$"+remaining.toFixed(2)+" credit remaining · $"+withdrawable.toFixed(2)+" eligible profit." : "Use within "+daysLeft+" days. The reward itself is non-withdrawable; eligible profit can be withdrawn before expiry."}</p></div>{claimed ? <div className="reward-state"><b>ACTIVE</b><span>{daysLeft}d left</span></div> : <button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim reward →"}</button>}</section>;
 }function Profile({ user, profile, signOut }) {
-  const name=profile?.display_name||"Flexa AI user";
+  const name=profile?.display_name||"FLEXAR AI user";
   const initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
   const referral=profile?.referral_code||"—";
-  return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXA AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section><section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of Flexa AI</button></div>;
+  return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXA AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section><section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button></div>;
 }function Wallet({ account, refreshAccount }) {
   const [modal, setModal] = useState("");
   const [walletInfo, setWalletInfo] = useState(null);
