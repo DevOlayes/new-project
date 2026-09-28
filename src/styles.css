@@ -427,3 +427,76 @@ body{background:radial-gradient(circle at 72% -10%,rgba(124,255,156,.07),transpa
 @media(max-width:430px){
   .home-balance strong{font-size:36px}.home-reward-card{align-items:flex-start;flex-direction:column}.home-reward-card button{width:100%}.signal-market strong{font-size:27px}.signal-score{width:76px;height:76px;min-width:76px}.signal-main{padding-right:85px}.signal-metrics{grid-template-columns:1fr 1fr}.signal-metrics div:last-child{grid-column:1/-1}.duration-pair{grid-template-columns:repeat(3,1fr)}
 }
+
+/* ===== FLEXA AI TRADE — SIMPLIFIED COMMAND PAGE ===== */
+.ai-trade-page{display:grid;gap:18px;padding-bottom:34px}
+.ai-page-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:26px 0 8px}
+.ai-page-hero h1{margin:8px 0 10px;font-size:clamp(2rem,5vw,3.5rem);line-height:.98;letter-spacing:-.045em}
+.ai-page-hero h1 span{color:#7cff9c}
+.ai-page-hero p{max-width:680px;margin:0;color:rgba(255,255,255,.62);line-height:1.65}
+.ai-engine-state{display:flex;align-items:center;gap:12px;min-width:155px;padding:13px 15px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.025)}
+.ai-engine-state.active{border-color:rgba(124,255,156,.35);box-shadow:0 0 28px rgba(124,255,156,.08)}
+.ai-engine-state small{display:block;color:rgba(255,255,255,.4);font-size:10px;letter-spacing:.14em}
+.ai-engine-state strong{display:block;margin-top:3px;font-size:12px;letter-spacing:.08em}
+.ai-trade-menu{display:flex;gap:7px;overflow:auto;padding:4px 0}
+.ai-trade-menu button{border:0;background:rgba(255,255,255,.035);color:rgba(255,255,255,.55);padding:9px 15px;border-radius:999px;font-weight:700;white-space:nowrap}
+.ai-trade-menu button.active{background:#7cff9c;color:#07110a}
+.ai-start-panel,.ai-signal-panel,.ai-order-panel,.ai-markets-panel{border:1px solid rgba(255,255,255,.08);background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.018));border-radius:22px;box-shadow:0 18px 55px rgba(0,0,0,.16)}
+.ai-start-panel{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;padding:24px}
+.ai-start-icon{width:52px;height:52px;display:grid;place-items:center;border-radius:16px;background:rgba(124,255,156,.09);color:#7cff9c;font-size:25px}
+.ai-start-copy small,.panel-heading small{color:#7cff9c;font-size:10px;letter-spacing:.16em;font-weight:800}
+.ai-start-copy h2,.panel-heading h2{margin:5px 0 4px;font-size:20px}
+.ai-start-copy p,.panel-heading p{margin:0;color:rgba(255,255,255,.5);line-height:1.5}
+.ai-start-button,.ai-approve-button{border:0;background:#7cff9c;color:#061009;border-radius:13px;padding:13px 18px;font-weight:900;white-space:nowrap;box-shadow:0 10px 30px rgba(124,255,156,.12)}
+.ai-start-button:disabled,.ai-approve-button:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+.ai-signal-panel{padding:24px}
+.signal-panel-top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.signal-panel-top small{display:block;color:#7cff9c;font-size:10px;letter-spacing:.15em;font-weight:800}
+.signal-panel-top strong{display:block;margin-top:7px;font-size:31px;letter-spacing:-.03em}
+.signal-panel-top span{display:block;margin-top:5px;color:rgba(255,255,255,.55);font-size:12px}
+.signal-score-large{text-align:right}
+.signal-score-large strong{color:#7cff9c;font-size:36px}
+.signal-score-large small{color:rgba(255,255,255,.4)}
+.signal-market-row{display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding:14px 0;border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07)}
+.market-identity,.market-chip{display:flex;align-items:center;gap:11px}
+.market-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:rgba(255,255,255,.06);color:#7cff9c;font-weight:900}
+.market-identity strong,.market-chip strong{display:block}
+.market-identity small,.market-chip small{display:block;color:rgba(255,255,255,.4);font-size:10px;margin-top:2px}
+.signal-direction{padding:8px 12px;border-radius:10px;font-weight:900;font-size:12px}
+.signal-direction.up{background:rgba(124,255,156,.1);color:#7cff9c}
+.signal-direction.down{background:rgba(255,100,120,.1);color:#ff7889}
+.signal-level-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.signal-level-grid>div{padding:13px;border-radius:13px;background:rgba(0,0,0,.16)}
+.signal-level-grid small{display:block;color:rgba(255,255,255,.35);font-size:9px;letter-spacing:.12em}
+.signal-level-grid strong{display:block;margin-top:6px;font-size:13px}
+.ai-approval-note{display:flex;gap:10px;align-items:center;margin-top:15px;padding:12px 14px;border-radius:13px;background:rgba(124,255,156,.055)}
+.ai-approval-note>span{color:#7cff9c;font-weight:900}
+.ai-approval-note p{margin:0;color:rgba(255,255,255,.55);font-size:12px}
+.ai-approval-note strong{color:#fff}
+.ai-order-panel,.ai-markets-panel{padding:22px}
+.panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}
+.capital-summary{display:flex;align-items:end;justify-content:space-between;margin:20px 0 15px;padding:15px;border-radius:14px;background:rgba(0,0,0,.15)}
+.capital-summary small{display:block;color:rgba(255,255,255,.4);font-size:9px;letter-spacing:.12em}
+.capital-summary strong{display:block;margin-top:4px;font-size:20px}
+.capital-summary>span{font-size:11px;color:rgba(255,255,255,.4)}
+.ai-order-panel .stake-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ai-order-panel .stake-presets button{min-height:43px}
+.ai-order-panel .amount-input-wrap{margin-top:9px}
+.ai-approve-button{width:100%;margin-top:12px;min-height:48px;font-size:14px}
+.market-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:16px}
+.market-chip{padding:11px;border:1px solid rgba(255,255,255,.06);border-radius:14px;background:rgba(255,255,255,.025)}
+.market-chip .market-icon{width:34px;height:34px}
+.market-chip strong{font-size:12px}
+.engine-disclaimer{text-align:center;color:rgba(255,255,255,.32);font-size:11px;padding:5px 10px 15px}
+@media(max-width:760px){
+ .ai-page-hero{align-items:flex-start;flex-direction:column}
+ .ai-page-hero h1{font-size:2.25rem}
+ .ai-engine-state{width:100%;min-width:0}
+ .ai-start-panel{grid-template-columns:auto 1fr}
+ .ai-start-button{grid-column:1/-1;width:100%}
+ .signal-panel-top{flex-direction:column}
+ .signal-score-large{text-align:left}
+ .signal-level-grid{grid-template-columns:repeat(2,1fr)}
+ .market-grid{grid-template-columns:repeat(2,1fr)}
+ .capital-summary{align-items:flex-start;flex-direction:column;gap:5px}
+}
