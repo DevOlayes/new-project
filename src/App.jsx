@@ -844,7 +844,7 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
       <div className="signal-level-grid">
         <div><small>ENTRY</small><strong>{price.toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
         <div><small>TAKE PROFIT</small><strong>{(price*(direction==="UP"?1.008:.992)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
-        <div><small>STOP LOSS</small><strong>{(price*(direction==="UP"?.996:1.004)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
+        <div><small>STOP LOSS</small><strong>{(price*(direction==="UP" ? .996 : 1.004)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
         <div><small>WINDOW</small><strong>{duration} MIN</strong></div>
       </div>
       <div className="ai-approval-note"><span>✓</span><p><strong>AI selected this setup.</strong> Review the signal, choose your stake, then approve the trade.</p></div>
