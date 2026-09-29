@@ -724,7 +724,7 @@ function RewardBanner({ reward, onClaim, busy }) {
     setBusy(true); setNotice("");
     try {
       const {data,error}=await supabase.functions.invoke("mt5-gateway",{body:{action:"connect",login:Number(login),server,password,environment,nickname:"FLEXAR MT5"}});
-      if(error) throw new Error(data?.error||error.message||"Could not connect MT5.");
+      if(error){ let detail=""; try { detail=error.context ? (await error.context.json())?.error||"" : ""; } catch {} throw new Error(detail||data?.error||error.message||"Could not connect MT5."); }
       if(data?.error) throw new Error(data.error);
       setPassword("");
       setOpen(false);
