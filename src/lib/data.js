@@ -5,11 +5,11 @@ export async function getAccountData() {
   if (!supabase) {
     return {
       wallets: [], trades: [], transactions: [], notifications: [], opportunities: [],
-      rewards: [], referrals: [], markets: [], error: new Error("Supabase is not configured.")
+      rewards: [], referrals: [], markets: [], mt5Connections: [], error: new Error("Supabase is not configured.")
     };
   }
 
-  const [wallets, trades, transactions, notifications, opportunities, rewards, referrals, markets, plans, subscriptions, access] = await Promise.all([
+  const [wallets, trades, transactions, notifications, opportunities, rewards, referrals, markets, plans, subscriptions, access, mt5Connections] = await Promise.all([
     supabase.from("wallets").select("id,asset,network,available_balance,locked_balance,updated_at").order("asset"),
     supabase.from("trades").select("id,asset,direction,stake,duration_seconds,payout_rate,status,entry_price,exit_price,potential_payout,result_amount,opened_at,closes_at,settled_at").order("opened_at",{ascending:false}).limit(25),
     supabase.from("wallet_transactions").select("id,type,direction,amount,status,reference,tx_hash,network_fee,created_at,wallet_id").order("created_at",{ascending:false}).limit(25),
@@ -29,6 +29,7 @@ export async function getAccountData() {
     supabase.from("subscription_plans").select("id,code,name,description,monthly_price,quarterly_price,annual_price,currency,trial_days,features").eq("active",true).order("monthly_price"),
     supabase.from("user_subscriptions").select("id,plan_id,billing_cycle,status,trial_started_at,trial_ends_at,starts_at,ends_at,auto_renew,payment_provider").order("created_at",{ascending:false}).limit(5),
     supabase.rpc("get_trading_access"),
+    supabase.from("mt5_connections").select("id,provider,provider_account_id,mt5_login,broker_server,nickname,environment,status,connection_message,currency,balance,equity,margin,free_margin,leverage,trade_allowed,last_checked_at,connected_at,disconnected_at,metadata,updated_at").order("created_at",{ascending:false}).limit(5),
   ]);
 
   return {
@@ -43,6 +44,7 @@ export async function getAccountData() {
     plans: plans.data || [],
     subscriptions: subscriptions.data || [],
     tradingAccess: access.data?.[0] || null,
-    error: wallets.error || trades.error || transactions.error || notifications.error || opportunities.error || rewards.error || referrals.error || markets.error || plans.error || subscriptions.error || access.error
+    mt5Connections: mt5Connections.data || [],
+    error: wallets.error || trades.error || transactions.error || notifications.error || opportunities.error || rewards.error || referrals.error || markets.error || plans.error || subscriptions.error || access.error || mt5Connections.error
   };
 }
