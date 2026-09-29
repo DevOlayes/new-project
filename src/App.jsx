@@ -12,7 +12,7 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], tradingAccess: null, error: null };
+  const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], mt5Connections: [], tradingAccess: null, error: null };
   const [account, setAccount] = useState(EMPTY_ACCOUNT);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
@@ -353,7 +353,7 @@ export default function App() {
           {page === "trade" && <Trade account={account} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
           {page === "activity" && <Activity account={account} />}
           {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} setPage={setPage} />}
-          {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
+          {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} account={account} refreshAccount={refreshAccount} />}
         </div>
       </AppErrorBoundary>
     </main>
@@ -709,11 +709,71 @@ function RewardBanner({ reward, onClaim, busy }) {
   const remaining = Number(reward.remaining_reward || 0);
   const withdrawable = Number(reward.profit_withdrawable || 0);
   return <section className="reward-banner"><div className="reward-glow" /><div className="reward-copy"><small>{claimed ? "REWARD CREDIT ACTIVE" : "WELCOME REWARD"}</small><strong>${Number(reward.reward_amount || 50).toFixed(0)} <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : claimed ? "$"+remaining.toFixed(2)+" credit remaining · $"+withdrawable.toFixed(2)+" eligible profit." : "Use within "+daysLeft+" days. The reward itself is non-withdrawable; eligible profit can be withdrawn before expiry."}</p></div>{claimed ? <div className="reward-state"><b>ACTIVE</b><span>{daysLeft}d left</span></div> : <button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim reward →"}</button>}</section>;
-}function Profile({ user, profile, signOut }) {
+}function MT5ConnectionCard({ account, refreshAccount }) {
+  const connection=account.mt5Connections?.[0]||null;
+  const [open,setOpen]=useState(false);
+  const [login,setLogin]=useState("");
+  const [server,setServer]=useState("");
+  const [password,setPassword]=useState("");
+  const [environment,setEnvironment]=useState("demo");
+  const [busy,setBusy]=useState(false);
+  const [notice,setNotice]=useState("");
+
+  async function connect() {
+    if(busy) return;
+    setBusy(true); setNotice("");
+    try {
+      const {data,error}=await supabase.functions.invoke("mt5-gateway",{body:{action:"connect",login:Number(login),server,password,environment,nickname:"FLEXAR MT5"}});
+      if(error) throw new Error(data?.error||error.message||"Could not connect MT5.");
+      if(data?.error) throw new Error(data.error);
+      setPassword("");
+      setOpen(false);
+      setNotice("MT5 connection created. FLEXAR is waiting for the cloud terminal to become ready.");
+      await refreshAccount();
+    } catch(error) {
+      setNotice(error.message||"Could not connect MT5.");
+    } finally { setBusy(false); }
+  }
+
+  async function refreshStatus() {
+    if(!connection||busy) return;
+    setBusy(true); setNotice("");
+    try {
+      const {data,error}=await supabase.functions.invoke("mt5-gateway",{body:{action:"status",connection_id:connection.id}});
+      if(error) throw new Error(data?.error||error.message||"Could not refresh MT5 status.");
+      if(data?.error) throw new Error(data.error);
+      await refreshAccount();
+    } catch(error) { setNotice(error.message||"Could not refresh MT5 status."); }
+    finally { setBusy(false); }
+  }
+
+  const statusLabel=connection?.status==="connected"?"CONNECTED":connection?.status==="connecting"?"CONNECTING":connection?.status?.toUpperCase()||"NOT CONNECTED";
+  return <section className="profile-section mt5-card">
+    <div className="profile-section-head"><div><small>CONNECTED PLATFORM</small><h2>MetaTrader 5</h2></div><span className={"mt5-status mt5-"+(connection?.status||"none")}>● {statusLabel}</span></div>
+    {connection ? <div className="mt5-connected">
+      <div className="mt5-account-line"><div><strong>Account #{connection.mt5_login}</strong><small>{connection.broker_server} · {connection.environment==="demo"?"Demo":"Live"}</small></div><button className="mini-action" onClick={refreshStatus} disabled={busy}>{busy?"Checking…":"Refresh"}</button></div>
+      <div className="mt5-stats"><div><small>BALANCE</small><strong>{Number(connection.balance||0).toLocaleString(undefined,{maximumFractionDigits:2})} {connection.currency||"USD"}</strong></div><div><small>EQUITY</small><strong>{Number(connection.equity||0).toLocaleString(undefined,{maximumFractionDigits:2})} {connection.currency||"USD"}</strong></div><div><small>FREE MARGIN</small><strong>{Number(connection.free_margin||0).toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div></div>
+      <small className="mt5-help">{connection.connection_message||"Your MT5 account is managed through FLEXAR's cloud trading connection."}</small>
+    </div> : <div className="mt5-empty"><p>Connect an MT5 broker account to let FLEXAR AI read your account and, later, execute approved AI setups through it.</p><button className="ai-approve-button" onClick={()=>{setNotice("");setOpen(true);}}>Connect MT5 →</button></div>}
+    {open&&<div className="mt5-form">
+      <label>MT5 account number<input inputMode="numeric" value={login} onChange={e=>setLogin(e.target.value.replace(/\D/g,""))} placeholder="12345678" /></label>
+      <label>Broker server<input value={server} onChange={e=>setServer(e.target.value)} placeholder="Broker-Live01" autoComplete="off" /></label>
+      <label>Account type<select value={environment} onChange={e=>setEnvironment(e.target.value)}><option value="demo">Demo</option><option value="live">Live</option></select></label>
+      <label>MT5 trading password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your MT5 password" autoComplete="off" /></label>
+      <small className="mt5-security-note">Your MT5 password is sent only to the secure MT5 connection service and is not stored in FLEXAR's database.</small>
+      <div className="mt5-form-actions"><button className="secondary" onClick={()=>setOpen(false)} disabled={busy}>Cancel</button><button className="ai-approve-button" onClick={connect} disabled={busy||!login||!server||!password}>{busy?"Connecting…":"Connect securely"}</button></div>
+    </div>}
+    {notice&&<div className="notice" role="status">{notice}</div>}
+  </section>;
+}
+
+function Profile({ user, profile, signOut, account, refreshAccount }) {
   const name=profile?.display_name||"FLEXAR AI user";
   const initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
   const referral=profile?.referral_code||"—";
-  return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section><section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button></div>;
+  return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section>
+    <MT5ConnectionCard account={account} refreshAccount={refreshAccount} />
+    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button></div>;
 }function Wallet({ account, refreshAccount, assetPrices = {}, setPage }) {
   const [modal, setModal] = useState("");
   const [walletInfo, setWalletInfo] = useState(null);
