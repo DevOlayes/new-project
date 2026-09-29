@@ -650,3 +650,25 @@ body{background:radial-gradient(circle at 72% -10%,rgba(124,255,156,.07),transpa
 @media(max-width:600px){.funding-routes{grid-template-columns:1fr}.swap-modal{padding:19px}.flexar-attention-card h2{font-size:21px}}
 
 .asset-icon img{width:23px;height:23px;display:block}.asset-icon.asset-ton img{filter:brightness(0) invert(1)}
+
+
+.mt5-card{background:linear-gradient(145deg,rgba(124,255,156,.045),rgba(255,255,255,.018));}
+.mt5-status{font-size:8px;letter-spacing:.08em;font-weight:900;white-space:nowrap}
+.mt5-connected{display:grid;gap:12px}
+.mt5-account-line{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mt5-account-line strong{display:block;font-size:12px}.mt5-account-line small,.mt5-help{display:block;color:var(--muted);font-size:8px;margin-top:4px}
+.mt5-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.mt5-stats div{padding:11px;border:1px solid rgba(255,255,255,.055);border-radius:13px;background:rgba(0,0,0,.14)}
+.mt5-stats small{display:block;font-size:7px;color:var(--muted);letter-spacing:.08em}.mt5-stats strong{display:block;margin-top:5px;font-size:10px}
+.mt5-connected .mt5-help{line-height:1.5}
+.mt5-empty{display:grid;gap:12px}.mt5-empty p{font-size:9px;color:var(--muted);line-height:1.55;margin:0}
+.mt5-form{display:grid;gap:11px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.055)}
+.mt5-form label{display:grid;gap:6px;font-size:9px;font-weight:800}
+.mt5-form input,.mt5-form select{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:inherit;border-radius:11px;padding:11px;font:inherit}
+.mt5-form select option{background:#0b100d;color:#fff}
+.mt5-security-note{font-size:8px;color:var(--muted);line-height:1.45}
+.mt5-form-actions{display:flex;gap:8px}.mt5-form-actions button{flex:1}
+.mt5-connected .mini-action{padding:8px 10px}
+.mt5-connected .mt5-connected{}
+.mt5-connected .mt5-connected{}
+@media(max-width:560px){.mt5-stats{grid-template-columns:1fr 1fr}.mt5-stats div:last-child{grid-column:1/-1}}
