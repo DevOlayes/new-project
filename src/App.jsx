@@ -600,8 +600,10 @@ function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBu
       </div>
       <div className="home-balance">
         <img className="balance-watermark" src="/flexa-symbol.webp" alt="" aria-hidden="true" />
-        <small>AVAILABLE BALANCE</small>
-        <div><strong><b className="balance-currency">$</b>{usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>USDT</span></div>
+        <div className="balance-content">
+          <small>AVAILABLE BALANCE</small>
+          <div><strong><b className="balance-currency">$</b>{usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>USDT</span></div>
+        </div>
       </div>
     </section>
     <section className="home-ai-cta"><div><small>FLEXAR AI</small><h2>{aiEngineActive?"AI is watching the markets.":opportunities.length?"Your AI opportunity is ready.":"Find your next trade with AI."}</h2><p>{aiScanning?"Scanning supported markets for a qualifying setup.":aiEngineActive?"FLEXAR will surface a qualifying setup when its signal rules are met.":"Let FLEXAR analyze the market first, then choose how FLEXAR should trade for you."}</p></div><button type="button" onClick={()=>setPage("trade")} disabled={aiScanning}>{aiScanning?"Scanning…":aiEngineActive||opportunities.length?"Trade with AI →":"Start FLEXAR AI →"}</button></section>
