@@ -29,7 +29,8 @@ export default function App() {
     try { return sessionStorage.getItem("flexa_ai_engine_active") === "true"; } catch { return false; }
   });
   const [globalNotice, setGlobalNotice] = useState("");
-  const [showNotifications, setShowNotifications] = useState(false);\n  const [walletAction, setWalletAction] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [walletAction, setWalletAction] = useState("");
   const [tradeSuccess, setTradeSuccess] = useState(null);
 
   const refreshAccount = useCallback(async () => {
@@ -358,7 +359,8 @@ export default function App() {
       </AppErrorBoundary>
     </main>
     <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
-    {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}\n    {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
+    {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
+    {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
     {tradeSuccess && <TradeSuccessModal trade={tradeSuccess} onClose={() => setTradeSuccess(null)} onViewActive={() => { setTradeSuccess(null); setPage("activity"); }} />}
   </div>;
 }
