@@ -582,122 +582,71 @@ function getBestPerformingPair(trades) {
 
 function Home({ account, loading, setPage, claimReward, rewardBusy, startAiScan, aiScanning, aiEngineActive }) {
   const active = account.trades.filter((trade) => trade.status === "active");
-  const unread = account.notifications.filter((item) => !item.is_read).length;
   const opportunities = account.opportunities || [];
-  const bestPair = getBestPerformingPair(account.trades);
+  const unread = account.notifications.filter((item) => !item.is_read).length;
   const usdtBalance = Number(account.wallets.find((item) => item.asset === "USDT")?.available_balance || 0);
-  const reward = account.rewards?.find((r) => ["available", "active"].includes(r.status));
-  const rewardRemaining = Number(reward?.remaining_reward || 0);
-  const rewardOriginal = Number(reward?.reward_amount || 50);
-  const rewardUsed = Math.max(0, rewardOriginal - rewardRemaining);
-  const rewardProfit = Number(reward?.profit_withdrawable || 0);
+  const reward = account.rewards?.find((r) => ["available", "active"].includes(r.status) && Number(r.remaining_reward || 0) > 0);
+  const assets = [
+    ["BTC","Bitcoin","₿"],["USDT","Tether USD","₮"],["TON","Gram","G"],["SOL","Solana","S"],["BNB","BNB","◆"]
+  ].map(([asset,label,icon]) => ({asset,label,icon,wallet:account.wallets.find(w=>w.asset===asset)}));
   const activeTrade = active[0];
   const activeMarket = activeTrade?.metadata?.market_symbol || activeTrade?.asset || "—";
   const activeDirection = String(activeTrade?.direction || "").toUpperCase();
-  const activeCloses = activeTrade?.closes_at ? new Date(activeTrade.closes_at) : null;
-  const activeMinutes = activeCloses ? Math.max(0, Math.ceil((activeCloses.getTime() - Date.now()) / 60000)) : 0;
-  const bonusUsedPct = rewardOriginal ? Math.min(100, (rewardUsed / rewardOriginal) * 100) : 0;
 
-  return <div className="flexar-home">
-    <section className="flexar-home-hero">
-      <div className="flexar-home-identity">
-        <small>FLEXAR AI · INTELLIGENCE TERMINAL</small>
-        <h1>Your capital.<br /><span>AI in control.</span></h1>
-        <p>One place to monitor your wallet, discover high-conviction opportunities and decide how FLEXAR AI should execute them.</p>
+  return <div className="flexar-home minimal-home">
+    <section className="home-account">
+      <div className="home-profile-line">
+        <div className="home-avatar">F</div>
+        <div><small>FLEXAR AI ACCOUNT</small><strong>Welcome back</strong></div>
+        <button type="button" className="home-profile-button" onClick={() => setPage("profile")} aria-label="Open profile">⌁</button>
       </div>
-      <div className="flexar-balance-orbit">
+      <div className="home-balance">
         <small>AVAILABLE BALANCE</small>
-        <strong>{usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})}</strong>
-        <span>USDT</span>
-        <i>{active.length ? active.length + " active trade" + (active.length > 1 ? "s" : "") : "No active trades"}</i>
+        <div><strong>{"$"+usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>USDT</span></div>
+        <em>{active.length ? active.length + " active trade" + (active.length > 1 ? "s" : "") : "Ready to trade"}</em>
       </div>
     </section>
 
-    <section className="flexar-home-actions">
-      <button className="primary" type="button" onClick={() => setPage("trade")}><span>↗</span><b>AI Trade</b><small>Find a setup</small></button>
-      <button type="button" onClick={() => setPage("wallet")}><span>＋</span><b>Deposit</b><small>Fund wallet</small></button>
-      <button type="button" onClick={() => setPage("wallet")}><span>↗</span><b>Withdraw</b><small>Move funds</small></button>
-      <button type="button" onClick={() => setPage("activity")}><span>◷</span><b>History</b><small>Track results</small></button>
+    <section className="home-quick-actions" aria-label="Quick actions">
+      <button className="home-action-primary" type="button" onClick={() => setPage("trade")}><span>↗</span><strong>AI Trade</strong></button>
+      <button type="button" onClick={() => setPage("wallet")}><span>↓</span><strong>Deposit</strong></button>
+      <button type="button" onClick={() => setPage("wallet")}><span>↗</span><strong>Withdraw</strong></button>
+      <button type="button" onClick={() => setPage("wallet")}><span>⇄</span><strong>Swap</strong></button>
     </section>
 
-    {reward && <section className="flexar-bonus-panel">
-      <div className="bonus-main">
-        <div className="bonus-badge">BONUS</div>
-        <div>
-          <small>{reward.status === "active" ? "WELCOME CREDIT · ACTIVE" : "WELCOME CREDIT · READY"}</small>
-          <h2>&#36;{rewardRemaining.toFixed(2)} <em>remaining</em></h2>
-          <p>{reward.status === "active"
-            ? "You have used $" + rewardUsed.toFixed(2) + " of your $" + rewardOriginal.toFixed(2) + " trading credit."
-            : "Claim your $" + rewardOriginal.toFixed(2) + " trading credit before it expires."}</p>
-        </div>
-      </div>
-      <div className="bonus-progress">
-        <div className="bonus-progress-head"><span>Credit used</span><b>{bonusUsedPct.toFixed(0)}%</b></div>
-        <div className="bonus-track"><span style={{width: bonusUsedPct + "%"}} /></div>
-        <div className="bonus-values"><span>&#36;{rewardUsed.toFixed(2)} used</span><span>&#36;{rewardOriginal.toFixed(2)} issued</span></div>
-      </div>
-      <div className="bonus-profit">
-        <small>PROFIT MOVED TO WALLET</small>
-        <strong>&#36;{rewardProfit.toFixed(2)}</strong>
-        <span>{reward.status === "active" ? "Bonus principal cannot be reused once spent." : "Claim to activate."}</span>
-      </div>
-      {reward.status === "active"
-        ? <button className="bonus-action" type="button" onClick={() => setPage("trade")}>Use remaining →</button>
-        : <button className="bonus-action" type="button" onClick={claimReward} disabled={rewardBusy}>{rewardBusy ? "Claiming…" : "Claim bonus →"}</button>}
+    {reward && <section className="home-reward-row">
+      <div><small>{reward.status === "active" ? "WELCOME CREDIT ACTIVE" : "WELCOME CREDIT"}</small><strong>{"$"+Number(reward.remaining_reward||0).toFixed(2)} <span>remaining</span></strong></div>
+      <button type="button" onClick={reward.status === "active" ? () => setPage("trade") : claimReward} disabled={rewardBusy}>{reward.status === "active" ? "Use credit" : rewardBusy ? "Claiming…" : "Claim"}</button>
     </section>}
 
-    <section className="flexar-home-grid">
-      <div className="flexar-ai-pulse">
-        <div className="home-section-head">
-          <div><small>FLEXAR AI ENGINE</small><h2>{aiEngineActive ? "Machine is watching." : "Let the machine find the trade."}</h2></div>
-          <span className={aiEngineActive ? "live" : ""}><i /> {aiEngineActive ? "LIVE" : "READY"}</span>
-        </div>
-        <div className="ai-pulse-body">
-          <div className="pulse-ring"><span>AI</span></div>
-          <div className="pulse-copy">
-            <strong>{aiScanning ? "Scanning markets…" : aiEngineActive ? "Monitoring the active opportunity window" : opportunities.length ? "A signal is waiting for your approval" : "Start the engine when you want a fresh signal"}</strong>
-            <p>{aiEngineActive ? "FLEXAR evaluates crypto, forex and supported market feeds before presenting a trade. Nothing is executed without your configured permission." : "The engine looks for selective setups instead of flooding you with trade ideas."}</p>
-            <button type="button" onClick={() => setPage("trade")}>Open AI Trade →</button>
-          </div>
-        </div>
-        <div className="ai-pulse-metrics"><span><b>24/7</b> market watch</span><span><b>1</b> strongest signal</span><span><b>AI</b> risk controls</span></div>
+    <section className="home-section portfolio-preview">
+      <div className="home-section-title"><div><small>PORTFOLIO</small><h2>My assets</h2></div><button type="button" onClick={() => setPage("wallet")}>View all</button></div>
+      <div className="home-asset-list">
+        {assets.map(item => <div className="home-asset-row" key={item.asset}>
+          <span className={"home-asset-icon asset-"+item.asset.toLowerCase()}>{item.icon}</span>
+          <div><strong>{item.label}</strong><small>{item.asset === "TON" ? "GRAM" : item.asset}</small></div>
+          <b>{Number(item.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {item.asset === "TON" ? "GRAM" : item.asset}</b>
+        </div>)}
       </div>
-
-      <aside className="flexar-home-side">
-        <div className="home-side-card">
-          <small>PORTFOLIO SIGNAL</small>
-          <strong>{bestPair ? bestPair[0] : "—"}</strong>
-          <span>{bestPair ? (bestPair[1] >= 0 ? "+" : "") + bestPair[1].toFixed(2) + " USDT realized" : "Complete a trade to build your performance view."}</span>
-        </div>
-        <div className="home-side-card">
-          <small>ACTIVE TRADES</small>
-          <strong>{loading ? "…" : active.length}</strong>
-          <span>{activeTrade ? activeMarket + " · " + activeDirection + " · " + activeMinutes + "m remaining" : unread ? unread + " unread alert" + (unread === 1 ? "" : "s") : "Your account is clear."}</span>
-        </div>
-      </aside>
     </section>
 
-    {activeTrade && <section className="flexar-active-strip">
-      <div className="active-symbol"><span>{activeMarket.slice(0,1)}</span><div><small>ACTIVE POSITION</small><strong>{activeMarket}</strong></div></div>
-      <div><small>DIRECTION</small><b className={activeDirection === "UP" ? "up" : "down"}>{activeDirection}</b></div>
-      <div><small>STAKE</small><b>&#36;{Number(activeTrade.stake || 0).toFixed(2)}</b></div>
-      <div><small>STATUS</small><b>MONITORING</b></div>
-      <button type="button" onClick={() => setPage("activity")}>View trade →</button>
+    <section className="home-section home-ai-card">
+      <div className="home-section-title"><div><small>FLEXAR AI</small><h2>{opportunities.length ? "Signal ready" : aiEngineActive ? "AI is watching" : "Find the next trade"}</h2></div><span className={aiEngineActive ? "home-live" : ""}><i /> {aiEngineActive ? "LIVE" : "READY"}</span></div>
+      {opportunities.length ? <div className="home-signal-row">
+        <div><strong>{opportunities[0].symbol}</strong><small>{opportunities[0].direction === "down" ? "↘ DOWN" : "↗ UP"} · {Math.round(Number(opportunities[0].signal_score||0)*100)}% confidence</small></div>
+        <button type="button" onClick={() => setPage("trade")}>Review →</button>
+      </div> : <div className="home-ai-empty"><p>{aiScanning ? "Scanning supported markets…" : "FLEXAR AI watches the market and surfaces selective setups here."}</p><button type="button" onClick={() => setPage("trade")}>{aiScanning ? "Scanning…" : "Open AI Trade"}</button></div>}
+    </section>
+
+    {activeTrade && <section className="home-active-row">
+      <div><small>ACTIVE TRADE</small><strong>{activeMarket}</strong><span className={activeDirection === "UP" ? "green" : "red"}>{activeDirection}</span></div>
+      <button type="button" onClick={() => setPage("activity")}>Monitor →</button>
     </section>}
 
-    <section className="flexar-opportunity-panel">
-      <div className="home-section-head">
-        <div><small>AI OPPORTUNITY FEED</small><h2>{opportunities.length ? "A signal is ready." : "Waiting for the next setup."}</h2></div>
-        <button type="button" onClick={() => setPage("trade")}>AI Trade →</button>
-      </div>
-      {opportunities.length
-        ? <div className="opportunity-list">{opportunities.slice(0,1).map(item => <OpportunityCard key={item.id} item={item} setPage={setPage} />)}</div>
-        : <div className="flexar-opportunity-empty"><div>◎</div><p>{loading ? "Loading the latest market intelligence…" : "No qualifying opportunity is currently available. FLEXAR will surface one when the engine finds the right conditions."}</p></div>}
-    </section>
-
-    <section className="flexar-home-footer-grid">
-      <div><small>ACCOUNT ACTIVITY</small><h2>Recent movement</h2><ActivityRows account={account} /></div>
-      <div className="flexar-home-note"><small>HOW FLEXAR WORKS</small><h2>Signal first.<br />Execution second.</h2><p>FLEXAR AI studies the market, surfaces the setup early, then lets you choose the execution route: native FLEXAR trading, connected MT5, or a signal you copy elsewhere.</p><button type="button" onClick={() => setPage("trade")}>Explore AI Trade →</button></div>
+    <section className="home-section home-activity">
+      <div className="home-section-title"><div><small>ACTIVITY</small><h2>Recent activity</h2></div><button type="button" onClick={() => setPage("activity")}>View all</button></div>
+      <ActivityRows account={account} />
+      {!account.trades.length && !account.transactions.length && unread > 0 && <small className="home-unread">{unread} unread notification{unread===1?"":"s"}</small>}
     </section>
   </div>;
 }
@@ -933,7 +882,7 @@ function OpportunityCard({ item, setPage }) {
   const score = Math.round(Number(item.signal_score || 0) * 100);
   const direction = item.direction === "down" ? "DOWN" : "UP";
   return <article className="opportunity-card ai-opportunity-card">
-    <div className="ai-opportunity-label">FLEXA AI SELECTED</div>
+    <div className="ai-opportunity-label">FLEXAR AI SELECTED</div>
     <div className="opp-top">
       <div><small>{item.symbol}</small><strong>AI trade suggestion</strong></div>
       <span className={direction === "UP" ? "green" : "red"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</span>
@@ -1023,9 +972,9 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
   return <div className="ai-trade-page">
     <section className="ai-page-hero">
       <div>
-        <div className="engine-kicker"><span className="engine-pulse" /> FLEXA AI TRADING</div>
+        <div className="engine-kicker"><span className="engine-pulse" /> FLEXAR AI TRADING</div>
         <h1>Let the machine<br /><span>find the trade.</span></h1>
-        <p>Start the AI engine. When a qualifying setup appears, Flexa presents it here for your approval. You stay in control of the capital.</p>
+        <p>Start the AI engine. When a qualifying setup appears, FLEXAR presents it here for your approval. You stay in control of the capital.</p>
       </div>
       <div className={aiEngineActive ? "ai-engine-state active" : "ai-engine-state"}>
         <span className="engine-status-dot" />
@@ -1045,7 +994,7 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
       <div className="ai-start-copy">
         <small>AI MARKET SCAN</small>
         <h2>{aiScanning ? "Scanning the markets…" : aiEngineActive ? "The engine is watching." : "Start your AI trading machine."}</h2>
-        <p>{aiScanning ? "Flexa is comparing live market conditions across supported instruments." : aiEngineActive ? "Flexa will surface one qualifying setup when the signal rules are met." : "One tap starts the scan. No trade is opened automatically."}</p>
+        <p>{aiScanning ? "FLEXAR is comparing live market conditions across supported instruments." : aiEngineActive ? "FLEXAR will surface one qualifying setup when the signal rules are met." : "One tap starts the scan. No trade is opened automatically."}</p>
       </div>
       <button type="button" className="ai-start-button" onClick={startAiScan} disabled={aiScanning || aiEngineActive}>
         {aiScanning ? "Scanning…" : aiEngineActive ? "AI is watching" : "Start AI machine →"}
@@ -1077,16 +1026,16 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
         {busy ? "Opening AI trade…" : "Approve AI trade →"}
       </button>
       {notice && <div className="notice" role="status">{notice}</div>}
-      {!account.tradingAccess?.has_access && <div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a Flexa Pro plan to continue trading.</span></div>}
+      {!account.tradingAccess?.has_access && <div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a FLEXAR Pro plan to continue trading.</span></div>}
       {account.tradingAccess?.has_access && !canTrade && numericAmount>0 && <p className="helper">Your stake is higher than your available trading funds.</p>}
     </section>
 
     <section className="ai-markets-panel">
-      <div className="panel-heading"><div><small>SUPPORTED MARKETS</small><h2>Know what the AI is watching.</h2><p>Flexa uses clear symbols so each market is easy to recognize.</p></div></div>
+      <div className="panel-heading"><div><small>SUPPORTED MARKETS</small><h2>Know what the AI is watching.</h2><p>FLEXAR uses clear symbols so each market is easy to recognize.</p></div></div>
       <div className="market-grid">{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item => <div className="market-chip" key={item}><span className="market-icon">{marketIcons[item]}</span><div><strong>{item}</strong><small>{item.includes("USD") && !item.includes("USDT") ? "Forex" : "Crypto"}</small></div></div>)}</div>
     </section>
 
-    <p className="engine-disclaimer">Flexa AI does not open a trade automatically. The engine finds the setup; you approve the capital.</p>
+    <p className="engine-disclaimer">FLEXAR AI does not open a trade automatically. The engine finds the setup; you approve the capital.</p>
   </div>;
 }
 function Chart() {
