@@ -1064,3 +1064,8 @@ body{background:var(--bg)}
 /* AI bot start flow: the primary action should be visible before any mode controls. */
 .ai-page-hero.compact .hero-start{margin-top:2px}
 .ai-page-hero.compact .ai-engine-state{align-self:center}
+
+/* Keep the primary AI bot CTA directly under the hero copy so it is visible immediately. */
+.ai-page-hero.compact .ai-hero-copy{min-width:0}
+.ai-page-hero.compact .hero-start{grid-column:auto;width:min(100%,360px);margin-top:14px}
+@media(max-width:560px){.ai-page-hero.compact .hero-start{width:100%}}
