@@ -395,7 +395,6 @@ body{background:radial-gradient(circle at 72% -10%,rgba(3,252,125,.07),transpare
 .nav span{font-size:18px;text-align:center}.nav small{font-size:10px;letter-spacing:.04em;margin:0;font-weight:800}.nav:hover{color:#c9d8ce;background:rgba(255,255,255,.025)}
 .nav.active{color:var(--green);background:linear-gradient(90deg,rgba(3,252,125,.11),rgba(3,252,125,.025));border-color:rgba(3,252,125,.12);box-shadow:inset 2px 0 0 var(--green)}
 .home-balance{position:relative;overflow:hidden;min-height:170px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:28px;margin-bottom:14px;border-radius:24px;border:1px solid var(--line);background:radial-gradient(circle at 85% 30%,rgba(3,252,125,.12),transparent 32%),linear-gradient(135deg,#101912,#080c09);box-shadow:0 25px 70px rgba(0,0,0,.24)}
-.home-balance:before{content:"COMMAND CENTER";position:absolute;top:22px;left:28px;color:var(--green);font-size:7px;font-weight:950;letter-spacing:.18em}
 .home-balance>div:first-child{padding-top:24px}.home-balance small{color:#718078;font-size:7px;letter-spacing:.14em}.home-balance strong{display:block;font-size:clamp(38px,6vw,62px);letter-spacing:-.065em;line-height:.95;margin-top:9px}.home-balance strong em{font-size:12px;color:var(--green);font-style:normal}.balance-caption{display:block;margin-top:10px;color:var(--muted);font-size:9px}
 .balance-actions button{height:42px;padding:0 15px;border:1px solid var(--line-green);border-radius:11px;background:rgba(3,252,125,.07);color:var(--green);font-size:9px;font-weight:900}
 .home-reward-card{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 14px;padding:17px 19px;border:1px solid rgba(3,252,125,.13);border-radius:17px;background:linear-gradient(90deg,rgba(3,252,125,.055),rgba(255,255,255,.018))}
@@ -867,7 +866,9 @@ body{background:var(--bg)}
   padding:22px 19px 20px;
   display:flex;
   flex-direction:column;
+  align-items:flex-start;
   justify-content:center;
+  text-align:left;
   border:1px solid rgba(255,255,255,.075);
   border-radius:18px;
   background:
@@ -1055,3 +1056,11 @@ body{background:var(--bg)}
   .ai-mode-modal{padding:18px}
   .ai-mode-option .ai-mode-activate{position:static;margin-top:9px;align-self:flex-start}
 }
+
+/* Left-align the balance content in the former command-center position. */
+.home-balance .balance-content{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;align-items:flex-start;text-align:left}
+.home-balance .balance-content>div{justify-content:flex-start}
+
+/* AI bot start flow: the primary action should be visible before any mode controls. */
+.ai-page-hero.compact .hero-start{margin-top:2px}
+.ai-page-hero.compact .ai-engine-state{align-self:center}
