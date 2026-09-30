@@ -853,3 +853,133 @@ body{background:var(--bg)}
   .referral-stats>div:last-child{grid-column:1/-1}
 }
 @media(min-width:720px){.content{padding-left:18px;padding-right:18px}}
+
+/* FLEXAR refinement pass — balance, pair identity, activity and referral */
+.home-account{padding-top:0}
+.home-profile-line{margin-top:-2px;margin-bottom:7px}
+.home-profile-button .bell-icon{display:grid;place-items:center;transform:none!important}
+.home-profile-button .bell-icon svg{transform:none!important;rotate:0deg!important;width:17px;height:17px}
+.home-balance{
+  position:relative;
+  overflow:hidden;
+  min-height:132px;
+  margin-top:7px;
+  padding:22px 19px 20px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(3,252,125,.09),transparent 42%),
+    linear-gradient(145deg,#0a1712,#06100d);
+  box-shadow:0 18px 45px rgba(0,0,0,.18);
+}
+.home-balance>small{position:relative;z-index:2;color:#87958e;font-size:8px;font-weight:800;letter-spacing:.15em}
+.home-balance>div{position:relative;z-index:2;display:flex;align-items:flex-end;gap:8px;margin-top:8px}
+.home-balance strong{display:flex;align-items:baseline;gap:2px;color:#f5faf7;font-size:clamp(38px,11vw,50px);line-height:1;letter-spacing:-.065em;margin:0}
+.home-balance .balance-currency{color:var(--green);font-size:.66em;font-weight:800;line-height:1}
+.home-balance>div>span{color:var(--green);font-size:10px;font-weight:800;letter-spacing:.08em;padding-bottom:5px}
+.balance-watermark{
+  position:absolute;
+  right:-8px;
+  top:50%;
+  transform:translateY(-55%);
+  z-index:1;
+  color:rgba(3,252,125,.045);
+  font-size:180px;
+  line-height:.8;
+  font-weight:950;
+  letter-spacing:-.15em;
+  user-select:none;
+  pointer-events:none;
+}
+.pair-icon{flex:0 0 34px;position:relative;overflow:hidden}
+.pair-icon.crypto-pair{background:#07120e}
+.pair-icon.forex-pair{background:linear-gradient(145deg,#0d1d16,#07110e);border:1px solid rgba(3,252,125,.12)}
+.forex-pair>span,.forex-pair>i{
+  display:grid;
+  place-items:center;
+  width:21px;
+  height:21px;
+  border-radius:50%;
+  font-style:normal;
+  font-size:10px;
+  font-weight:900;
+  border:1px solid rgba(255,255,255,.1);
+}
+.forex-pair>span{position:absolute;left:3px;top:4px;background:#10251a;color:#f4fff7}
+.forex-pair>i{position:absolute;right:3px;bottom:4px;background:var(--green);color:#03100a}
+.market-chip .pair-icon{width:30px;height:30px}
+.market-chip .forex-pair>span,.market-chip .forex-pair>i{width:18px;height:18px;font-size:8px}
+.market-chip .forex-pair>span{left:2px;top:3px}.market-chip .forex-pair>i{right:2px;bottom:3px}
+
+.activity-page{gap:10px}
+.activity-intro{
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  min-height:106px;
+  margin:0;
+  padding:17px;
+  border:1px solid var(--line);
+  border-radius:17px;
+  background:linear-gradient(145deg,#081610,#06100d);
+}
+.activity-intro-copy{position:relative;z-index:2}
+.activity-intro h1{font-size:26px;margin:7px 0 5px}
+.activity-intro p{max-width:450px;margin:0;color:var(--muted);font-size:9px;line-height:1.5}
+.activity-intro-mark{
+  flex:0 0 58px;
+  width:58px;height:58px;
+  display:grid;place-items:center;
+  border-radius:18px;
+  color:var(--green);
+  font-size:25px;
+  border:1px solid rgba(3,252,125,.14);
+  background:rgba(3,252,125,.045);
+  box-shadow:0 0 35px rgba(3,252,125,.06);
+}
+.activity-feature-card,.activity-section{padding:15px}
+.activity-kpi-card{background:#07110e;border-color:var(--line);border-radius:15px}
+.activity-kpi-card>div{padding:12px 10px}
+.activity-kpi-card small{letter-spacing:.1em}
+.activity-kpi-card strong{font-size:15px}
+.activity-section .section-heading{margin-bottom:8px}
+.timeline-row{padding:12px 0}
+.timeline-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(3,252,125,.2)}
+.activity-section .timeline-row{display:grid;grid-template-columns:7px 1fr auto;align-items:center;gap:10px}
+.active-trade-row{padding:12px 0;border-top:1px solid var(--line)}
+.active-trade-row:first-of-type{border-top:0}
+.active-risk-row{display:flex;gap:6px;margin-top:7px}
+.active-risk-row span{padding:4px 6px;border-radius:6px;background:#07110e;color:var(--muted);font-size:7px}
+
+.referral-incentive{
+  display:grid;
+  grid-template-columns:1.25fr .9fr;
+  gap:12px;
+  padding:15px;
+  border:1px solid rgba(3,252,125,.18);
+  border-radius:15px;
+  background:
+    radial-gradient(circle at 0% 100%,rgba(3,252,125,.08),transparent 45%),
+    linear-gradient(145deg,#081711,#06100d);
+}
+.referral-incentive-copy small{color:var(--green);font-size:7px;font-weight:900;letter-spacing:.13em}
+.referral-incentive-copy h2{font-size:18px;line-height:1.08;letter-spacing:-.03em;margin:6px 0}
+.referral-incentive-copy p{margin:0;max-width:420px;font-size:9px;line-height:1.55;color:var(--muted)}
+.referral-incentive-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.referral-incentive-metrics>div{padding:11px;border:1px solid var(--line);border-radius:11px;background:rgba(5,13,10,.62);display:flex;flex-direction:column;justify-content:center}
+.referral-incentive-metrics span{font-size:7px;color:var(--muted);letter-spacing:.1em}
+.referral-incentive-metrics strong{font-size:17px;margin:5px 0 2px;color:var(--green)}
+.referral-incentive-metrics small{font-size:7px;color:var(--muted);line-height:1.35}
+
+@media(max-width:560px){
+  .activity-intro{min-height:100px}
+  .activity-intro-mark{width:48px;height:48px;flex-basis:48px;font-size:21px}
+  .referral-incentive{grid-template-columns:1fr}
+  .referral-incentive-metrics{grid-template-columns:1fr 1fr}
+}
