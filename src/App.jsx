@@ -3,7 +3,7 @@ import { supabase } from "./lib/supabase";
 import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
 
-const nav = [["home","⌂","Home"],["trade","✦","AI Trade"],["activity","◷","Activity"],["wallet","▣","Wallet"],["profile","◉","Profile"]];
+const nav = [["home","⌂","Home"],["trade","✦","AI Trade"],["activity","◷","Activity"],["referral","↗","Referral"],["profile","◉","Profile"]];
 
 const FLEXAR_APP_URL = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "");
 
@@ -12,7 +12,7 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], mt5Connections: [], tradingAccess: null, error: null };
+  const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], tradingAccess: null, error: null };
   const [account, setAccount] = useState(EMPTY_ACCOUNT);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState("");
@@ -29,7 +29,7 @@ export default function App() {
     try { return sessionStorage.getItem("flexa_ai_engine_active") === "true"; } catch { return false; }
   });
   const [globalNotice, setGlobalNotice] = useState("");
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);\n  const [walletAction, setWalletAction] = useState("");
   const [tradeSuccess, setTradeSuccess] = useState(null);
 
   const refreshAccount = useCallback(async () => {
@@ -337,28 +337,28 @@ export default function App() {
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => setPage("home")} />;
   if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
-  if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexa-symbol.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
-  if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open FLEXAR AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
+  if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
+  if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open FLEXAR AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
 
   const notifications = account.notifications || [];
   const unreadNotifications = notifications.filter((item) => !item.is_read).length;
 
   return <div className="app-shell">
-    <header className="topbar"><div className="brand"><img className="brand-symbol" src="/flexa-symbol.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI Trades</small></div></div><button type="button" className="icon-button notification-button" onClick={() => setShowNotifications(true)} aria-label="Open notifications"><span className="bell-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></span>{unreadNotifications > 0 && <b className="notification-dot">{unreadNotifications > 9 ? "9+" : unreadNotifications}</b>}</button></header>
+    <header className="topbar"><img className="app-wordmark" src="/flexar-public-logo.webp" alt="FLEXAR AI" /></header>
     <main className="content">
       {authError && <div className="error-banner">{authError}</div>}
       <AppErrorBoundary page={page}>
         <div key={page} className="page-transition" aria-live="polite">
-          {page === "home" && <Home account={account} loading={loading} setPage={setPage} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
+          {page === "home" && <Home account={account} profile={profile} setPage={setPage} onWalletAction={setWalletAction} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
           {page === "trade" && <Trade account={account} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
           {page === "activity" && <Activity account={account} />}
-          {page === "wallet" && <Wallet account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} setPage={setPage} />}
-          {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} account={account} refreshAccount={refreshAccount} />}
+          {page === "referral" && <Referral account={account} profile={profile} />}
+          {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
         </div>
       </AppErrorBoundary>
     </main>
     <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
-    {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
+    {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}\n    {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
     {tradeSuccess && <TradeSuccessModal trade={tradeSuccess} onClose={() => setTradeSuccess(null)} onViewActive={() => { setTradeSuccess(null); setPage("activity"); }} />}
   </div>;
 }
@@ -426,7 +426,7 @@ function Landing({ market, showAuth, setShowAuth, installPrompt, installFLEXAR }
   const price = market?.price;
   const change = market?.change;
   return <div className="landing"><div className="landing-orb orb-one" /><div className="landing-orb orb-two" />
-    <header className="landing-topbar"><img className="landing-wordmark" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><span className="live-chip">● WEB PLATFORM</span></header>
+    <header className="landing-topbar"><img className="landing-wordmark" src="/flexar-public-logo.webp" alt="FLEXAR AI" /></header>
     <main className="landing-content">
       <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>FLEXAR AI continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta" onClick={() => setShowAuth(true)}>Get started <b>→</b></button>{installPrompt && <button className="install-cta" onClick={installFLEXAR}>Install FLEXAR AI</button>}<div className="landing-trust">Free account · Google or Telegram · No FLEXAR AI password</div><span className="hero-status"><i /> Market data connected</span></div></section>
       <section className="landing-terminal"><div className="terminal-top"><div><small>LIVE MARKET</small><strong>BTC / USDT</strong></div><span className={change >= 0 ? "green" : "red"}>{change == null ? "—" : (change >= 0 ? "+" : "") + change.toFixed(2) + "%"}</span></div><Chart /><div className="terminal-bottom"><strong>{price == null ? "Loading…" : "$" + price.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>PUBLIC MARKET DATA</span></div><div className="floating-card float-card-a">AI OPPORTUNITY <b>SCANNING</b></div><div className="floating-card float-card-b">NEXT WINDOW <b>60 MIN</b></div></section>
@@ -438,7 +438,7 @@ function Landing({ market, showAuth, setShowAuth, installPrompt, installFLEXAR }
 function AuthModal({ onClose }) {
   const [mode, setMode] = useState("signup");
   const [error, setError] = useState("");
-  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="FLEXAR AI" /><div className="eyebrow">WELCOME TO FLEXAR AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your FLEXAR AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to FLEXAR AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use FLEXAR AI responsibly and follow applicable terms.</small></div></div>;
+  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><div className="eyebrow">WELCOME TO FLEXAR AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your FLEXAR AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to FLEXAR AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use FLEXAR AI responsibly and follow applicable terms.</small></div></div>;
 }
 
 function AuthOptions({ setAuthError, authError }) {
@@ -580,77 +580,25 @@ function getBestPerformingPair(trades) {
   return Object.entries(totals).sort((a, b) => b[1] - a[1])[0] || null;
 }
 
-function Home({ account, loading, setPage, claimReward, rewardBusy, startAiScan, aiScanning, aiEngineActive }) {
-  const active = account.trades.filter((trade) => trade.status === "active");
-  const opportunities = account.opportunities || [];
-  const unread = account.notifications.filter((item) => !item.is_read).length;
-  const usdtBalance = Number(account.wallets.find((item) => item.asset === "USDT")?.available_balance || 0);
-  const reward = account.rewards?.find((r) => ["available", "active"].includes(r.status) && Number(r.remaining_reward || 0) > 0);
-  const assets = [
-    ["BTC","Bitcoin","₿"],["USDT","Tether USD","₮"],["TON","Gram","G"],["SOL","Solana","S"],["BNB","BNB","◆"]
-  ].map(([asset,label,icon]) => ({asset,label,icon,wallet:account.wallets.find(w=>w.asset===asset)}));
-  const activeTrade = active[0];
-  const activeMarket = activeTrade?.metadata?.market_symbol || activeTrade?.asset || "—";
-  const activeDirection = String(activeTrade?.direction || "").toUpperCase();
-
+function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBusy, startAiScan, aiScanning, aiEngineActive }) {
+  const active=account.trades.filter(t=>t.status==="active"), opportunities=account.opportunities||[], unread=account.notifications.filter(i=>!i.is_read).length;
+  const usdtBalance=Number(account.wallets.find(i=>i.asset==="USDT")?.available_balance||0), reward=account.rewards?.find(r=>["available","active"].includes(r.status)&&Number(r.remaining_reward||0)>0);
+  const displayName=profile?.display_name||profile?.telegram_username||"Your account", initials=displayName.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"F";
+  const assets=[["BTC","Bitcoin","https://cdn.simpleicons.org/bitcoin"],["USDT","Tether USD","https://cdn.simpleicons.org/tether"],["TON","Gram","https://cdn.simpleicons.org/ton"],["SOL","Solana","https://cdn.simpleicons.org/solana"],["BNB","BNB","https://cdn.simpleicons.org/binance"]].map(([asset,label,icon])=>({asset,label,icon,wallet:account.wallets.find(w=>w.asset===asset)}));
+  const activeTrade=active[0], activeMarket=activeTrade?.metadata?.market_symbol||activeTrade?.asset||"—", activeDirection=String(activeTrade?.direction||"").toUpperCase();
   return <div className="flexar-home minimal-home">
-    <section className="home-account">
-      <div className="home-profile-line">
-        <div className="home-avatar">F</div>
-        <div><small>FLEXAR AI ACCOUNT</small><strong>Welcome back</strong></div>
-        <button type="button" className="home-profile-button" onClick={() => setPage("profile")} aria-label="Open profile">⌁</button>
-      </div>
-      <div className="home-balance">
-        <small>AVAILABLE BALANCE</small>
-        <div><strong>{"$"+usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>USDT</span></div>
-        <em>{active.length ? active.length + " active trade" + (active.length > 1 ? "s" : "") : "Ready to trade"}</em>
-      </div>
+    <section className="home-account"><div className="home-profile-line"><div className="home-avatar">{initials}</div><div><small>WELCOME BACK</small><strong>{displayName}</strong></div><button type="button" className="home-profile-button notification-button" onClick={()=>window.dispatchEvent(new CustomEvent("flexar-open-notifications"))} aria-label="Open notifications"><span className="bell-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span>{unread>0&&<b className="notification-dot">{unread>9?"9+":unread}</b>}</button></div>
+      <div className="home-balance"><small>AVAILABLE BALANCE</small><div><strong>{"$"+usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>USDT</span></div><em>{active.length?active.length+" active trade"+(active.length>1?"s":""):"Ready to trade"}</em></div>
     </section>
-
-    <section className="home-quick-actions" aria-label="Quick actions">
-      <button className="home-action-primary" type="button" onClick={() => setPage("trade")}><span>↗</span><strong>AI Trade</strong></button>
-      <button type="button" onClick={() => setPage("wallet")}><span>↓</span><strong>Deposit</strong></button>
-      <button type="button" onClick={() => setPage("wallet")}><span>↗</span><strong>Withdraw</strong></button>
-      <button type="button" onClick={() => setPage("wallet")}><span>⇄</span><strong>Swap</strong></button>
-    </section>
-
-    {reward && <section className="home-reward-row">
-      <div><small>{reward.status === "active" ? "WELCOME CREDIT ACTIVE" : "WELCOME CREDIT"}</small><strong>{"$"+Number(reward.remaining_reward||0).toFixed(2)} <span>remaining</span></strong></div>
-      <button type="button" onClick={reward.status === "active" ? () => setPage("trade") : claimReward} disabled={rewardBusy}>{reward.status === "active" ? "Use credit" : rewardBusy ? "Claiming…" : "Claim"}</button>
-    </section>}
-
-    <section className="home-section portfolio-preview">
-      <div className="home-section-title"><div><small>PORTFOLIO</small><h2>My assets</h2></div><button type="button" onClick={() => setPage("wallet")}>View all</button></div>
-      <div className="home-asset-list">
-        {assets.map(item => <div className="home-asset-row" key={item.asset}>
-          <span className={"home-asset-icon asset-"+item.asset.toLowerCase()}>{item.icon}</span>
-          <div><strong>{item.label}</strong><small>{item.asset === "TON" ? "GRAM" : item.asset}</small></div>
-          <b>{Number(item.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {item.asset === "TON" ? "GRAM" : item.asset}</b>
-        </div>)}
-      </div>
-    </section>
-
-    <section className="home-section home-ai-card">
-      <div className="home-section-title"><div><small>FLEXAR AI</small><h2>{opportunities.length ? "Signal ready" : aiEngineActive ? "AI is watching" : "Find the next trade"}</h2></div><span className={aiEngineActive ? "home-live" : ""}><i /> {aiEngineActive ? "LIVE" : "READY"}</span></div>
-      {opportunities.length ? <div className="home-signal-row">
-        <div><strong>{opportunities[0].symbol}</strong><small>{opportunities[0].direction === "down" ? "↘ DOWN" : "↗ UP"} · {Math.round(Number(opportunities[0].signal_score||0)*100)}% confidence</small></div>
-        <button type="button" onClick={() => setPage("trade")}>Review →</button>
-      </div> : <div className="home-ai-empty"><p>{aiScanning ? "Scanning supported markets…" : "FLEXAR AI watches the market and surfaces selective setups here."}</p><button type="button" onClick={() => setPage("trade")}>{aiScanning ? "Scanning…" : "Open AI Trade"}</button></div>}
-    </section>
-
-    {activeTrade && <section className="home-active-row">
-      <div><small>ACTIVE TRADE</small><strong>{activeMarket}</strong><span className={activeDirection === "UP" ? "green" : "red"}>{activeDirection}</span></div>
-      <button type="button" onClick={() => setPage("activity")}>Monitor →</button>
-    </section>}
-
-    <section className="home-section home-activity">
-      <div className="home-section-title"><div><small>ACTIVITY</small><h2>Recent activity</h2></div><button type="button" onClick={() => setPage("activity")}>View all</button></div>
-      <ActivityRows account={account} />
-      {!account.trades.length && !account.transactions.length && unread > 0 && <small className="home-unread">{unread} unread notification{unread===1?"":"s"}</small>}
-    </section>
+    <section className="home-ai-cta"><div><small>FLEXAR AI</small><h2>{aiEngineActive?"AI is watching the markets.":opportunities.length?"Your AI opportunity is ready.":"Find your next trade with AI."}</h2><p>{aiScanning?"Scanning supported markets for a qualifying setup.":aiEngineActive?"FLEXAR will surface a qualifying setup when its signal rules are met.":"Let FLEXAR analyze the market first, then review the setup before you approve capital."}</p></div><button type="button" onClick={()=>setPage("trade")}>{aiEngineActive?"View AI Trade →":"Start AI Trade →"}</button></section>
+    <section className="home-funding-actions" aria-label="Funding actions"><button type="button" onClick={()=>onWalletAction("deposit")}><span>↓</span><strong>Deposit</strong></button><button type="button" onClick={()=>onWalletAction("withdraw")}><span>↗</span><strong>Withdraw</strong></button><button type="button" onClick={()=>onWalletAction("swap")}><span>⇄</span><strong>Swap</strong></button></section>
+    {reward&&<section className="home-reward-row"><div><small>{reward.status==="active"?"WELCOME CREDIT ACTIVE":"WELCOME CREDIT"}</small><strong>{"$"+Number(reward.remaining_reward||0).toFixed(2)} <span>remaining</span></strong></div><button type="button" onClick={reward.status==="active"?()=>setPage("trade"):claimReward} disabled={rewardBusy}>{reward.status==="active"?"Use credit":rewardBusy?"Claiming…":"Claim"}</button></section>}
+    <section className="home-section portfolio-preview"><div className="home-section-title"><div><small>PORTFOLIO</small><h2>My assets</h2></div><span className="home-section-note">5 assets</span></div><div className="home-asset-list">{assets.map(item=><div className="home-asset-row" key={item.asset}><span className={"home-asset-icon asset-"+item.asset.toLowerCase()}><img src={item.icon} alt="" loading="lazy"/></span><div><strong>{item.label}</strong><small>{item.asset==="TON"?"GRAM":item.asset}</small></div><b>{Number(item.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {item.asset==="TON"?"GRAM":item.asset}</b></div>)}</div></section>
+    <section className="home-section home-ai-card"><div className="home-section-title"><div><small>AI SIGNAL</small><h2>{opportunities.length?"Signal ready":"Waiting for a setup"}</h2></div><span className={aiEngineActive?"home-live":""}><i/> {aiEngineActive?"LIVE":"READY"}</span></div>{opportunities.length?<div className="home-signal-row"><div><strong>{opportunities[0].symbol}</strong><small>{opportunities[0].direction==="down"?"↘ DOWN":"↗ UP"} · {Math.round(Number(opportunities[0].signal_score||0)*100)}% confidence</small></div><button type="button" onClick={()=>setPage("trade")}>Review →</button></div>:<div className="home-ai-empty"><p>{aiScanning?"Scanning supported markets…":"No setup is being presented yet. Start the AI engine when you are ready."}</p><button type="button" onClick={()=>setPage("trade")}>Open AI Trade</button></div>}</section>
+    {activeTrade&&<section className="home-active-row"><div><small>ACTIVE TRADE</small><strong>{activeMarket}</strong><span className={activeDirection==="UP"?"green":"red"}>{activeDirection}</span></div><button type="button" onClick={()=>setPage("activity")}>Monitor →</button></section>}
+    <section className="home-section home-activity"><div className="home-section-title"><div><small>ACTIVITY</small><h2>Recent activity</h2></div><button type="button" onClick={()=>setPage("activity")}>View all</button></div><ActivityRows account={account}/></section>
   </div>;
 }
-
 function RewardBanner({ reward, onClaim, busy }) {
   const daysLeft = Math.max(0, Math.ceil((new Date(reward.expires_at) - Date.now()) / 86400000));
   const expired = new Date(reward.expires_at).getTime() <= Date.now();
@@ -658,200 +606,43 @@ function RewardBanner({ reward, onClaim, busy }) {
   const remaining = Number(reward.remaining_reward || 0);
   const withdrawable = Number(reward.profit_withdrawable || 0);
   return <section className="reward-banner"><div className="reward-glow" /><div className="reward-copy"><small>{claimed ? "REWARD CREDIT ACTIVE" : "WELCOME REWARD"}</small><strong>${Number(reward.reward_amount || 50).toFixed(0)} <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : claimed ? "$"+remaining.toFixed(2)+" credit remaining · $"+withdrawable.toFixed(2)+" eligible profit." : "Use within "+daysLeft+" days. The reward itself is non-withdrawable; eligible profit can be withdrawn before expiry."}</p></div>{claimed ? <div className="reward-state"><b>ACTIVE</b><span>{daysLeft}d left</span></div> : <button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim reward →"}</button>}</section>;
-}function MT5ConnectionCard({ account, refreshAccount }) {
-  const connection=account.mt5Connections?.[0]||null;
-  const [open,setOpen]=useState(false);
-  const [login,setLogin]=useState("");
-  const [server,setServer]=useState("");
-  const [password,setPassword]=useState("");
-  const [environment,setEnvironment]=useState("demo");
-  const [busy,setBusy]=useState(false);
-  const [notice,setNotice]=useState("");
-
-  async function connect() {
-    if(busy) return;
-    setBusy(true); setNotice("");
-    try {
-      const {data,error}=await supabase.functions.invoke("mt5-gateway",{body:{action:"connect",login:Number(login),server,password,environment,nickname:"FLEXAR MT5"}});
-      if(error){ let detail=""; try { detail=error.context ? (await error.context.json())?.error||"" : ""; } catch {} throw new Error(detail||data?.error||error.message||"Could not connect MT5."); }
-      if(data?.error) throw new Error(data.error);
-      setPassword("");
-      setOpen(false);
-      setNotice("MT5 connection created. FLEXAR is waiting for the cloud terminal to become ready.");
-      await refreshAccount();
-    } catch(error) {
-      setNotice(error.message||"Could not connect MT5.");
-    } finally { setBusy(false); }
-  }
-
-  async function refreshStatus() {
-    if(!connection||busy) return;
-    setBusy(true); setNotice("");
-    try {
-      const {data,error}=await supabase.functions.invoke("mt5-gateway",{body:{action:"status",connection_id:connection.id}});
-      if(error) throw new Error(data?.error||error.message||"Could not refresh MT5 status.");
-      if(data?.error) throw new Error(data.error);
-      await refreshAccount();
-    } catch(error) { setNotice(error.message||"Could not refresh MT5 status."); }
-    finally { setBusy(false); }
-  }
-
-  const statusLabel=connection?.status==="connected"?"CONNECTED":connection?.status==="connecting"?"CONNECTING":connection?.status?.toUpperCase()||"NOT CONNECTED";
-  return <section className="profile-section mt5-card">
-    <div className="profile-section-head"><div><small>CONNECTED PLATFORM</small><h2>MetaTrader 5</h2></div><span className={"mt5-status mt5-"+(connection?.status||"none")}>● {statusLabel}</span></div>
-    {connection ? <div className="mt5-connected">
-      <div className="mt5-account-line"><div><strong>Account #{connection.mt5_login}</strong><small>{connection.broker_server} · {connection.environment==="demo"?"Demo":"Live"}</small></div><button className="mini-action" onClick={refreshStatus} disabled={busy}>{busy?"Checking…":"Refresh"}</button></div>
-      <div className="mt5-stats"><div><small>BALANCE</small><strong>{Number(connection.balance||0).toLocaleString(undefined,{maximumFractionDigits:2})} {connection.currency||"USD"}</strong></div><div><small>EQUITY</small><strong>{Number(connection.equity||0).toLocaleString(undefined,{maximumFractionDigits:2})} {connection.currency||"USD"}</strong></div><div><small>FREE MARGIN</small><strong>{Number(connection.free_margin||0).toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div></div>
-      <small className="mt5-help">{connection.connection_message||"Your MT5 account is managed through FLEXAR's cloud trading connection."}</small>
-    </div> : <div className="mt5-empty"><p>Connect an MT5 broker account to let FLEXAR AI read your account and, later, execute approved AI setups through it.</p><button className="ai-approve-button" onClick={()=>{setNotice("");setOpen(true);}}>Connect MT5 →</button></div>}
-    {open&&<div className="mt5-form">
-      <label>MT5 account number<input inputMode="numeric" value={login} onChange={e=>setLogin(e.target.value.replace(/\D/g,""))} placeholder="12345678" /></label>
-      <label>Broker server<input value={server} onChange={e=>setServer(e.target.value)} placeholder="Broker-Live01" autoComplete="off" /></label>
-      <label>Account type<select value={environment} onChange={e=>setEnvironment(e.target.value)}><option value="demo">Demo</option><option value="live">Live</option></select></label>
-      <label>MT5 trading password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your MT5 password" autoComplete="off" /></label>
-      <small className="mt5-security-note">Your MT5 password is sent only to the secure MT5 connection service and is not stored in FLEXAR's database.</small>
-      <div className="mt5-form-actions"><button className="secondary" onClick={()=>setOpen(false)} disabled={busy}>Cancel</button><button className="ai-approve-button" onClick={connect} disabled={busy||!login||!server||!password}>{busy?"Connecting…":"Connect securely"}</button></div>
-    </div>}
-    {notice&&<div className="notice" role="status">{notice}</div>}
-  </section>;
 }
-
-function Profile({ user, profile, signOut, account, refreshAccount }) {
-  const name=profile?.display_name||"FLEXAR AI user";
-  const initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
-  const referral=profile?.referral_code||"—";
-  return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username ? "@"+profile.telegram_username : user?.email || "Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section>
-    <MT5ConnectionCard account={account} refreshAccount={refreshAccount} />
-    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username ? "Telegram connected" : "Google connected"}</strong></div><div className="profile-row"><span>Security</span><strong>Protected by Supabase Auth</strong></div><div className="profile-row"><span>Trading access</span><strong>AI trading enabled</strong></div></section><section className="referral-card"><div><small>REFERRAL NETWORK</small><h2>Invite & earn</h2><p>Your referral code is ready. Rewards are credited when a referred user completes the qualifying activity.</p></div><div className="referral-code"><span>{referral}</span><button onClick={()=>navigator.clipboard?.writeText(referral)}>Copy</button></div></section><section className="profile-section"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><div className="profile-row"><span>Notifications</span><strong>App + Telegram</strong></div><div className="profile-row"><span>Market alerts</span><strong>Enabled</strong></div></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button></div>;
-}function Wallet({ account, refreshAccount, assetPrices = {}, setPage }) {
-  const [modal, setModal] = useState("");
-  const [walletInfo, setWalletInfo] = useState(null);
-  const [selectedAsset, setSelectedAsset] = useState("USDT");
-  const [swapFrom, setSwapFrom] = useState("USDT");
-  const [swapTo, setSwapTo] = useState("BTC");
-  const [swapAmount, setSwapAmount] = useState("");
-  const [amount, setAmount] = useState("");
-  const [address, setAddress] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [swapBusy, setSwapBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-
-  const reward=account.rewards?.find((r)=>["available","active"].includes(r.status) && Number(r.remaining_reward||0)>0);
-  const supported=[
-    {asset:"BTC",label:"Bitcoin",symbol:"BTC",network:"Internal",price:Number(assetPrices.BTC||0),icon:"https://cdn.simpleicons.org/bitcoin"},
-    {asset:"USDT",label:"Tether USD",symbol:"USDT",network:"TRC-20",price:1,icon:"https://cdn.simpleicons.org/tether"},
-    {asset:"TON",label:"Gram",symbol:"GRAM",network:"TON",price:Number(assetPrices.TON||0),icon:"https://cdn.simpleicons.org/ton"},
-    {asset:"SOL",label:"Solana",symbol:"SOL",network:"Internal",price:Number(assetPrices.SOL||0),icon:"https://cdn.simpleicons.org/solana"},
-    {asset:"BNB",label:"BNB",symbol:"BNB",network:"Internal",price:Number(assetPrices.BNB||0),icon:"https://cdn.simpleicons.org/binance"},
-  ];
-  const balances=supported.map(asset=>({...asset,wallet:account.wallets.find(w=>w.asset===asset.asset)}));
-  const portfolioValue=balances.reduce((sum,item)=>sum + Number(item.wallet?.available_balance||0)*Number(item.price||0),0);
-  const fromAsset=balances.find(item=>item.asset===swapFrom)||balances[1];
-  const toAsset=balances.find(item=>item.asset===swapTo)||balances[0];
-  const numericSwap=Number(swapAmount||0);
-  const receiveQuote=numericSwap>0 && fromAsset.price>0 && toAsset.price>0 ? (numericSwap*fromAsset.price/toAsset.price) : 0;
-
-  async function openDeposit() {
-    setNotice(""); setModal("deposit");
-    if (walletInfo) return;
-    const { data, error } = await supabase.functions.invoke("wallet-info");
-    if (error || data?.error) setNotice(data?.error || error?.message || "Could not load deposit details.");
-    else setWalletInfo(data);
-  }
-
-  async function submitSwap(event) {
-    event.preventDefault();
-    setNotice("");
-    if (!Number.isFinite(numericSwap) || numericSwap <= 0) return setNotice("Enter a valid amount to swap.");
-    if (swapFrom === swapTo) return setNotice("Choose two different assets.");
-    if (numericSwap > Number(fromAsset.wallet?.available_balance||0)) return setNotice("Insufficient available balance.");
-    setSwapBusy(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("swap-assets", { body:{from_asset:swapFrom,to_asset:swapTo,amount:numericSwap} });
-      if (error || data?.error) throw new Error(data?.error || error?.message || "Swap failed.");
-      setSwapAmount(""); setModal("");
-      setNotice("Swap completed. Your portfolio has been updated.");
-      await refreshAccount();
-    } catch (error) { setNotice(error.message || "Swap failed."); }
-    finally { setSwapBusy(false); }
-  }
-
-  async function submitWithdrawal(event) {
-    event.preventDefault();
-    setNotice("");
-    const numericAmount = Number(amount);
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setNotice("Enter a valid withdrawal amount.");
-    if (!address.trim()) return setNotice("Enter the destination wallet address.");
-    setBusy(true);
-    try {
-      const wallet = account.wallets.find((item) => item.asset === selectedAsset);
-      const { data, error } = await supabase.functions.invoke("request-withdrawal", {
-        body:{asset:selectedAsset,network:wallet?.network,amount:numericAmount,address:address.trim()}
-      });
-      if (error || data?.error) throw new Error(data?.error || error?.message || "Withdrawal request failed.");
-      setAmount(""); setAddress(""); setModal("");
-      setNotice("Withdrawal request submitted. Your funds are now locked while the request is reviewed.");
-      await refreshAccount();
-    } catch (error) { setNotice(error.message || "Withdrawal request failed."); }
-    finally { setBusy(false); }
-  }
-
-  return <div className="wallet-page">
-    <section className="wallet-hero">
-      <div><small>PORTFOLIO VALUE</small><strong>\${portfolioValue.toLocaleString(undefined,{maximumFractionDigits:2})} <em>USDT</em></strong><span>Live value of available balances · bonus principal excluded</span></div>
-      <div className="wallet-orbit">◎</div>
-    </section>
-    <div className="wallet-actions">
-      <button onClick={openDeposit}>＋ Deposit</button>
-      <button className="secondary" onClick={()=>{setNotice("");setModal("withdraw");}}>↗ Withdraw</button>
-      <button className="secondary" onClick={()=>{setNotice("");setModal("swap");}}>⇄ Swap</button>
-    </div>
-
-    {reward&&<section className="wallet-reward"><div><small>FLEXAR WELCOME CREDIT</small><strong>\${Number(reward.remaining_reward||0).toFixed(2)} <span>REMAINING</span></strong><p>Trading credit only. It is not included in your portfolio balance and cannot be reused after it is spent.</p></div><span className="credit-pill">{reward.status.toUpperCase()}</span></section>}
-
-    <section className="asset-section">
-      <div className="section-heading"><div><small>PORTFOLIO</small><h2>Your assets</h2></div><button className="asset-swap-link" onClick={()=>setModal("swap")}>Swap assets ↗</button></div>
-      <div className="asset-list">
-        {balances.map(wallet=><div className="asset-row" key={wallet.asset}>
-          <div className={"asset-icon asset-"+wallet.asset.toLowerCase()}><img src={wallet.icon} alt="" loading="lazy" /></div>
-          <div><strong>{wallet.label}</strong><small>{wallet.symbol} · {wallet.asset==="TON"?"TON network":wallet.network}</small></div>
-          <div className="asset-balance"><b>{Number(wallet.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {wallet.symbol}</b><small>\${(Number(wallet.wallet?.available_balance||0)*wallet.price).toLocaleString(undefined,{maximumFractionDigits:2})}</small></div>
-        </div>)}
-      </div>
-    </section>
-
-    <section className="asset-section">
-      <div className="section-heading"><div><small>FUNDING ROUTES</small><h2>Deposit availability</h2></div></div>
-      <div className="funding-routes"><div><b>USDT</b><span>TRC-20 deposit</span></div><div><b>GRAM</b><span>TON network deposit</span></div><p>BTC, SOL and BNB are portfolio assets created through swaps. Direct deposits for those assets are not enabled.</p></div>
-    </section>
-
-    <section className="asset-section"><div className="section-heading"><div><small>RECENT</small><h2>Wallet activity</h2></div></div><ActivityRows account={{...account,trades:[]}} /></section>
-    {notice&&<div className="notice" role="status">{notice}</div>}
-
-    {modal==="swap"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="swap-modal" onClick={e=>e.stopPropagation()}>
-      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button>
-      <div className="eyebrow">PORTFOLIO SWAP</div><h2>Move value between assets.</h2><p>Swap is internal to FLEXAR. The quote uses current market reference prices and the conversion is applied atomically to your portfolio.</p>
-      <form onSubmit={submitSwap}>
-        <div className="swap-box"><small>You pay</small><div><input inputMode="decimal" value={swapAmount} onChange={e=>setSwapAmount(e.target.value)} placeholder="0.00"/><select value={swapFrom} onChange={e=>setSwapFrom(e.target.value)}>{balances.map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></div><span>Available {Number(fromAsset.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {fromAsset.symbol}</span></div>
-        <button type="button" className="swap-flip" onClick={()=>{setSwapFrom(swapTo);setSwapTo(swapFrom);}}>↓</button>
-        <div className="swap-box"><small>You receive</small><div><strong>{receiveQuote.toLocaleString(undefined,{maximumFractionDigits:8})}</strong><select value={swapTo} onChange={e=>setSwapTo(e.target.value)}>{balances.map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></div><span>1 {fromAsset.symbol} ≈ {(fromAsset.price/toAsset.price||0).toLocaleString(undefined,{maximumFractionDigits:8})} {toAsset.symbol}</span></div>
-        <button className="swap-submit" disabled={swapBusy}>{swapBusy?"Swapping…":"Swap now ↗"}</button>
-      </form>
-    </div></div>}
-
-    {modal==="deposit"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
-      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button>
-      <div className="eyebrow">DEPOSIT</div><h2>Fund your wallet.</h2><p>Send funds only on the network shown below. Deposits are credited after the transaction is verified.</p>
-      <div className="wallet-network-list">{Object.entries(walletInfo?.deposit_addresses||{}).map(([asset,info])=><div className="wallet-address-card" key={asset}><strong>{asset==="TON"?"GRAM":asset}</strong><small>{info?.network||"Network"}</small><code>{info?.address||"Deposit address is being configured."}</code>{info?.address&&<button type="button" onClick={()=>navigator.clipboard?.writeText(info.address)}>Copy address</button>}</div>)}{!walletInfo&&<div className="empty-state"><strong>Loading deposit details…</strong></div>}</div>
-    </div></div>}
-
-    {modal==="withdraw"&&<div className="auth-modal-backdrop" onClick={()=>setModal("")}><div className="auth-modal" onClick={e=>e.stopPropagation()}>
-      <button className="auth-close" onClick={()=>setModal("")} aria-label="Close">×</button><div className="eyebrow">WITHDRAW</div><h2>Move funds out.</h2>
-      <form onSubmit={submitWithdrawal}><label>Asset<select value={selectedAsset} onChange={e=>setSelectedAsset(e.target.value)}>{balances.filter(a=>["USDT","TON"].includes(a.asset)&&Number(a.wallet?.available_balance||0)>0).map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></label><label>Amount<input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00"/></label><label>Destination address<textarea value={address} onChange={e=>setAddress(e.target.value)} /></label><button className="primary" disabled={busy}>{busy?"Submitting…":"Submit withdrawal"}</button></form>
-    </div></div>}
+function Profile({ user, profile, signOut }) {
+  const name=profile?.display_name||profile?.telegram_username||"FLEXAR AI user",initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+  const [notifications,setNotifications]=useState(()=>{try{return localStorage.getItem("flexar_pref_notifications")!=="off"}catch{return true}}),[marketAlerts,setMarketAlerts]=useState(()=>{try{return localStorage.getItem("flexar_pref_market_alerts")!=="off"}catch{return true}});
+  const setPref=(key,value,setter)=>{setter(value);try{localStorage.setItem(key,value?"on":"off")}catch{}};
+  return <div className="profile-page"><section className="profile-hero-card"><div className="profile-avatar">{initials}</div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username?"@"+profile.telegram_username:user?.email||"Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section>
+    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username?"Telegram connected":"Google connected"}</strong></div><div className="profile-row"><span>Email</span><strong>{user?.email||"Not provided"}</strong></div><div className="profile-row"><span>Trading</span><strong>AI trading enabled</strong></div></section>
+    <section className="profile-section settings-card"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><button className="setting-row" onClick={()=>setPref("flexar_pref_notifications",!notifications,setNotifications)}><span><strong>Notifications</strong><small>Account and trade updates</small></span><b className={notifications?"toggle on":"toggle"}><i/></b></button><button className="setting-row" onClick={()=>setPref("flexar_pref_market_alerts",!marketAlerts,setMarketAlerts)}><span><strong>Market alerts</strong><small>AI opportunity notifications</small></span><b className={marketAlerts?"toggle on":"toggle"}><i/></b></button><div className="setting-row static"><span><strong>Sign-in security</strong><small>Managed by Supabase Auth</small></span><b>Protected</b></div></section>
+    <section className="profile-section profile-support"><div className="profile-section-head"><div><small>ACCOUNT SUPPORT</small><h2>Need help?</h2></div></div><p>Use the support channel connected to your FLEXAR account for account, funding or trading questions.</p></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button>
   </div>;
 }
-
+function WalletActions({ action, onClose, account, refreshAccount, assetPrices = {} }) {
+  const [walletInfo,setWalletInfo]=useState(null),[selectedAsset,setSelectedAsset]=useState("USDT"),[swapFrom,setSwapFrom]=useState("USDT"),[swapTo,setSwapTo]=useState("BTC"),[swapAmount,setSwapAmount]=useState(""),[amount,setAmount]=useState(""),[address,setAddress]=useState(""),[busy,setBusy]=useState(false),[notice,setNotice]=useState("");
+  useEffect(()=>{if(action==="deposit"&&!walletInfo){supabase?.functions.invoke("wallet-info").then(({data,error})=>{if(error||data?.error)setNotice(data?.error||error?.message||"Could not load deposit details.");else setWalletInfo(data)})}},[action,walletInfo]);
+  const supported=[["BTC","Bitcoin","BTC","Internal",Number(assetPrices.BTC||0),"https://cdn.simpleicons.org/bitcoin"],["USDT","Tether USD","USDT","TRC-20",1,"https://cdn.simpleicons.org/tether"],["TON","Gram","GRAM","TON",Number(assetPrices.TON||0),"https://cdn.simpleicons.org/ton"],["SOL","Solana","SOL","Internal",Number(assetPrices.SOL||0),"https://cdn.simpleicons.org/solana"],["BNB","BNB","BNB","Internal",Number(assetPrices.BNB||0),"https://cdn.simpleicons.org/binance"]].map(([asset,label,symbol,network,price,icon])=>({asset,label,symbol,network,price,icon}));
+  const balances=supported.map(asset=>({...asset,wallet:account.wallets.find(w=>w.asset===asset.asset)})),fromAsset=balances.find(i=>i.asset===swapFrom)||balances[1],toAsset=balances.find(i=>i.asset===swapTo)||balances[0],numericSwap=Number(swapAmount||0);
+  const receiveQuote=numericSwap>0&&fromAsset.price>0&&toAsset.price>0?numericSwap*fromAsset.price/toAsset.price:0;
+  async function submitSwap(e){e.preventDefault();setNotice("");if(!Number.isFinite(numericSwap)||numericSwap<=0)return setNotice("Enter a valid amount.");if(swapFrom===swapTo)return setNotice("Choose two different assets.");if(numericSwap>Number(fromAsset.wallet?.available_balance||0))return setNotice("Insufficient available balance.");setBusy(true);try{const {data,error}=await supabase.functions.invoke("swap-assets",{body:{from_asset:swapFrom,to_asset:swapTo,amount:numericSwap}});if(error||data?.error)throw new Error(data?.error||error?.message||"Swap failed.");await refreshAccount();onClose()}catch(error){setNotice(error.message||"Swap failed.")}finally{setBusy(false)}}
+  async function submitWithdrawal(e){e.preventDefault();setNotice("");const numericAmount=Number(amount);if(!Number.isFinite(numericAmount)||numericAmount<=0)return setNotice("Enter a valid withdrawal amount.");if(!address.trim())return setNotice("Enter the destination wallet address.");setBusy(true);try{const wallet=account.wallets.find(item=>item.asset===selectedAsset);const {data,error}=await supabase.functions.invoke("request-withdrawal",{body:{asset:selectedAsset,network:wallet?.network,amount:numericAmount,address:address.trim()}});if(error||data?.error)throw new Error(data?.error||error?.message||"Withdrawal request failed.");await refreshAccount();onClose()}catch(error){setNotice(error.message||"Withdrawal request failed.")}finally{setBusy(false)}}
+  return <div className="auth-modal-backdrop" onClick={onClose}><div className="wallet-action-modal" onClick={e=>e.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button>
+    {action==="deposit"&&<><div className="eyebrow">DEPOSIT</div><h2>Fund your FLEXAR wallet.</h2><p>Send only on the network shown for each asset. Deposits are credited after verification.</p><div className="wallet-network-list">{Object.entries(walletInfo?.deposit_addresses||{}).map(([asset,info])=><div className="wallet-address-card" key={asset}><strong>{asset==="TON"?"GRAM":asset}</strong><small>{info?.network||"Network"}</small><code>{info?.address||"Deposit address is being configured."}</code>{info?.address&&<button type="button" onClick={()=>navigator.clipboard?.writeText(info.address)}>Copy address</button>}</div>)}{!walletInfo&&<div className="empty-state"><strong>Loading deposit details…</strong></div>}</div></>}
+    {action==="withdraw"&&<><div className="eyebrow">WITHDRAW</div><h2>Move funds out.</h2><p>Withdraw supported external assets directly from your FLEXAR balance.</p><form onSubmit={submitWithdrawal}><label>Asset<select value={selectedAsset} onChange={e=>setSelectedAsset(e.target.value)}>{balances.filter(a=>["USDT","TON"].includes(a.asset)&&Number(a.wallet?.available_balance||0)>0).map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></label><label>Amount<input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00"/></label><label>Destination address<textarea value={address} onChange={e=>setAddress(e.target.value)}/></label><button className="primary" disabled={busy}>{busy?"Submitting…":"Submit withdrawal"}</button></form></>}
+    {action==="swap"&&<><div className="eyebrow">PORTFOLIO SWAP</div><h2>Swap between your assets.</h2><p>Internal portfolio conversion uses current market reference prices and updates both balances atomically.</p><form onSubmit={submitSwap}><div className="swap-box"><small>You pay</small><div><input inputMode="decimal" value={swapAmount} onChange={e=>setSwapAmount(e.target.value)} placeholder="0.00"/><select value={swapFrom} onChange={e=>setSwapFrom(e.target.value)}>{balances.map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></div><span>Available {Number(fromAsset.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {fromAsset.symbol}</span></div><button type="button" className="swap-flip" onClick={()=>{setSwapFrom(swapTo);setSwapTo(swapFrom)}}>↓</button><div className="swap-box"><small>You receive</small><div><strong>{receiveQuote.toLocaleString(undefined,{maximumFractionDigits:8})}</strong><select value={swapTo} onChange={e=>setSwapTo(e.target.value)}>{balances.map(a=><option key={a.asset} value={a.asset}>{a.symbol}</option>)}</select></div><span>1 {fromAsset.symbol} ≈ {(fromAsset.price/toAsset.price||0).toLocaleString(undefined,{maximumFractionDigits:8})} {toAsset.symbol}</span></div><button className="swap-submit" disabled={busy}>{busy?"Swapping…":"Swap now →"}</button></form></>}
+    {notice&&<div className="notice" role="status">{notice}</div>}
+  </div></div>;
+}
+function Referral({ account, profile }) {
+  const code=profile?.referral_code||"—", link=code==="—"?"":window.location.origin+"/?ref="+encodeURIComponent(code), referrals=account.referrals||[];
+  const rewarded=referrals.filter(item=>item.status==="rewarded"), earned=rewarded.reduce((sum,item)=>sum+Number(item.reward_amount||0),0);
+  const copy=async value=>{if(!value)return;try{await navigator.clipboard.writeText(value)}catch{}};
+  return <div className="referral-page"><section className="referral-hero"><small>AFFILIATE NETWORK</small><h1>Grow FLEXAR.<br/><span>Earn with every referral.</span></h1><p>Share your personal FLEXAR link, bring new users into the platform and build a referral network around your audience.</p><div className="referral-link-box"><span>{link||"Your referral link will appear here."}</span><button onClick={()=>copy(link)} disabled={!link}>Copy link</button></div></section>
+    <section className="referral-stats"><div><small>PEOPLE REFERRED</small><strong>{referrals.length}</strong></div><div><small>REWARDED</small><strong>{rewarded.length}</strong></div><div><small>REWARDS EARNED</small><strong>{"$"+earned.toFixed(2)}</strong></div></section>
+    <section className="referral-section"><div className="section-heading"><div><small>YOUR CODE</small><h2>{code}</h2></div><button className="asset-swap-link" onClick={()=>copy(code)}>Copy code</button></div><p>Use your code anywhere you promote FLEXAR. Your link automatically attributes new registrations to your network.</p></section>
+    <section className="referral-section referral-steps"><div><span>01</span><div><strong>Share</strong><p>Post your referral link to your community, content or private network.</p></div></div><div><span>02</span><div><strong>Activate</strong><p>Your referred user creates an account and completes the qualifying activity.</p></div></div><div><span>03</span><div><strong>Earn</strong><p>Eligible referral rewards are recorded against your account.</p></div></div></section>
+    <section className="referral-section"><div className="section-heading"><div><small>NETWORK ACTIVITY</small><h2>Your referrals</h2></div></div>{referrals.length?<div className="list">{referrals.map((item,index)=><div className="row" key={item.id||index}><span>Referral {index+1}<small>{item.status}</small></span><strong className="green">{"$"+Number(item.reward_amount||0).toFixed(2)}</strong></div>)}</div>:<div className="empty-state"><strong>Your network is empty.</strong><p>Share your link to start building your FLEXAR affiliate network.</p></div>}</section>
+  </div>;
+}
 function AdminDashboard({ onExit }) {
   const [data,setData]=useState(null), [tab,setTab]=useState("overview"), [busy,setBusy]=useState(false), [error,setError]=useState("");
   const load=useCallback(async()=>{if(!supabase)return;setBusy(true);const result=await supabase.functions.invoke("admin-control",{body:{action:"overview"}});setBusy(false);if(result.error||result.data?.error)setError(result.data?.error||result.error?.message||"Could not load admin data.");else{setError("");setData(result.data);}},[]);
@@ -902,140 +693,16 @@ function ActivityRows({ account }) {
 }
 
 function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
-  const [amount,setAmount] = useState("25");
-  const [notice,setNotice] = useState("");
-  const [busy,setBusy] = useState(false);
-
-  const opportunity = account.opportunities?.find((item) => {
-    if (!["scheduled","open"].includes(item.status)) return false;
-    const end = new Date(item.entry_window_end || 0).getTime();
-    const start = new Date(item.entry_window_start || 0).getTime();
-    const now = Date.now();
-    return Number.isFinite(end) && end > now && Number.isFinite(start) && start <= now;
-  }) || null;
-
-  const direction = opportunity?.direction === "down" ? "DOWN" : "UP";
-  const duration = opportunity ? Math.round(Number(opportunity.duration_seconds || 3600) / 60) : 60;
-  const score = Math.round(Number(opportunity?.signal_score || 0) * 100);
-  const symbol = opportunity?.symbol || "—";
-  const price = Number(opportunity?.entry_price || 0);
-
-  const usdt = account.wallets.find((item) => item.asset === "USDT");
-  const reward = account.rewards?.find((item) => item.status === "active");
-  const walletBalance = Number(usdt?.available_balance || 0);
-  const bonusBalance = Number(reward?.remaining_reward || 0);
-  const numericAmount = Number(amount);
-  const tradingFunds = walletBalance + bonusBalance;
-  const canTrade = Boolean(account.tradingAccess?.has_access) && tradingFunds >= numericAmount;
-
-  const marketIcons = {
-    BTCUSDT:"₿", ETHUSDT:"Ξ", SOLUSDT:"S", BNBUSDT:"◆", XRPUSDT:"X",
-    DOGEUSDT:"Ð", EURUSD:"€", GBPUSD:"£", USDJPY:"¥", AUDUSD:"A$"
-  };
-
-  function updateAmount(value) {
-    if (value === "" || /^\d*(\.\d{0,2})?$/.test(value)) setAmount(value);
-  }
-
-  async function confirmAiTrade() {
-    if (!supabase || busy || !canTrade || numericAmount <= 0 || !opportunity) return;
-    setBusy(true);
-    setNotice("");
-    try {
-      const { data, error } = await supabase.functions.invoke("execute-trade", {
-        body: { mode:"ai", opportunity_id:opportunity.id, stake:numericAmount }
-      });
-      if (error) {
-        let message = error.message || "The AI trade could not be started.";
-        try { const payload = await error.context?.json?.(); message = payload?.error || payload?.message || message; } catch {}
-        throw new Error(message);
-      }
-      if (data?.error) throw new Error(data.error);
-      const tradeResult = data?.trade || data || {};
-      window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{
-        tradeId:tradeResult.trade_id || null,
-        symbol:tradeResult.symbol || symbol,
-        direction:tradeResult.direction || opportunity.direction,
-        stake:Number(tradeResult.stake ?? numericAmount),
-        duration:tradeResult.duration_seconds ? Math.round(Number(tradeResult.duration_seconds)/60) : duration,
-        fundingSource:tradeResult.funding_source || null,
-        takeProfitPrice:tradeResult.take_profit_price || null,
-        stopLossPrice:tradeResult.stop_loss_price || null
-      }}));
-    } catch(error) {
-      setNotice(error.message || "The AI trade could not be started.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return <div className="ai-trade-page">
-    <section className="ai-page-hero">
-      <div>
-        <div className="engine-kicker"><span className="engine-pulse" /> FLEXAR AI TRADING</div>
-        <h1>Let the machine<br /><span>find the trade.</span></h1>
-        <p>Start the AI engine. When a qualifying setup appears, FLEXAR presents it here for your approval. You stay in control of the capital.</p>
-      </div>
-      <div className={aiEngineActive ? "ai-engine-state active" : "ai-engine-state"}>
-        <span className="engine-status-dot" />
-        <div><small>ENGINE</small><strong>{aiEngineActive ? "SCANNING" : "STANDBY"}</strong></div>
-      </div>
-    </section>
-
-    <div className="ai-trade-menu">
-      <button type="button" className="active">AI Trade</button>
-      <button type="button" onClick={()=>window.scrollTo({top:650,behavior:"smooth"})}>Signal</button>
-      <button type="button" onClick={()=>window.scrollTo({top:1200,behavior:"smooth"})}>Order</button>
-      <button type="button" onClick={()=>window.scrollTo({top:1750,behavior:"smooth"})}>Markets</button>
-    </div>
-
-    {!opportunity ? <section className="ai-start-panel">
-      <div className="ai-start-icon">✦</div>
-      <div className="ai-start-copy">
-        <small>AI MARKET SCAN</small>
-        <h2>{aiScanning ? "Scanning the markets…" : aiEngineActive ? "The engine is watching." : "Start your AI trading machine."}</h2>
-        <p>{aiScanning ? "FLEXAR is comparing live market conditions across supported instruments." : aiEngineActive ? "FLEXAR will surface one qualifying setup when the signal rules are met." : "One tap starts the scan. No trade is opened automatically."}</p>
-      </div>
-      <button type="button" className="ai-start-button" onClick={startAiScan} disabled={aiScanning || aiEngineActive}>
-        {aiScanning ? "Scanning…" : aiEngineActive ? "AI is watching" : "Start AI machine →"}
-      </button>
-    </section> : <section className="ai-signal-panel">
-      <div className="signal-panel-top">
-        <div><small>AI SIGNAL · READY FOR REVIEW</small><strong>{symbol}</strong><span>{direction === "UP" ? "↗ LONG" : "↘ SHORT"} · {duration} MIN</span></div>
-        <div className="signal-score-large"><strong>{score}%</strong><small>CONFIDENCE</small></div>
-      </div>
-      <div className="signal-market-row">
-        <div className="market-identity"><span className="market-icon">{marketIcons[symbol] || "◈"}</span><div><strong>{symbol}</strong><small>{symbol.includes("USD") && !symbol.includes("USDT") ? "FOREX" : "CRYPTO"}</small></div></div>
-        <div className={direction === "UP" ? "signal-direction up" : "signal-direction down"}>{direction === "UP" ? "↗ UP" : "↘ DOWN"}</div>
-      </div>
-      <div className="signal-level-grid">
-        <div><small>ENTRY</small><strong>{price.toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
-        <div><small>TAKE PROFIT</small><strong>{(price*(direction==="UP"?1.008:.992)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
-        <div><small>STOP LOSS</small><strong>{(price*(direction==="UP" ? .996 : 1.004)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div>
-        <div><small>WINDOW</small><strong>{duration} MIN</strong></div>
-      </div>
-      <div className="ai-approval-note"><span>✓</span><p><strong>AI selected this setup.</strong> Review the signal, choose your stake, then approve the trade.</p></div>
-    </section>}
-
-    <section className="ai-order-panel">
-      <div className="panel-heading"><div><small>CAPITAL</small><h2>Approve the trade</h2><p>Only the stake is yours to decide.</p></div><span className="capital-badge">USDT</span></div>
-      <div className="capital-summary"><div><small>AVAILABLE</small><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div><span>Wallet {walletBalance.toFixed(2)} · Bonus {bonusBalance.toFixed(2)}</span></div>
-      <div className="stake-presets">{["10","25","50","100"].map(v=><button type="button" key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)} disabled={busy}>$ {v}</button>)}</div>
-      <div className="amount-input-wrap"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} placeholder="0.00" aria-label="AI trade stake" disabled={busy}/><small>USDT</small></div>
-      <button className="ai-approve-button" disabled={busy || !canTrade || !opportunity || numericAmount<=0} onClick={confirmAiTrade}>
-        {busy ? "Opening AI trade…" : "Approve AI trade →"}
-      </button>
-      {notice && <div className="notice" role="status">{notice}</div>}
-      {!account.tradingAccess?.has_access && <div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a FLEXAR Pro plan to continue trading.</span></div>}
-      {account.tradingAccess?.has_access && !canTrade && numericAmount>0 && <p className="helper">Your stake is higher than your available trading funds.</p>}
-    </section>
-
-    <section className="ai-markets-panel">
-      <div className="panel-heading"><div><small>SUPPORTED MARKETS</small><h2>Know what the AI is watching.</h2><p>FLEXAR uses clear symbols so each market is easy to recognize.</p></div></div>
-      <div className="market-grid">{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item => <div className="market-chip" key={item}><span className="market-icon">{marketIcons[item]}</span><div><strong>{item}</strong><small>{item.includes("USD") && !item.includes("USDT") ? "Forex" : "Crypto"}</small></div></div>)}</div>
-    </section>
-
-    <p className="engine-disclaimer">FLEXAR AI does not open a trade automatically. The engine finds the setup; you approve the capital.</p>
+  const [amount,setAmount]=useState("25"),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
+  const opportunity=account.opportunities?.find(item=>{if(!["scheduled","open"].includes(item.status))return false;const end=new Date(item.entry_window_end||0).getTime(),start=new Date(item.entry_window_start||0).getTime(),now=Date.now();return Number.isFinite(end)&&end>now&&Number.isFinite(start)&&start<=now})||null;
+  const direction=opportunity?.direction==="down"?"DOWN":"UP",duration=opportunity?Math.round(Number(opportunity.duration_seconds||3600)/60):60,score=Math.round(Number(opportunity?.signal_score||0)*100),symbol=opportunity?.symbol||"—",price=Number(opportunity?.entry_price||0);
+  const usdt=account.wallets.find(item=>item.asset==="USDT"),reward=account.rewards?.find(item=>item.status==="active"),walletBalance=Number(usdt?.available_balance||0),bonusBalance=Number(reward?.remaining_reward||0),numericAmount=Number(amount),tradingFunds=walletBalance+bonusBalance,canTrade=Boolean(account.tradingAccess?.has_access)&&tradingFunds>=numericAmount;
+  const cryptoIcons={BTCUSDT:"https://cdn.simpleicons.org/bitcoin",ETHUSDT:"https://cdn.simpleicons.org/ethereum",SOLUSDT:"https://cdn.simpleicons.org/solana",BNBUSDT:"https://cdn.simpleicons.org/binance",XRPUSDT:"https://cdn.simpleicons.org/xrp",DOGEUSDT:"https://cdn.simpleicons.org/dogecoin"},forexIcons={EURUSD:"€",GBPUSD:"£",USDJPY:"¥",AUDUSD:"A$"},marketType=symbol.includes("USD")&&!symbol.includes("USDT")?"FOREX":"CRYPTO";
+  function updateAmount(value){if(value===""||/^\d*(\.\d{0,2})?$/.test(value))setAmount(value)}
+  async function confirmAiTrade(){if(!supabase||busy||!canTrade||numericAmount<=0||!opportunity)return;setBusy(true);setNotice("");try{const {data,error}=await supabase.functions.invoke("execute-trade",{body:{mode:"ai",opportunity_id:opportunity.id,stake:numericAmount}});if(error){let message=error.message||"The AI trade could not be started.";try{const payload=await error.context?.json?.();message=payload?.error||payload?.message||message}catch{}throw new Error(message)}if(data?.error)throw new Error(data.error);const tradeResult=data?.trade||data||{};window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{tradeId:tradeResult.trade_id||null,symbol:tradeResult.symbol||symbol,direction:tradeResult.direction||opportunity.direction,stake:Number(tradeResult.stake??numericAmount),duration:tradeResult.duration_seconds?Math.round(Number(tradeResult.duration_seconds)/60):duration,fundingSource:tradeResult.funding_source||null,takeProfitPrice:tradeResult.take_profit_price||null,stopLossPrice:tradeResult.stop_loss_price||null}}))}catch(error){setNotice(error.message||"The AI trade could not be started.")}finally{setBusy(false)}}
+  return <div className="ai-trade-page"><section className="ai-page-hero compact"><div><div className="engine-kicker"><span className="engine-pulse"/> FLEXAR AI TRADING</div><h1>Find the trade.<br/><span>Approve the capital.</span></h1><p>FLEXAR scans supported markets and presents a qualifying setup. You decide when to use your funds.</p></div><div className={aiEngineActive?"ai-engine-state active":"ai-engine-state"}><span className="engine-status-dot"/><div><small>ENGINE</small><strong>{aiEngineActive?"SCANNING":"STANDBY"}</strong></div></div>{!opportunity&&<button type="button" className="ai-start-button hero-start" onClick={startAiScan} disabled={aiScanning||aiEngineActive}>{aiScanning?"Scanning…":aiEngineActive?"AI is watching":"Start AI Trade →"}</button>}</section>
+    {!opportunity?<section className="ai-status-panel"><div><small>AI MARKET SCAN</small><h2>{aiScanning?"Scanning the markets…":aiEngineActive?"The engine is watching.":"Ready when you are."}</h2><p>{aiScanning?"Comparing live market conditions across supported instruments.":aiEngineActive?"FLEXAR will surface a qualifying setup when its signal rules are met.":"Start the engine above. No trade is opened automatically."}</p></div><span className="status-pill">{aiEngineActive?"LIVE":"READY"}</span></section>:<section className="ai-trade-decision"><div className="decision-head"><div><small>AI SIGNAL · READY FOR REVIEW</small><h2>{symbol}</h2><span>{direction==="UP"?"↗ LONG":"↘ SHORT"} · {duration} MIN</span></div><div className="signal-score-large"><strong>{score}%</strong><small>CONFIDENCE</small></div></div><div className="decision-market-row"><div className="market-identity"><span className="market-icon">{cryptoIcons[symbol]?<img src={cryptoIcons[symbol]} alt=""/>:<b>{forexIcons[symbol]||"◈"}</b>}</span><div><strong>{symbol}</strong><small>{marketType}</small></div></div><div className={direction==="UP"?"signal-direction up":"signal-direction down"}>{direction==="UP"?"↗ UP":"↘ DOWN"}</div></div><div className="signal-level-grid compact-levels"><div><small>ENTRY</small><strong>{price.toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div><div><small>TAKE PROFIT</small><strong>{(price*(direction==="UP"?1.008:.992)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div><div><small>STOP LOSS</small><strong>{(price*(direction==="UP"?0.996:1.004)).toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div><div><small>WINDOW</small><strong>{duration} MIN</strong></div></div><div className="decision-capital"><div className="panel-heading"><div><small>STAKE</small><h3>Choose your capital</h3></div><span className="capital-badge">USDT</span></div><div className="capital-summary"><div><small>AVAILABLE</small><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div><span>Wallet {walletBalance.toFixed(2)} · Bonus {bonusBalance.toFixed(2)}</span></div><div className="stake-presets">{["10","25","50","100"].map(v=><button type="button" key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)} disabled={busy}>$ {v}</button>)}</div><div className="amount-input-wrap"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} placeholder="0.00" aria-label="AI trade stake" disabled={busy}/><small>USDT</small></div><button className="ai-approve-button decision-approve" disabled={busy||!canTrade||numericAmount<=0} onClick={confirmAiTrade}>{busy?"Opening AI trade…":"Approve AI Trade →"}</button>{notice&&<div className="notice" role="status">{notice}</div>}{!account.tradingAccess?.has_access&&<div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a FLEXAR Pro plan to continue trading.</span></div>}{account.tradingAccess?.has_access&&!canTrade&&numericAmount>0&&<p className="helper">Your stake is higher than your available trading funds.</p>}</div></section>}
+    <section className="ai-markets-panel compact-markets"><div className="panel-heading"><div><small>SUPPORTED MARKETS</small><h2>Markets FLEXAR AI watches</h2><p>Crypto uses the original asset marks. Forex pairs use clear currency identifiers.</p></div></div><div className="market-grid">{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item=><div className="market-chip" key={item}><span className="market-icon">{cryptoIcons[item]?<img src={cryptoIcons[item]} alt=""/>:<b>{forexIcons[item]||"◈"}</b>}</span><div><strong>{item}</strong><small>{item.includes("USD")&&!item.includes("USDT")?"Forex":"Crypto"}</small></div></div>)}</div></section><p className="engine-disclaimer">FLEXAR AI finds the setup. You approve the capital. Nothing is opened automatically.</p>
   </div>;
 }
 function Chart() {
