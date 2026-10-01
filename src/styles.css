@@ -1512,3 +1512,70 @@ body{background:var(--bg)}
   .preference-card{min-height:92px}
   .onboarding-intro h1{font-size:32px}
 }
+
+/* Referral earning catalyst */
+.referral-catalyst{
+  padding:22px!important;
+  background:
+    radial-gradient(circle at 92% 18%,rgba(3,252,125,.13),transparent 28%),
+    linear-gradient(145deg,#101d14,#070d09)!important;
+}
+.referral-catalyst-copy h1{font-size:clamp(30px,7vw,48px)!important;line-height:.96!important;letter-spacing:-.06em!important;margin:9px 0 10px!important}
+.referral-catalyst-copy h1 span{color:var(--green)!important}
+.referral-catalyst-copy p{max-width:560px!important;margin-bottom:18px!important}
+.referral-earning-strip{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important;margin:18px 0 13px!important}
+.referral-earning-strip article{
+  position:relative!important;min-width:0!important;padding:14px!important;border:1px solid rgba(3,252,125,.15)!important;
+  border-radius:16px!important;background:rgba(3,252,125,.045)!important;overflow:hidden!important
+}
+.referral-earning-strip article>div{display:flex;align-items:baseline;gap:7px;padding-right:28px}
+.referral-earning-strip article strong{font-size:25px!important;letter-spacing:-.05em!important;color:var(--green)!important}
+.referral-earning-strip article>div span{font-size:7px!important;color:#718078!important;letter-spacing:.08em!important;text-transform:uppercase!important}
+.referral-earning-strip article p{font-size:8px!important;line-height:1.45!important;color:#87958d!important;margin:7px 0 0!important}
+.referral-earning-strip article p b{color:#dce8e0!important}
+.referral-info-button{
+  position:absolute!important;right:10px!important;top:10px!important;width:24px!important;height:24px!important;
+  border:1px solid rgba(255,255,255,.10)!important;border-radius:8px!important;background:rgba(255,255,255,.025)!important;
+  color:#9baaa1!important;font-size:11px!important;display:grid!important;place-items:center!important
+}
+.referral-link-box{
+  display:flex!important;align-items:center!important;gap:9px!important;padding:9px!important;
+  border:1px solid rgba(255,255,255,.07)!important;border-radius:13px!important;background:rgba(0,0,0,.16)!important
+}
+.referral-link-box span{min-width:0!important;flex:1!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#8d9b93!important;font-size:8px!important}
+.referral-link-box button{
+  flex:0 0 auto!important;border:1px solid rgba(3,252,125,.28)!important;border-radius:10px!important;
+  background:var(--green)!important;color:#041008!important;padding:10px 12px!important;font-size:8px!important;font-weight:950!important
+}
+.referral-campaign-card{margin-top:12px!important}
+.referral-campaign-card h2{font-size:25px!important;line-height:1.03!important;max-width:500px!important}
+.referral-campaign-card p b{color:#dce8e0!important}
+.referral-banner-cta{
+  margin-top:12px!important;border:1px solid rgba(3,252,125,.25)!important;border-radius:11px!important;
+  padding:10px 12px!important;background:rgba(3,252,125,.08)!important;color:var(--green)!important;
+  font-size:9px!important;font-weight:900!important
+}
+.referral-explainer-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:9px!important;padding-top:12px!important}
+.referral-explainer-card{
+  position:relative!important;text-align:left!important;padding:15px!important;border:1px solid rgba(255,255,255,.07)!important;
+  border-radius:16px!important;background:rgba(255,255,255,.018)!important;color:#eef5f0!important
+}
+.referral-explainer-card>div span{display:block;color:var(--green)!important;font-size:18px!important;font-weight:950!important;letter-spacing:-.04em!important}
+.referral-explainer-card>div strong{display:block;margin-top:8px!important;font-size:10px!important}
+.referral-explainer-card>div p{font-size:8px!important;line-height:1.5!important;color:#728078!important;margin:6px 0 0!important}
+.referral-explainer-card>b{position:absolute!important;right:10px!important;top:10px!important;color:#7e8c84!important;font-size:10px!important}
+.referral-info-backdrop{position:fixed!important;inset:0!important;z-index:306!important;display:grid!important;place-items:center!important;padding:18px!important;background:rgba(0,0,0,.70)!important;backdrop-filter:blur(12px)!important}
+.referral-info-modal{
+  position:relative!important;width:min(430px,calc(100vw - 28px))!important;padding:24px!important;
+  border:1px solid rgba(3,252,125,.18)!important;border-radius:22px!important;
+  background:linear-gradient(145deg,#101d14,#070d09)!important;box-shadow:0 30px 90px rgba(0,0,0,.62)!important
+}
+.referral-info-modal>small{color:var(--green)!important;font-size:8px!important;font-weight:900!important;letter-spacing:.15em!important}
+.referral-info-modal h2{margin:8px 0 9px!important;font-size:25px!important;letter-spacing:-.045em!important}
+.referral-info-modal p{margin:0 0 18px!important;color:#829088!important;font-size:10px!important;line-height:1.7!important}
+.referral-info-close{width:100%!important;height:44px!important;border:1px solid rgba(3,252,125,.25)!important;border-radius:11px!important;background:var(--green)!important;color:#041008!important;font-size:9px!important;font-weight:950!important}
+@media(max-width:620px){
+  .referral-earning-strip{grid-template-columns:1fr!important}
+  .referral-explainer-grid{grid-template-columns:1fr!important}
+  .referral-explainer-card{min-height:92px!important}
+}
