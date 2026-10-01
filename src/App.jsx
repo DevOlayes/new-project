@@ -126,6 +126,11 @@ export default function App() {
 
   useEffect(() => {
     const openNotifications = () => setShowNotifications(true);
+    const notificationsResolved = () => {
+      setNotificationPrompt(false);
+      setNotificationAsked(true);
+    };
+    window.addEventListener("flexar-notifications-resolved", notificationsResolved);
     const requestNotifications = (event) => {
       const mode = event?.detail?.mode === "autopilot" ? "Autopilot" : "Manual approval";
       setGlobalNotice(`${mode} enabled. FLEXAR AI is now looking for a qualifying setup.`);
@@ -138,6 +143,7 @@ export default function App() {
     return () => {
       window.removeEventListener("flexar-open-notifications", openNotifications);
       window.removeEventListener("flexar-request-notifications", requestNotifications);
+      window.removeEventListener("flexar-notifications-resolved", notificationsResolved);
     };
   }, []);
 
@@ -519,7 +525,7 @@ export default function App() {
       <AppErrorBoundary page={page}>
         <div key={page} className="page-transition" aria-live="polite">
           {page === "home" && <Home account={account} profile={profile} setPage={setPage} onWalletAction={setWalletAction} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
-          {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onOpenCredits={() => setPage("ai-credits")} onActivationChange={setAiActivationOpen} />}
+          {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onOpenCredits={() => setPage("ai-credits")} onActivationChange={(open) => { setAiActivationOpen(open); if (open) setGlobalNotice(""); }} />}
           {page === "ai-credits" && <AICreditsPage profile={profile} account={account} onBack={() => setPage("trade")} refreshAccount={refreshAccount} />}
           {page === "activity" && <Activity account={account} />}
           {page === "referral" && <Referral account={account} profile={profile} />}
@@ -1058,7 +1064,7 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
       </div>
       {typeof Notification!=="undefined"&&Notification.permission!=="granted"?<div className="ai-activation-notification">
         <div><strong>Stay notified</strong><p>Enable device notifications so FLEXAR can alert you when a setup or trade update needs your attention.</p></div>
-        <button type="button" onClick={async()=>{try{const permission=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(permission==="granted"){onActivationChange?.(false);setActivationMode("");} }catch{}}}>Enable notifications</button>
+        <button type="button" onClick={async()=>{try{const permission=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(permission==="granted"){window.dispatchEvent(new CustomEvent("flexar-notifications-resolved"));onActivationChange?.(false);setActivationMode("");} }catch{}}}>Enable notifications</button>
       </div>:<div className="ai-activation-notification enabled"><div><strong>Notifications enabled</strong><p>FLEXAR can alert you about qualifying setups and trade updates.</p></div></div>}
       <button type="button" className="ai-activation-primary" onClick={()=>{setActivationMode("");onActivationChange?.(false)}}>Continue →</button>
     </section></div>}
