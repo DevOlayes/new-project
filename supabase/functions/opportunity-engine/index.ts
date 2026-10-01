@@ -55,19 +55,10 @@ Deno.serve(async(req)=>{
   const supplied=req.headers.get("apikey") ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i,"") ?? "";
   if(!supplied || supplied!==publishableKey) return Response.json({error:"Unauthorized"},{status:401,headers:cors});
 
-  const authHeader=req.headers.get("authorization") || "";
-  const bearer=authHeader.replace(/^Bearer\s+/i,"");
-  let userId:string | null=null;
-  if(bearer && bearer!==publishableKey){
-    const { data:authData }=await admin.auth.getUser(bearer);
-    userId=authData.user?.id || null;
-  }
-  if(!userId) return Response.json({error:"A signed-in FLEXAR account is required."},{status:401,headers:cors});
-
   const body=await req.json().catch(()=>({}));
   const requestSource=String(body?.source||"user");
   const authHeader=req.headers.get("authorization") || "";
-  const bearer=authHeader.replace(/^Bearer\\s+/i,"");
+  const bearer=authHeader.replace(/^Bearer\s+/i,"");
   let userId:string|null=null;
   if(bearer && bearer!==publishableKey){
     const {data:authData}=await admin.auth.getUser(bearer);
