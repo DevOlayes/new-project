@@ -946,6 +946,7 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
   const [amount,setAmount]=useState("25"),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
   const [mode,setMode]=useState(()=>{try{return sessionStorage.getItem("flexa_ai_mode")||"manual"}catch{return "manual"}});
   const [modeOpen,setModeOpen]=useState(false);
+  const [creditBusy,setCreditBusy]=useState(false);
   const [autoStake,setAutoStake]=useState(()=>{try{return sessionStorage.getItem("flexa_ai_auto_stake")||"25"}catch{return "25"}});
   const [autoBusy,setAutoBusy]=useState(false);
   const [autoTradeOpportunityId,setAutoTradeOpportunityId]=useState(()=>{try{return sessionStorage.getItem("flexa_ai_auto_opportunity_id")||""}catch{return ""}});
@@ -954,6 +955,18 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
   const usdt=account.wallets.find(item=>item.asset==="USDT"),reward=account.rewards?.find(item=>item.status==="active"),walletBalance=Number(usdt?.available_balance||0),bonusBalance=Number(reward?.remaining_reward||0),numericAmount=Number(amount),tradingFunds=walletBalance+bonusBalance,canTrade=Boolean(account.tradingAccess?.has_access)&&tradingFunds>=numericAmount;
   const cryptoIcons={BTCUSDT:"https://cdn.simpleicons.org/bitcoin",ETHUSDT:"https://cdn.simpleicons.org/ethereum",SOLUSDT:"https://cdn.simpleicons.org/solana",BNBUSDT:"https://cdn.simpleicons.org/binance",XRPUSDT:"https://cdn.simpleicons.org/xrp",DOGEUSDT:"https://cdn.simpleicons.org/dogecoin"},marketType=symbol.includes("USD")&&!symbol.includes("USDT")?"FOREX":"CRYPTO";
   function updateAmount(value){if(value===""||/^\d*(\.\d{0,2})?$/.test(value))setAmount(value)}
+  async function buyAiCredits(){
+    if(!supabase||creditBusy)return;
+    setCreditBusy(true);setNotice("");
+    try{
+      const {data,error}=await supabase.functions.invoke("ai-credits",{body:{action:"buy"}});
+      if(error||data?.error) throw new Error(data?.error||error?.message||"Could not buy AI credits.");
+      setNotice("5 AI credits added. Your AI access is ready.");
+      window.dispatchEvent(new CustomEvent("flexar-ai-credits-updated"));
+    }catch(error){setNotice(error.message||"Could not buy AI credits.");}
+    finally{setCreditBusy(false);}
+  }
+
   function chooseMode(nextMode){
     const requestedStake=Number(autoStake);
     if(nextMode==="autopilot"&&(!Number.isFinite(requestedStake)||requestedStake<=0)){
