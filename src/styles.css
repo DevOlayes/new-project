@@ -1069,3 +1069,53 @@ body{background:var(--bg)}
 .ai-page-hero.compact .ai-hero-copy{min-width:0}
 .ai-page-hero.compact .hero-start{grid-column:auto;width:min(100%,360px);margin-top:14px}
 @media(max-width:560px){.ai-page-hero.compact .hero-start{width:100%}}
+
+/* Balance polish */
+.home-balance .balance-content>div{gap:11px!important;align-items:baseline!important}
+.home-balance .balance-content strong{gap:7px!important}
+.home-balance .balance-currency{font-weight:900!important;transform:translateY(-1px)}
+.home-balance .balance-content>div>span{padding-bottom:0!important}
+
+/* Polished account avatars: consistent abstract identity instead of plain initials. */
+.avatar-orb{position:relative;width:42px;height:42px;min-width:42px;border-radius:14px;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(3,252,125,.24);background:radial-gradient(circle at 30% 25%,rgba(3,252,125,.95),transparent 25%),radial-gradient(circle at 75% 72%,rgba(3,252,125,.28),transparent 45%),linear-gradient(145deg,#14291c,#07100b);box-shadow:0 8px 24px rgba(3,252,125,.09),inset 0 0 20px rgba(255,255,255,.03)}
+.avatar-orb:before{content:"";position:absolute;width:26px;height:26px;border:1px solid rgba(255,255,255,.16);border-radius:50%;transform:rotate(35deg);box-shadow:8px -7px 0 -7px rgba(3,252,125,.8)}
+.avatar-orb span{position:relative;z-index:2;font-size:10px;font-weight:950;letter-spacing:.04em;color:#eafff0}
+.avatar-orb i{position:absolute;right:5px;bottom:5px;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(3,252,125,.7)}
+.profile-avatar{width:48px;height:48px;min-width:48px;border-radius:15px}
+.profile-avatar span{font-size:11px}
+
+/* Distinct FLEXAR AI bot launch treatment */
+.ai-page-hero.compact .hero-start{height:48px;border:1px solid rgba(3,252,125,.55);border-radius:14px;background:linear-gradient(135deg,#03fc7d,#79ff9c);color:#041008;font-size:11px;font-weight:950;letter-spacing:.01em;box-shadow:0 12px 34px rgba(3,252,125,.13),inset 0 1px rgba(255,255,255,.35);position:relative;overflow:hidden}
+.ai-page-hero.compact .hero-start:before{content:"";position:absolute;inset:1px auto 1px 1px;width:34%;background:linear-gradient(90deg,rgba(255,255,255,.2),transparent);opacity:.65}
+.ai-page-hero.compact .hero-start:hover{transform:translateY(-1px);box-shadow:0 16px 38px rgba(3,252,125,.18)}
+
+/* Trading workspace remains visible even before the first AI opportunity is generated. */
+.ai-workspace-preview{border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#0d1711,#080d0a);padding:17px}
+.workspace-preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px}
+.workspace-preview-head small{color:var(--green);font-size:8px;font-weight:850;letter-spacing:.14em}
+.workspace-preview-head h2{margin:4px 0 0;font-size:18px}
+.workspace-preview-head>span{font-size:7px;color:var(--muted);border:1px solid var(--line);padding:6px 8px;border-radius:999px}
+.workspace-preview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.workspace-preview-grid>div{min-height:86px;padding:12px;border:1px solid rgba(255,255,255,.055);border-radius:13px;background:rgba(255,255,255,.018)}
+.workspace-preview-grid small{display:block;color:#718078;font-size:7px;letter-spacing:.12em}
+.workspace-preview-grid strong{display:block;margin-top:9px;font-size:14px}
+.workspace-preview-grid span{display:block;margin-top:5px;color:var(--muted);font-size:8px}
+
+/* Keep every dialog above navigation and centered in the viewport. */
+.auth-modal-backdrop,.ai-mode-backdrop{z-index:300!important;place-items:center!important}
+.notification-backdrop{z-index:290!important;align-items:flex-start!important}
+.wallet-action-modal{box-shadow:0 28px 90px rgba(0,0,0,.62)}
+.notification-panel{margin-top:0}
+
+/* Withdrawal follows the FLEXAR wallet visual language. */
+.withdrawal-form{margin-top:16px}
+.withdrawal-balance-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;margin-bottom:14px;border:1px solid rgba(3,252,125,.15);border-radius:14px;background:rgba(3,252,125,.045)}
+.withdrawal-balance-card small{display:block;color:var(--muted);font-size:7px;letter-spacing:.12em}
+.withdrawal-balance-card strong{display:block;margin-top:4px;font-size:15px}
+.withdrawal-balance-card span{color:var(--green);font-size:9px;font-weight:850}
+.withdrawal-form label{margin:0 0 13px}
+.withdrawal-form input,.withdrawal-form textarea,.withdrawal-form select{width:100%;margin-top:7px;background:#0b1510!important;border:1px solid rgba(255,255,255,.08)!important;color:#f4fff7!important}
+.withdrawal-form textarea{min-height:92px;resize:vertical;padding:12px}
+.withdrawal-submit{width:100%;height:45px;border:1px solid rgba(3,252,125,.45)!important;border-radius:12px!important;background:var(--green)!important;color:#041008!important;font-weight:950!important}
+.withdrawal-note{display:flex;gap:8px;align-items:flex-start;margin:2px 0 15px;padding:10px 11px;border-radius:11px;background:rgba(255,255,255,.025);color:var(--muted);font-size:8px;line-height:1.5}
+@media(max-width:480px){.workspace-preview-grid{grid-template-columns:1fr 1fr}.ai-page-hero.compact .hero-start{height:50px}}
