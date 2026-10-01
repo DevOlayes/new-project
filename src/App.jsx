@@ -5,6 +5,14 @@ import { getAccountData } from "./lib/data";
 
 const nav = [["home","⌂","Home"],["trade","✦","AI Trade"],["activity","◷","Activity"],["referral","↗","Referral"],["profile","◉","Profile"]];
 
+const ONBOARDING_COUNTRY_CODES = "AF,AX,AL,DZ,AS,AD,AO,AI,AQ,AG,AR,AM,AW,AU,AT,AZ,BS,BH,BD,BB,BY,BE,BZ,BJ,BM,BT,BO,BQ,BA,BW,BV,BR,IO,BN,BG,BF,BI,CV,KH,CM,CA,KY,CF,TD,CL,CN,CX,CC,CO,KM,CG,CD,CK,CR,CI,HR,CU,CW,CY,CZ,DK,DJ,DM,DO,EC,EG,SV,GQ,ER,EE,SZ,ET,FK,FO,FJ,FI,FR,GF,PF,TF,GA,GM,GE,DE,GH,GI,GR,GL,GD,GP,GU,GT,GG,GN,GW,GY,HT,HM,VA,HN,HK,HU,IS,IN,ID,IR,IQ,IE,IM,IL,IT,JM,JP,JE,JO,KZ,KE,KI,KP,KR,KW,KG,LA,LV,LB,LS,LR,LY,LI,LT,LU,MO,MG,MW,MY,MV,ML,MT,MH,MQ,MR,MU,YT,MX,FM,MD,MC,MN,ME,MS,MA,MZ,MM,NA,NR,NP,NL,NC,NZ,NI,NE,NG,NU,NF,MK,MP,NO,OM,PK,PW,PS,PA,PG,PY,PE,PH,PN,PL,PT,PR,QA,RE,RO,RU,RW,BL,SH,KN,LC,MF,PM,VC,WS,SM,ST,SA,SN,RS,SC,SL,SG,SX,SK,SI,SB,SO,ZA,GS,SS,ES,LK,SD,SR,SJ,SE,CH,SY,TW,TJ,TZ,TH,TL,TG,TK,TO,TT,TN,TR,TM,TC,TV,UG,UA,AE,GB,US,UM,UY,UZ,VU,VE,VN,VG,VI,WF,EH,YE,ZM,ZW".split(",");
+const ONBOARDING_COUNTRIES = ONBOARDING_COUNTRY_CODES.map((code) => ({
+  code,
+  name: new Intl.DisplayNames(["en"], { type: "region" }).of(code) || code,
+  flag: code.replace(/./g, (char) => String.fromCodePoint(char.charCodeAt(0) + 127397)),
+})).sort((a, b) => a.name.localeCompare(b.name));
+
+
 const FLEXAR_APP_URL = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "");
 
 export default function App() {
@@ -12,6 +20,7 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [onboardingState, setOnboardingState] = useState(null);
   const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], tradingAccess: null, error: null };
   const [account, setAccount] = useState(EMPTY_ACCOUNT);
   const [loading, setLoading] = useState(true);
@@ -233,6 +242,7 @@ export default function App() {
 
       if (event === "SIGNED_OUT") {
         setProfile(null);
+        setOnboardingState(null);
         setAccount(EMPTY_ACCOUNT);
         setLoading(false);
       }
@@ -315,12 +325,21 @@ export default function App() {
       // Read the profile after onboarding so first-time users do not race
       // the profile upsert and get stuck with an empty profile/admin state.
       const { data: profileData } = await supabase.from("profiles")
-        .select("display_name,telegram_username,avatar_url,referral_code,is_admin")
+        .select("display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference")
         .eq("id", user.id)
         .maybeSingle();
 
       if (cancelled) return;
       setProfile(profileData || null);
+      setOnboardingState(profileData ? {
+        completed: Boolean(profileData.onboarding_completed),
+        step: Math.min(4, Math.max(0, Number(profileData.onboarding_step || 0))),
+        countryCode: profileData.country_code || "",
+        experience: profileData.trading_experience || "",
+        goals: Array.isArray(profileData.onboarding_goals) ? profileData.onboarding_goals : [],
+        style: profileData.trading_style || "",
+        aiPreference: profileData.ai_preference || "",
+      } : null);
 
       const result = await getAccountData();
       if (cancelled) return;
@@ -442,6 +461,7 @@ export default function App() {
   if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
   if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
   if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open FLEXAR AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
+  if (user && profile && onboardingState && !onboardingState.completed) return <Onboarding profile={profile} initialState={onboardingState} onComplete={(next) => { setOnboardingState({...next, completed:true}); setProfile((current) => ({...(current || {}), onboarding_completed:true, onboarding_step:4, country_code:next.countryCode, trading_experience:next.experience, onboarding_goals:next.goals, trading_style:next.style, ai_preference:next.aiPreference})); setPage("home"); }} />;
 
   const notifications = account.notifications || [];
   const unreadNotifications = notifications.filter((item) => !item.is_read).length;
@@ -577,89 +597,12 @@ function AuthOptions({ setAuthError, authError }) {
     if (error) { setBusy(""); setAuthError(error.message || "Google sign-in could not start."); }
   }
 
-  function loadTelegramLoginSdk() {
-    if (window.Telegram?.Login) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-flexa-telegram-login-sdk="true"]');
-      if (existing) {
-        existing.addEventListener("load", resolve, { once: true });
-        existing.addEventListener("error", () => reject(new Error("Telegram login library could not load.")), { once: true });
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = "https://telegram.org/js/telegram-login.js?1";
-      script.async = true;
-      script.dataset.flexaTelegramLoginSdk = "true";
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("Telegram login library could not load."));
-      document.head.appendChild(script);
-    });
-  }
-
-  async function continueWithTelegram() {
-    if (!supabase) { setAuthError("Supabase is not configured in this build."); return; }
-
-    // Telegram Client IDs are public identifiers, so keep a source fallback for the production build.
-    // The environment variable can still override this value in other deployments.
-    const clientId = Number(import.meta.env.VITE_TELEGRAM_CLIENT_ID || 8897849997);
-    if (!clientId) {
-      setAuthError("Telegram login is not configured yet.");
-      return;
-    }
-
+  function continueWithTelegram() {
+    const botUsername = "flexarxbot";
     setBusy("telegram");
     setAuthError("");
-
-    try {
-      // The SDK is preloaded in index.html so this call stays inside the user's click gesture.
-      if (!window.Telegram?.Login?.auth) {
-        throw new Error("Telegram login library is not ready. Please try again.");
-      }
-
-      window.Telegram.Login.auth(
-        {
-          client_id: clientId,
-          scope: ["profile", "write"],
-          lang: "en",
-        },
-        async (result) => {
-          if (!result || result.error) {
-            setBusy("");
-            setAuthError(result?.error || "Telegram login was cancelled or failed.");
-            return;
-          }
-
-          if (!result.id_token) {
-            setBusy("");
-            setAuthError("Telegram did not return a verified login token.");
-            return;
-          }
-
-          try {
-            const { data, error } = await supabase.functions.invoke("telegram-login", {
-              body: { id_token: result.id_token },
-            });
-            if (error || data?.error) throw new Error(data?.error || error?.message || "Telegram login failed.");
-            if (!data?.session?.access_token || !data?.session?.refresh_token) {
-              throw new Error("Telegram login returned no session.");
-            }
-
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: data.session.access_token,
-              refresh_token: data.session.refresh_token,
-            });
-            if (sessionError) throw sessionError;
-          } catch (error) {
-            setAuthError(error.message || "Telegram login failed.");
-          } finally {
-            setBusy("");
-          }
-        },
-      );
-    } catch (error) {
-      setBusy("");
-      setAuthError(error.message || "Telegram login could not start.");
-    }
+    const miniAppLink = `https://t.me/${botUsername}?startapp=login&mode=fullscreen`;
+    window.location.href = miniAppLink;
   }
 
   return <div className="auth-options">
@@ -685,6 +628,78 @@ function AuthOptions({ setAuthError, authError }) {
     </button>
 
     {authError && <div className="error-banner">{authError}</div>}
+  </div>;
+}
+function Onboarding({ profile, initialState, onComplete }) {
+  const [step, setStep] = useState(Math.min(4, Math.max(0, Number(initialState?.step || 0))));
+  const [countryCode, setCountryCode] = useState(initialState?.countryCode || "");
+  const [experience, setExperience] = useState(initialState?.experience || "");
+  const [goals, setGoals] = useState(Array.isArray(initialState?.goals) ? initialState.goals : []);
+  const [style, setStyle] = useState(initialState?.style || "");
+  const [aiPreference, setAiPreference] = useState(initialState?.aiPreference || "");
+  const [countrySearch, setCountrySearch] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const selectedCountry = ONBOARDING_COUNTRIES.find((item) => item.code === countryCode);
+  const filteredCountries = ONBOARDING_COUNTRIES.filter((item) =>
+    !countrySearch.trim() || item.name.toLowerCase().includes(countrySearch.trim().toLowerCase()) || item.code.toLowerCase().includes(countrySearch.trim().toLowerCase())
+  );
+
+  const progress = Math.min(100, Math.max(0, ((step + 1) / 4) * 100));
+  const displayName = profile?.display_name?.split(" ")[0] || "there";
+
+  async function save(patch, nextStep) {
+    if (!supabase) return false;
+    setBusy(true); setError("");
+    const { error: saveError } = await supabase.from("profiles").update({ ...patch, onboarding_step: nextStep }).eq("id", profile.id);
+    setBusy(false);
+    if (saveError) { setError(saveError.message || "Could not save your onboarding progress."); return false; }
+    return true;
+  }
+
+  async function next() {
+    if (step === 0 && !countryCode) { setError("Select your country to continue."); return; }
+    if (step === 1 && !experience) { setError("Choose the option that best describes your experience."); return; }
+    if (step === 2 && !goals.length) { setError("Choose at least one goal."); return; }
+    if (step === 3 && (!style || !aiPreference)) { setError("Choose your trading style and AI preference."); return; }
+
+    const patch = step === 0 ? { country_code: countryCode }
+      : step === 1 ? { trading_experience: experience }
+      : step === 2 ? { onboarding_goals: goals }
+      : { trading_style: style, ai_preference: aiPreference, onboarding_completed: true };
+    const nextStep = step + 1;
+    if (!await save(patch, nextStep)) return;
+    if (step === 3) onComplete({ countryCode, experience, goals, style, aiPreference });
+    else setStep(nextStep);
+  }
+
+  function back() { if (step > 0) { setError(""); setStep(step - 1); } }
+  function toggleGoal(goal) { setGoals((current) => current.includes(goal) ? current.filter((item) => item !== goal) : [...current, goal]); }
+
+  const stepCopy = [
+    { label: "COUNTRY", title: "Where are you based?", text: "Choose your country so FLEXAR can tailor your account experience." },
+    { label: "EXPERIENCE", title: "How familiar are you with trading?", text: "This helps FLEXAR keep the experience at the right level for you." },
+    { label: "YOUR GOAL", title: "What do you want FLEXAR to help you do?", text: "Pick everything that matches what you want from the platform." },
+    { label: "PREFERENCES", title: "Almost ready. How should FLEXAR work for you?", text: "Set your preferred risk style and how much control you want over AI trades." },
+  ][step];
+
+  return <div className="onboarding-screen">
+    <div className="onboarding-glow onboarding-glow-a" /><div className="onboarding-glow onboarding-glow-b" />
+    <div className="onboarding-shell">
+      <header className="onboarding-header"><img src="/flexar-public-logo.webp" alt="FLEXAR AI" /><span>ACCOUNT SETUP</span></header>
+      <div className="onboarding-progress-head"><small>STEP {String(Math.min(step + 1, 4)).padStart(2,"0")} / 04</small><strong>{stepCopy.label}</strong></div>
+      <div className="onboarding-progress"><span style={{width:`${progress}%`}} /></div>
+      <main className="onboarding-card">
+        <div className="onboarding-intro"><span className="onboarding-kicker">WELCOME, {displayName.toUpperCase()}</span><h1>{stepCopy.title}</h1><p>{stepCopy.text}</p></div>
+        {step === 0 && <div className="onboarding-country"><div className="onboarding-selected-country">{selectedCountry ? <><span className="country-flag">{selectedCountry.flag}</span><div><strong>{selectedCountry.name}</strong><small>Selected country</small></div></> : <><span className="country-placeholder">◎</span><div><strong>Select your country</strong><small>Your country will be saved to your FLEXAR profile.</small></div></>}</div><div className="country-search-wrap"><span>⌕</span><input value={countrySearch} onChange={(e) => setCountrySearch(e.target.value)} placeholder="Search countries" aria-label="Search countries" /></div><div className="country-list">{filteredCountries.slice(0, 80).map((country) => <button type="button" key={country.code} className={country.code === countryCode ? "country-option selected" : "country-option"} onClick={() => { setCountryCode(country.code); setCountrySearch(""); setError(""); }}><span>{country.flag}</span><strong>{country.name}</strong><small>{country.code}</small>{country.code === countryCode && <b>✓</b>}</button>)}</div>{filteredCountries.length > 80 && <small className="country-list-note">Keep typing to narrow the list.</small>}</div>}
+        {step === 1 && <div className="onboarding-choice-grid">{[["new","I’m completely new","Keep things simple and guided."],["basics","I understand the basics","I know the core ideas and want a smoother workflow."],["experienced","I’m experienced","I’m comfortable reading markets and managing trades."],["professional","Professional","I trade actively and want a focused experience."]].map(([value,title,text]) => <button type="button" key={value} className={experience===value?"onboarding-choice selected":"onboarding-choice"} onClick={() => {setExperience(value);setError("");}}><span>{value===experience?"✓":""}</span><strong>{title}</strong><small>{text}</small></button>)}</div>}
+        {step === 2 && <div className="onboarding-choice-grid goals">{[["ai","Let AI find opportunities"],["growth","Grow my trading balance"],["learn","Learn while I trade"],["efficient","Trade more efficiently"],["explore","Explore AI-powered trading"]].map(([value,title]) => <button type="button" key={value} className={goals.includes(value)?"onboarding-choice selected":"onboarding-choice"} onClick={() => {toggleGoal(value);setError("");}}><span>{goals.includes(value)?"✓":""}</span><strong>{title}</strong><small>Save this preference to personalize your FLEXAR journey.</small></button>)}</div>}
+        {step === 3 && <div className="onboarding-preferences"><div><small>TRADING STYLE</small><div className="preference-row">{[["conservative","Conservative","Prioritize controlled exposure."],["balanced","Balanced","A middle-ground approach."],["growth","Growth","Accept more movement for upside." ]].map(([value,title,text]) => <button type="button" key={value} className={style===value?"preference-card selected":"preference-card"} onClick={() => {setStyle(value);setError("");}}><b>{title}</b><span>{text}</span></button>)}</div></div><div><small>AI CONTROL</small><div className="preference-row two">{[["manual","Review every trade","FLEXAR prepares the setup; you confirm it."],["autopilot","Let FLEXAR execute automatically","FLEXAR can execute qualifying setups within your limits."]].map(([value,title,text]) => <button type="button" key={value} className={aiPreference===value?"preference-card selected":"preference-card"} onClick={() => {setAiPreference(value);setError("");}}><b>{title}</b><span>{text}</span></button>)}</div><small className="onboarding-footnote">You can change these preferences later.</small></div></div>}
+        {error && <div className="error-banner onboarding-error">{error}</div>}
+        <div className="onboarding-actions">{step>0 ? <button type="button" className="onboarding-back" onClick={back} disabled={busy}>← Back</button> : <span />}{step<3 ? <button type="button" className="onboarding-next" onClick={next} disabled={busy}>{busy?"Saving…":"Continue →"}</button> : <button type="button" className="onboarding-next" onClick={next} disabled={busy}>{busy?"Finishing…":"Enter FLEXAR AI →"}</button>}</div>
+      </main>
+    </div>
   </div>;
 }
 function LandingStep({n,title,text}) { return <article className="landing-step"><span>{n}</span><strong>{title}</strong><p>{text}</p></article>; }
