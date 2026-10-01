@@ -789,7 +789,6 @@ function Referral({ account, profile }) {
   const code=profile?.referral_code||"—";
   const link=code==="—"?"":window.location.origin+"/?ref="+encodeURIComponent(code);
   const referrals=account.referrals||[];
-  const rewarded=referrals.filter(item=>item.status==="rewarded");
   const claimBonus=referrals.reduce((sum,item)=>sum+Number(item.referral_rewards?.[0]?.claim_bonus_amount||0),0);
   const depositCommission=referrals.reduce((sum,item)=>sum+Number(item.referral_rewards?.[0]?.deposit_commission_amount||0),0);
   const earned=referrals.reduce((sum,item)=>sum+Number(item.reward_amount||0),0);
@@ -823,7 +822,7 @@ function Referral({ account, profile }) {
     </section>
 
     <section className="referral-section"><div className="section-heading"><div><small>YOUR CODE</small><h2>{code}</h2></div><button className="asset-swap-link" onClick={()=>copy(code)}>Copy code</button></div><p>Use your code anywhere you promote FLEXAR. Your link automatically attributes new registrations to your network.</p></section>
-    <section className="referral-section referral-steps"><div><span>01</span><div><strong>Share</strong><p>Post your referral link to your community, content or private network.</p></div></div><div><span>02</span><div><strong>Activate</strong><p>Your referred user joins and takes a qualifying action.</p></div></div><div><span>03</span><div><strong>Earn</strong><p>Your eligible referral earnings are credited to your FLEXAR wallet.</p></div></section>
+    <section className="referral-section referral-steps"><div><span>01</span><div><strong>Share</strong><p>Post your referral link to your community, content or private network.</p></div></div><div><span>02</span><div><strong>Activate</strong><p>Your referred user joins and takes a qualifying action.</p></div></div><div><span>03</span><div><strong>Earn</strong><p>Your eligible referral earnings are credited to your FLEXAR wallet.</p></div></div></section>
     <section className="referral-section"><div className="section-heading"><div><small>NETWORK ACTIVITY</small><h2>Your referrals</h2></div></div>{referrals.length?<div className="list">{referrals.map((item,index)=><div className="row" key={item.id||index}><span>Referral {index+1}<small>{Number(item.referral_rewards?.[0]?.claim_bonus_amount||0)>0?"$2 claim bonus · ":""}{Number(item.referral_rewards?.[0]?.deposit_commission_amount||0)>0?"10% deposit commission · ":""}{item.status}</small></span><strong className="green">{"$"+Number(item.reward_amount||0).toFixed(2)}</strong></div>)}</div>:<div className="empty-state"><strong>Your network is empty.</strong><p>Share your link to start building your FLEXAR affiliate network.</p></div>}</section>
     {info&&<ReferralInfoModal type={info} content={infoContent[info]} onClose={()=>setInfo("")}/>}
   </div>;
