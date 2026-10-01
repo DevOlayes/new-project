@@ -30,6 +30,7 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installNotice, setInstallNotice] = useState(false);
   const [notificationPrompt, setNotificationPrompt] = useState(false);
+  const [aiActivationOpen, setAiActivationOpen] = useState(false);
   const [notificationAsked, setNotificationAsked] = useState(false);
   const [assetPrices, setAssetPrices] = useState({USDT:1,TON:1.41,BTC:83928.34,SOL:119.79,BNB:770.09});
   const [rewardBusy, setRewardBusy] = useState(false);
@@ -518,7 +519,7 @@ export default function App() {
       <AppErrorBoundary page={page}>
         <div key={page} className="page-transition" aria-live="polite">
           {page === "home" && <Home account={account} profile={profile} setPage={setPage} onWalletAction={setWalletAction} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
-          {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onOpenCredits={() => setPage("ai-credits")} />}
+          {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onOpenCredits={() => setPage("ai-credits")} onActivationChange={setAiActivationOpen} />}
           {page === "ai-credits" && <AICreditsPage profile={profile} account={account} onBack={() => setPage("trade")} refreshAccount={refreshAccount} />}
           {page === "activity" && <Activity account={account} />}
           {page === "referral" && <Referral account={account} profile={profile} />}
@@ -527,7 +528,7 @@ export default function App() {
       </AppErrorBoundary>
     </main>
     <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
-    {notificationPrompt && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
+    {notificationPrompt && !aiActivationOpen && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
     {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
     {globalNotice && <div className="global-notice" role="status" onClick={() => setGlobalNotice("")}>{globalNotice}</div>}
@@ -981,7 +982,7 @@ function AICreditsPage({ profile, onBack, refreshAccount }) {
   return <div className="ai-credits-page"><button type="button" className="ai-credits-back" onClick={onBack}>← Back to AI Trading</button><section className="ai-credits-hero"><div><small>FLEXAR AI ACCESS</small><h1>AI Credits</h1><p>Power more AI market scans with discounted packages and bonus credits.</p></div><div className="ai-credits-balance"><small>YOUR BALANCE</small><strong>{balance.toFixed(1)}</strong><span>credits remaining</span></div></section>{notice&&<div className="notice ai-credits-notice" role="status">{notice}</div>}<section className="ai-credit-plans"><div className="ai-credits-section-head"><div><small>CHOOSE A PACKAGE</small><h2>More credits. Better value.</h2></div><span>1 AI trade = 1.5 credits</span></div><div className="ai-credit-plan-grid">{AI_CREDIT_PLANS.map(plan=>{const total=plan.credits+plan.bonus,regular=plan.credits*8/5,discount=regular>plan.price?Math.round((1-plan.price/regular)*100):0;return <article className={plan.credits===50?"ai-credit-plan featured":"ai-credit-plan"} key={plan.credits}>{plan.credits===50&&<div className="ai-plan-badge">POPULAR</div>}<div className="ai-plan-top"><span>{plan.credits} credits</span>{discount>0&&<b>Save {discount}%</b>}</div><strong className="ai-plan-price">${plan.price}</strong><span className="ai-plan-total">{total} total credits {plan.bonus>0&&<em>+{plan.bonus} bonus</em>}</span><span className="ai-plan-run-count">Up to {Math.floor(total/1.5)} full AI scans</span><button type="button" onClick={()=>buy(plan)} disabled={Boolean(busyPlan)}>{busyPlan===plan.credits?"Processing…":`Buy ${total} credits →`}</button></article>})}</div></section><section className="ai-credits-note"><strong>How credits work</strong><p>Each time FLEXAR AI opens a trade, 1.5 credits are consumed. Your credits stay available until you use them, so larger packages give you more trading capacity at a lower effective cost.</p></section></div>;
 }
 
-function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOpenCredits }) {
+function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOpenCredits, onActivationChange }) {
   const [amount,setAmount]=useState("25"),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
   const [mode,setMode]=useState(()=>{try{return sessionStorage.getItem("flexa_ai_mode")||"manual"}catch{return "manual"}});
   const [modeOpen,setModeOpen]=useState(false),[aiCreditInfo,setAiCreditInfo]=useState(false),[activationMode,setActivationMode]=useState("");
@@ -1015,6 +1016,7 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
     }catch{}
     setModeOpen(false);
     setActivationMode(nextMode);
+    onActivationChange?.(true);
     if(!opportunity) startAiScan(true);
   }
   async function confirmAiTrade(){if(!supabase||busy||!canTrade||numericAmount<=0||!opportunity)return;setBusy(true);setNotice("");try{const {data,error}=await supabase.functions.invoke("execute-trade",{body:{mode:"ai",opportunity_id:opportunity.id,stake:numericAmount}});if(error){let message=error.message||"The AI trade could not be started.";try{const payload=await error.context?.json?.();message=payload?.error||payload?.message||message}catch{}throw new Error(message)}if(data?.error)throw new Error(data.error);const tradeResult=data?.trade||data||{};window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{tradeId:tradeResult.trade_id||null,symbol:tradeResult.symbol||symbol,direction:tradeResult.direction||opportunity.direction,stake:Number(tradeResult.stake??numericAmount),maxHoldSeconds:Number(tradeResult.max_hold_seconds||0),fundingSource:tradeResult.funding_source||null,takeProfitPrice:tradeResult.take_profit_price||null,stopLossPrice:tradeResult.stop_loss_price||null,breakEvenPrice:tradeResult.break_even_price||null,trailingStopPrice:tradeResult.trailing_stop_price||null,riskProfile:tradeResult.risk_profile||riskStyle}}))}catch(error){setNotice(error.message||"The AI trade could not be started.") }finally{setBusy(false)}}
@@ -1040,7 +1042,7 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
     {aiCreditInfo&&<div className="referral-info-backdrop" onClick={()=>setAiCreditInfo(false)}><section className="referral-info-modal ai-credit-info-modal" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true"><small>FLEXAR AI CREDITS</small><h2>How AI credits work</h2><p>Opening an AI trade uses <b>1.5 credits</b>. Your remaining credits stay available until used.</p><p>Need more? Larger packages include discounted pricing and bonus credits.</p><button type="button" onClick={()=>setAiCreditInfo(false)}>Got it</button></section></div>}
     {modeOpen&&<div className="auth-modal-backdrop ai-mode-backdrop" onClick={()=>setModeOpen(false)}><section className="wallet-action-modal ai-mode-modal" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ai-mode-title"><small>FLEXAR AI TRADING BOT</small><h2 id="ai-mode-title">How should FLEXAR trade?</h2><p>Choose how much control you want over each AI opportunity.</p><button type="button" className={mode==="manual"?"ai-mode-option selected":"ai-mode-option"} onClick={()=>chooseMode("manual")}><span><b>Manual approval</b><small>Review every AI setup and approve the trade yourself.</small></span><i>{mode==="manual"?"✓":"→"}</i></button><div className={mode==="autopilot"?"ai-mode-option selected":"ai-mode-option"}><span><b>Autopilot</b><small>FLEXAR can execute a qualifying AI trade automatically using your stake limit.</small><label>Stake limit<input inputMode="decimal" value={autoStake} onChange={e=>{setAutoStake(e.target.value);try{sessionStorage.setItem("flexa_ai_auto_stake",e.target.value)}catch{}}} onClick={e=>e.stopPropagation()} /><em>USDT</em></label></span><i>{mode==="autopilot"?"✓":"→"}</i><button type="button" className="ai-mode-activate" onClick={()=>chooseMode("autopilot")}>Enable Autopilot</button></div><small className="ai-mode-note">You can switch modes later. Autopilot only runs after you explicitly enable it and set a stake limit.</small></section></div>}
 
-    {activationMode&&<div className="auth-modal-backdrop ai-activation-backdrop" onClick={()=>setActivationMode("")}><section className="wallet-action-modal ai-activation-modal" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ai-activation-title">
+    {activationMode&&<div className="auth-modal-backdrop ai-activation-backdrop" onClick={()=>{setActivationMode("");onActivationChange?.(false)}}><section className="wallet-action-modal ai-activation-modal" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ai-activation-title">
       <div className="ai-activation-icon">✓</div>
       <small>FLEXAR AI ACTIVATED</small>
       <h2 id="ai-activation-title">{activationMode==="autopilot"?"Autopilot is active":"Manual approval is active"}</h2>
@@ -1056,9 +1058,9 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
       </div>
       {typeof Notification!=="undefined"&&Notification.permission!=="granted"?<div className="ai-activation-notification">
         <div><strong>Stay notified</strong><p>Enable device notifications so FLEXAR can alert you when a setup or trade update needs your attention.</p></div>
-        <button type="button" onClick={async()=>{try{const permission=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(permission==="granted")setActivationMode((current)=>current); }catch{}}}>Enable notifications</button>
+        <button type="button" onClick={async()=>{try{const permission=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(permission==="granted"){onActivationChange?.(false);setActivationMode("");} }catch{}}}>Enable notifications</button>
       </div>:<div className="ai-activation-notification enabled"><div><strong>Notifications enabled</strong><p>FLEXAR can alert you about qualifying setups and trade updates.</p></div></div>}
-      <button type="button" className="ai-activation-primary" onClick={()=>setActivationMode("")}>Continue →</button>
+      <button type="button" className="ai-activation-primary" onClick={()=>{setActivationMode("");onActivationChange?.(false)}}>Continue →</button>
     </section></div>}
     <section className="ai-markets-panel compact-markets"><div className="panel-heading"><div><small>SUPPORTED MARKETS</small><h2>Markets FLEXAR AI watches</h2><p>Crypto uses the original asset marks. Forex pairs use clear currency identifiers.</p></div></div><div className="market-grid">{["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","EURUSD","GBPUSD","USDJPY","AUDUSD"].map(item=><div className="market-chip" key={item}><PairIcon symbol={item} cryptoIcons={cryptoIcons}/><div><strong>{item}</strong><small>{item.includes("USD")&&!item.includes("USDT")?"Forex":"Crypto"}</small></div></div>)}</div></section><p className="engine-disclaimer">{mode==="autopilot"?"FLEXAR AI monitors qualifying setups and can execute within your configured stake limit.":"FLEXAR AI finds the setup. You review it and approve the capital."}</p>
   </div>;
