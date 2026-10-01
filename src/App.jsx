@@ -511,7 +511,7 @@ export default function App() {
       <AppErrorBoundary page={page}>
         <div key={page} className="page-transition" aria-live="polite">
           {page === "home" && <Home account={account} profile={profile} setPage={setPage} onWalletAction={setWalletAction} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
-          {page === "trade" && <Trade account={account} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
+          {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
           {page === "activity" && <Activity account={account} />}
           {page === "referral" && <Referral account={account} profile={profile} />}
           {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
