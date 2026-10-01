@@ -325,7 +325,7 @@ export default function App() {
       // Read the profile after onboarding so first-time users do not race
       // the profile upsert and get stuck with an empty profile/admin state.
       const { data: profileData } = await supabase.from("profiles")
-        .select("id,display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference")
+        .select("id,display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference,ai_credits,ai_credits_used")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -377,6 +377,12 @@ export default function App() {
     if (!supabase || aiScanning || aiEngineActive) return;
     // Lock the control immediately on the user's click. The engine is now considered
     // active while the opportunity window it creates is still alive.
+    const availableCredits = Number(profile?.ai_credits ?? 0);
+    if (availableCredits < 1.5) {
+      setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
+      setPage("trade");
+      return;
+    }
     setAiScanning(true);
     setAiEngineActive(true);
     try { sessionStorage.setItem("flexa_ai_engine_active", "true"); } catch {}
@@ -391,9 +397,31 @@ export default function App() {
           const payload = await error.context?.json?.();
           message = payload?.error || payload?.message || message;
         } catch {}
+        if (error?.status === 402 || error?.context?.status === 402) {
+          const payload = await error.context?.json?.().catch(() => null);
+          setAiEngineActive(false);
+          try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
+          setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
+          setPage("trade");
+          return;
+        }
         throw new Error(message);
       }
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        if (data?.code === "AI_CREDITS_REQUIRED") {
+          setAiEngineActive(false);
+          try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
+          setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
+          setPage("trade");
+          return;
+        }
+        throw new Error(data.error);
+      }
+      setProfile((current) => current ? {
+        ...current,
+        ai_credits: Math.max(0, Number(current.ai_credits ?? 0) - 1.5),
+        ai_credits_used: Number(current.ai_credits_used ?? 0) + 1.5
+      } : current);
 
       const created = (data?.results || []).filter((item) => item?.status === "created");
       const alreadyExists = (data?.results || []).filter((item) => item?.status === "already_exists");
