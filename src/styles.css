@@ -1390,3 +1390,5 @@ body{background:var(--bg)}
 .referral-incentive-metrics strong{font-size:27px!important;margin:7px 0 3px!important;letter-spacing:-.04em}
 .referral-incentive-metrics small{font-size:8px!important;color:#718078!important}
 @media(max-width:620px){.referral-incentive{grid-template-columns:1fr!important}.referral-incentive-metrics{grid-template-columns:1fr 1fr!important}}
+
+.notification-permission-icon img{width:34px;height:34px;object-fit:contain;opacity:.9;filter:drop-shadow(0 0 12px rgba(3,252,125,.2))}
