@@ -383,8 +383,6 @@ export default function App() {
 
   async function startAiScan() {
     if (!supabase || aiScanning) return;
-    // Lock the control immediately on the user's click. The engine is now considered
-    // active while the opportunity window it creates is still alive.
     const availableCredits = Number(profile?.ai_credits ?? 0);
     if (availableCredits < 1.5) {
       setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
@@ -405,7 +403,6 @@ export default function App() {
           message = payload?.error || payload?.message || message;
         } catch {}
         if (error?.status === 402 || error?.context?.status === 402) {
-          const payload = await error.context?.json?.().catch(() => null);
           setAiEngineActive(false);
           setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
           setPage("trade");
@@ -413,39 +410,20 @@ export default function App() {
         }
         throw new Error(message);
       }
-      if (data?.error) {
-        if (data?.code === "AI_CREDITS_REQUIRED") {
-          setAiEngineActive(false);
-          setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
-          setPage("trade");
-          return;
-        }
-        throw new Error(data.error);
-      }
-      setProfile((current) => current ? {
-        ...current,
-        ai_credits: Math.max(0, Number(current.ai_credits ?? 0) - 1.5),
-        ai_credits_used: Number(current.ai_credits_used ?? 0) + 1.5
-      } : current);
+      if (data?.error) throw new Error(data.error);
 
       const created = (data?.results || []).filter((item) => item?.status === "created");
       const alreadyExists = (data?.results || []).filter((item) => item?.status === "already_exists");
       await refreshAccount();
 
       if (!created.length && !alreadyExists.length) {
-        // Starting the bot is still a successful user action even when the engine
-        // has no qualifying opportunity yet. Keep the bot active and let the page
-        // show the live waiting state instead of appearing to do nothing.
-        setGlobalNotice("FLEXAR AI is active and waiting for the next qualifying setup.");
-        setPage("trade");
-        return;
+        setGlobalNotice("FLEXAR AI is active. It is monitoring the market and will surface the next qualifying setup automatically.");
+      } else {
+        try { sessionStorage.setItem("flexa_open_ai_trade", "true"); } catch {}
+        setGlobalNotice("FLEXAR AI found a qualifying opportunity. Review the setup below.");
       }
-
-      try { sessionStorage.setItem("flexa_open_ai_trade", "true"); } catch {}
       setPage("trade");
-      setGlobalNotice("FLEXAR AI is active. Your AI-selected opportunity is ready.");
     } catch(error) {
-      // If the backend rejected the start, release the lock so the user can retry.
       setAiEngineActive(false);
       setGlobalNotice(error.message || "The AI engine could not start.");
     } finally {
@@ -467,6 +445,36 @@ export default function App() {
     window.addEventListener("flexa-trade-started", handleTradeStarted);
     return () => window.removeEventListener("flexa-trade-started", handleTradeStarted);
   }, [refreshAccount]);
+
+  useEffect(() => {
+    if (!aiEngineActive || aiScanning || !supabase) return;
+    let cancelled = false;
+
+    const pollAiEngine = async () => {
+      if (cancelled) return;
+      try {
+        const { data, error } = await supabase.functions.invoke("opportunity-engine", {
+          body: { source: "user", requested_at: new Date().toISOString() }
+        });
+        if (cancelled || error || data?.error) return;
+
+        const created = (data?.results || []).some((item) => ["created", "already_exists"].includes(item?.status));
+        if (created) {
+          await refreshAccount();
+          if (!cancelled) {
+            try { sessionStorage.setItem("flexa_open_ai_trade", "true"); } catch {}
+            setGlobalNotice("FLEXAR AI found a qualifying opportunity. Review the setup below.");
+          }
+        }
+      } catch {}
+    };
+
+    const timer = window.setInterval(pollAiEngine, 60000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [aiEngineActive, aiScanning, refreshAccount]);
 
   useEffect(() => {
     if (!aiEngineActive || aiScanning) return;
