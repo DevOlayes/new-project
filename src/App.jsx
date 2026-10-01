@@ -325,7 +325,7 @@ export default function App() {
       // Read the profile after onboarding so first-time users do not race
       // the profile upsert and get stuck with an empty profile/admin state.
       const { data: profileData } = await supabase.from("profiles")
-        .select("display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference")
+        .select("id,display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -333,7 +333,7 @@ export default function App() {
       setProfile(profileData || null);
       setOnboardingState(profileData ? {
         completed: Boolean(profileData.onboarding_completed),
-        step: Math.min(4, Math.max(0, Number(profileData.onboarding_step || 0))),
+        step: Math.min(3, Math.max(0, Number(profileData.onboarding_step || 0))),
         countryCode: profileData.country_code || "",
         experience: profileData.trading_experience || "",
         goals: Array.isArray(profileData.onboarding_goals) ? profileData.onboarding_goals : [],
