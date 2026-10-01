@@ -1579,3 +1579,7 @@ body{background:var(--bg)}
   .referral-explainer-grid{grid-template-columns:1fr!important}
   .referral-explainer-card{min-height:92px!important}
 }
+
+.reward-expiry{display:block!important;margin-top:5px!important;color:#74827a!important;font-size:7px!important;letter-spacing:.04em!important}
+.reward-expiry.urgent{color:#ffb26b!important}
+.reward-expiry.expired{color:#ff7676!important}
