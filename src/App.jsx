@@ -631,7 +631,7 @@ function AuthOptions({ setAuthError, authError }) {
   </div>;
 }
 function Onboarding({ profile, initialState, onComplete }) {
-  const [step, setStep] = useState(Math.min(4, Math.max(0, Number(initialState?.step || 0))));
+  const [step, setStep] = useState(Math.min(3, Math.max(0, Number(initialState?.step || 0))));
   const [countryCode, setCountryCode] = useState(initialState?.countryCode || "");
   const [experience, setExperience] = useState(initialState?.experience || "");
   const [goals, setGoals] = useState(Array.isArray(initialState?.goals) ? initialState.goals : []);
