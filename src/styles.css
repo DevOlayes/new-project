@@ -1401,7 +1401,7 @@ body{background:var(--bg)}
 .activity-stat-copy{min-width:0!important;flex:1 1 auto!important}
 .activity-stat-copy small{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
 .activity-stat-copy strong{display:flex!important;align-items:baseline!important;gap:5px!important;min-width:0!important;white-space:nowrap!important;line-height:1!important;letter-spacing:-.035em!important}
-.activity-stat-copy.net-copy strong{font-size:15px!important}
+.activity-stat-copy.net-copy strong{font-size:14px!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:baseline!important;gap:4px!important;width:100%!important;overflow:hidden!important}.activity-stat-copy.net-copy strong span{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important}.activity-stat-copy.net-copy em{font-size:6.5px!important}
 .activity-stat-copy.net-copy strong span{white-space:nowrap!important}
 .activity-stat-copy.net-copy em{flex:0 0 auto!important;font-size:7px!important;letter-spacing:.06em!important;color:#718078!important}
 @media(max-width:560px){
@@ -1409,3 +1409,10 @@ body{background:var(--bg)}
   .activity-stats>div{padding:13px 11px!important}
   .activity-stat-copy.net-copy strong{font-size:14px!important;gap:4px!important}
 }
+
+/* Activity Center final KPI polish */
+.activity-intro-watermark{opacity:.04!important;mix-blend-mode:screen!important;filter:drop-shadow(0 0 30px rgba(3,252,125,.10))!important}
+.activity-stats>div:nth-child(3) .activity-stat-icon{color:#ff6b78!important;background:rgba(255,107,120,.07)!important;border-color:rgba(255,107,120,.14)!important}
+.activity-stats>div:nth-child(3) strong{color:#ff6b78!important}
+.activity-stats>div:nth-child(3) small{color:#9d7479!important}
+@media(max-width:560px){.activity-stat-copy.net-copy strong{font-size:13px!important}.activity-stat-copy.net-copy em{font-size:6px!important}}
