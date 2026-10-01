@@ -1583,3 +1583,21 @@ body{background:var(--bg)}
 .reward-expiry{display:block!important;margin-top:5px!important;color:#74827a!important;font-size:7px!important;letter-spacing:.04em!important}
 .reward-expiry.urgent{color:#ffb26b!important}
 .reward-expiry.expired{color:#ff7676!important}
+
+.ai-hero-side{display:flex!important;flex-direction:column!important;gap:10px!important;align-items:flex-end!important}
+.ai-credit-pill{min-width:108px!important;padding:11px 12px!important;border:1px solid rgba(3,252,125,.15)!important;border-radius:14px!important;background:rgba(3,252,125,.045)!important;text-align:right!important}
+.ai-credit-pill span{display:block!important;color:#718078!important;font-size:6px!important;letter-spacing:.14em!important;font-weight:900!important}
+.ai-credit-pill strong{display:block!important;color:var(--green)!important;font-size:18px!important;line-height:1!important;margin:4px 0!important}
+.ai-credit-pill small{display:block!important;color:#6f7d75!important;font-size:6px!important}
+.ai-credit-banner{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:15px!important;margin:12px 0!important;padding:15px!important;border:1px solid rgba(3,252,125,.15)!important;border-radius:17px!important;background:linear-gradient(135deg,rgba(3,252,125,.07),rgba(255,255,255,.015))!important}
+.ai-credit-banner>div{min-width:0!important}
+.ai-credit-banner small{display:block!important;color:var(--green)!important;font-size:7px!important;font-weight:900!important;letter-spacing:.13em!important}
+.ai-credit-banner strong{display:block!important;font-size:15px!important;letter-spacing:-.025em!important;margin:5px 0!important}
+.ai-credit-banner p{margin:0!important;color:#748179!important;font-size:8px!important;line-height:1.5!important;max-width:460px!important}
+.ai-credit-banner button{flex:0 0 auto!important;border:1px solid rgba(3,252,125,.25)!important;border-radius:10px!important;background:var(--green)!important;color:#041008!important;padding:11px 13px!important;font-size:8px!important;font-weight:950!important;white-space:nowrap!important}
+@media(max-width:560px){
+  .ai-hero-side{align-items:stretch!important}
+  .ai-credit-pill{text-align:left!important}
+  .ai-credit-banner{align-items:flex-start!important;flex-direction:column!important}
+  .ai-credit-banner button{width:100%!important}
+}
