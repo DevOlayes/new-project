@@ -522,7 +522,7 @@ function modeForNotification(account) {
 function NotificationPromptModal({ onEnable, onDismiss }) {
   return <div className="notification-permission-backdrop" onClick={onDismiss}>
     <section className="notification-permission-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="notification-permission-title">
-      <div className="notification-permission-icon">⌁</div>
+      <div className="notification-permission-icon"><img src="/flexa-symbol.webp" alt="" /></div>
       <small>FLEXAR AI ALERTS</small>
       <h2 id="notification-permission-title">Stay ahead of your AI trades.</h2>
       <p>FLEXAR is watching for a qualifying setup. Enable notifications so you know when a manual review is ready or when an autopilot trade has an important update or outcome.</p>
