@@ -1,4 +1,4 @@
-import { Component, useCallback, useEffect, useState } from "react";
+import { Component, useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
@@ -32,6 +32,8 @@ export default function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [walletAction, setWalletAction] = useState("");
   const [tradeSuccess, setTradeSuccess] = useState(null);
+  const notificationSeenRef = useRef(null);
+  const opportunitySeenRef = useRef(null);
 
   const refreshAccount = useCallback(async () => {
     if (!supabase || !user) return;
@@ -106,9 +108,100 @@ export default function App() {
 
   useEffect(() => {
     const openNotifications = () => setShowNotifications(true);
+    const requestNotifications = () => {
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+        setNotificationPrompt(true);
+      }
+    };
     window.addEventListener("flexar-open-notifications", openNotifications);
-    return () => window.removeEventListener("flexar-open-notifications", openNotifications);
+    window.addEventListener("flexar-request-notifications", requestNotifications);
+    return () => {
+      window.removeEventListener("flexar-open-notifications", openNotifications);
+      window.removeEventListener("flexar-request-notifications", requestNotifications);
+    };
   }, []);
+
+  async function enableNotifications() {
+    setNotificationAsked(true);
+    try { localStorage.setItem("flexar_notification_dismissed", new Date().toISOString().slice(0,10)); } catch {}
+    if (typeof Notification === "undefined") {
+      setNotificationPrompt(false);
+      setGlobalNotice("Device notifications are not available in this browser. FLEXAR in-app notifications remain available.");
+      return;
+    }
+    try {
+      const permission = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
+      setNotificationPrompt(false);
+      if (permission === "granted") {
+        setGlobalNotice("Notifications enabled. FLEXAR will alert you about AI setups and trade updates.");
+        new Notification("FLEXAR AI notifications enabled", { body: "You will be alerted when an AI setup or trade update needs your attention." });
+      } else {
+        setGlobalNotice("Notifications are off. You can enable them later from your browser or device settings.");
+      }
+    } catch {
+      setNotificationPrompt(false);
+    }
+  }
+
+  function dismissNotificationPrompt() {
+    setNotificationPrompt(false);
+    setNotificationAsked(true);
+    try { localStorage.setItem("flexar_notification_dismissed", new Date().toISOString().slice(0,10)); } catch {}
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    const activeTradeExists = (account.trades || []).some((trade) => trade.status === "active");
+    if (!aiEngineActive && !activeTradeExists) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const result = await getAccountData();
+        if (!cancelled) setAccount(result);
+      } catch {}
+    };
+    const timer = window.setInterval(poll, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [user, aiEngineActive, account.trades]);
+
+  useEffect(() => {
+    const latest = (account.opportunities || []).filter((item) => ["scheduled", "open"].includes(item.status)).sort((a,b) => new Date(b.entry_window_start || b.created_at || 0) - new Date(a.entry_window_start || a.created_at || 0))[0];
+    if (!latest) return;
+    const key = latest.id || latest.created_at || latest.symbol;
+    if (opportunitySeenRef.current === null) {
+      opportunitySeenRef.current = key;
+      return;
+    }
+    if (opportunitySeenRef.current === key) return;
+    opportunitySeenRef.current = key;
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("FLEXAR AI setup available", {
+        body: modeForNotification(account) === "autopilot"
+          ? "Autopilot is monitoring the qualifying setup."
+          : "A qualifying AI trade is ready for your review."
+      });
+    }
+  }, [account.opportunities]);
+
+  useEffect(() => {
+    const latest = (account.notifications || [])[0];
+    if (!latest) return;
+    const key = latest.id || latest.created_at || latest.title;
+    if (notificationSeenRef.current === null) {
+      notificationSeenRef.current = key;
+      return;
+    }
+    if (notificationSeenRef.current === key) return;
+    notificationSeenRef.current = key;
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification(latest.title || "FLEXAR AI update", {
+        body: latest.message || latest.body || "You have a new FLEXAR AI account or trade update."
+      });
+    }
+  }, [account.notifications]);
 
   useEffect(() => {
     const handleInstallPrompt = (event) => {
@@ -366,8 +459,10 @@ export default function App() {
       </AppErrorBoundary>
     </main>
     <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
+    {notificationPrompt && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
     {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
+    {globalNotice && <div className="global-notice" role="status" onClick={() => setGlobalNotice("")}>{globalNotice}</div>}
     {tradeSuccess && <TradeSuccessModal trade={tradeSuccess} onClose={() => setTradeSuccess(null)} onViewActive={() => { setTradeSuccess(null); setPage("activity"); }} />}
   </div>;
 }
@@ -418,6 +513,23 @@ function TradeSuccessModal({ trade, onClose, onViewActive }) {
     </section>
   </div>;
 }
+function modeForNotification(account) {
+  try { return sessionStorage.getItem("flexa_ai_mode") || "manual"; } catch { return "manual"; }
+}
+
+function NotificationPromptModal({ onEnable, onDismiss }) {
+  return <div className="notification-permission-backdrop" onClick={onDismiss}>
+    <section className="notification-permission-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="notification-permission-title">
+      <div className="notification-permission-icon">⌁</div>
+      <small>FLEXAR AI ALERTS</small>
+      <h2 id="notification-permission-title">Stay ahead of your AI trades.</h2>
+      <p>FLEXAR is watching for a qualifying setup. Enable notifications so you know when a manual review is ready or when an autopilot trade has an important update or outcome.</p>
+      <button type="button" className="notification-permission-primary" onClick={onEnable}>Enable notifications →</button>
+      <button type="button" className="notification-permission-secondary" onClick={onDismiss}>Not now</button>
+    </section>
+  </div>;
+}
+
 function NotificationPanel({ notifications, onClose }) {
   return <div className="notification-backdrop" onClick={onClose}>
     <aside className="notification-panel" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Notifications">
@@ -765,6 +877,7 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
       if(nextMode==="autopilot") sessionStorage.setItem("flexa_ai_auto_stake",stake);
     }catch{}
     setModeOpen(false);
+    window.dispatchEvent(new CustomEvent("flexar-request-notifications"));
     if(!aiEngineActive&&!opportunity) startAiScan();
   }
   async function confirmAiTrade(){if(!supabase||busy||!canTrade||numericAmount<=0||!opportunity)return;setBusy(true);setNotice("");try{const {data,error}=await supabase.functions.invoke("execute-trade",{body:{mode:"ai",opportunity_id:opportunity.id,stake:numericAmount}});if(error){let message=error.message||"The AI trade could not be started.";try{const payload=await error.context?.json?.();message=payload?.error||payload?.message||message}catch{}throw new Error(message)}if(data?.error)throw new Error(data.error);const tradeResult=data?.trade||data||{};window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{tradeId:tradeResult.trade_id||null,symbol:tradeResult.symbol||symbol,direction:tradeResult.direction||opportunity.direction,stake:Number(tradeResult.stake??numericAmount),duration:tradeResult.duration_seconds?Math.round(Number(tradeResult.duration_seconds)/60):duration,fundingSource:tradeResult.funding_source||null,takeProfitPrice:tradeResult.take_profit_price||null,stopLossPrice:tradeResult.stop_loss_price||null}}))}catch(error){setNotice(error.message||"The AI trade could not be started.") }finally{setBusy(false)}}
