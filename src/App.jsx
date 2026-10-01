@@ -34,9 +34,7 @@ export default function App() {
   const [assetPrices, setAssetPrices] = useState({USDT:1,TON:1.41,BTC:83928.34,SOL:119.79,BNB:770.09});
   const [rewardBusy, setRewardBusy] = useState(false);
   const [aiScanning, setAiScanning] = useState(false);
-  const [aiEngineActive, setAiEngineActive] = useState(() => {
-    try { return sessionStorage.getItem("flexa_ai_engine_active") === "true"; } catch { return false; }
-  });
+  const [aiEngineActive, setAiEngineActive] = useState(false);
   const [globalNotice, setGlobalNotice] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [walletAction, setWalletAction] = useState("");
@@ -384,7 +382,7 @@ export default function App() {
   }
 
   async function startAiScan() {
-    if (!supabase || aiScanning || aiEngineActive) return;
+    if (!supabase || aiScanning) return;
     // Lock the control immediately on the user's click. The engine is now considered
     // active while the opportunity window it creates is still alive.
     const availableCredits = Number(profile?.ai_credits ?? 0);
@@ -395,7 +393,6 @@ export default function App() {
     }
     setAiScanning(true);
     setAiEngineActive(true);
-    try { sessionStorage.setItem("flexa_ai_engine_active", "true"); } catch {}
     setGlobalNotice("");
     try {
       const { data, error } = await supabase.functions.invoke("opportunity-engine", {
@@ -410,7 +407,6 @@ export default function App() {
         if (error?.status === 402 || error?.context?.status === 402) {
           const payload = await error.context?.json?.().catch(() => null);
           setAiEngineActive(false);
-          try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
           setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
           setPage("trade");
           return;
@@ -420,7 +416,6 @@ export default function App() {
       if (data?.error) {
         if (data?.code === "AI_CREDITS_REQUIRED") {
           setAiEngineActive(false);
-          try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
           setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
           setPage("trade");
           return;
@@ -452,7 +447,6 @@ export default function App() {
     } catch(error) {
       // If the backend rejected the start, release the lock so the user can retry.
       setAiEngineActive(false);
-      try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
       setGlobalNotice(error.message || "The AI engine could not start.");
     } finally {
       setAiScanning(false);
@@ -482,7 +476,6 @@ export default function App() {
     if (!Number.isFinite(latestEnd) || latestEnd <= Date.now()) return;
     const timer = setTimeout(() => {
       setAiEngineActive(false);
-      try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
       refreshAccount();
     }, Math.max(1000, latestEnd - Date.now() + 1500));
     return () => clearTimeout(timer);
@@ -492,7 +485,6 @@ export default function App() {
     if (supabase) await supabase.auth.signOut();
     setAccount(EMPTY_ACCOUNT);
     setAiEngineActive(false);
-    try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
   }
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => setPage("home")} />;
@@ -1001,7 +993,7 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
     }catch{}
     setModeOpen(false);
     window.dispatchEvent(new CustomEvent("flexar-request-notifications", { detail: { mode: nextMode } }));
-    if(!aiEngineActive&&!opportunity) startAiScan();
+    if(!opportunity) startAiScan();
   }
   async function confirmAiTrade(){if(!supabase||busy||!canTrade||numericAmount<=0||!opportunity)return;setBusy(true);setNotice("");try{const {data,error}=await supabase.functions.invoke("execute-trade",{body:{mode:"ai",opportunity_id:opportunity.id,stake:numericAmount}});if(error){let message=error.message||"The AI trade could not be started.";try{const payload=await error.context?.json?.();message=payload?.error||payload?.message||message}catch{}throw new Error(message)}if(data?.error)throw new Error(data.error);const tradeResult=data?.trade||data||{};window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{tradeId:tradeResult.trade_id||null,symbol:tradeResult.symbol||symbol,direction:tradeResult.direction||opportunity.direction,stake:Number(tradeResult.stake??numericAmount),duration:tradeResult.duration_seconds?Math.round(Number(tradeResult.duration_seconds)/60):duration,fundingSource:tradeResult.funding_source||null,takeProfitPrice:tradeResult.take_profit_price||null,stopLossPrice:tradeResult.stop_loss_price||null}}))}catch(error){setNotice(error.message||"The AI trade could not be started.") }finally{setBusy(false)}}
   useEffect(()=>{
