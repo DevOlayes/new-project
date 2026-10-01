@@ -286,9 +286,10 @@ export default function App() {
       await refreshAccount();
 
       if (!created.length && !alreadyExists.length) {
-        setAiEngineActive(false);
-        try { sessionStorage.removeItem("flexa_ai_engine_active"); } catch {}
-        setGlobalNotice("FLEXAR AI is scanning, but there is no fresh high-quality opportunity right now. Try again when the next signal is ready.");
+        // Starting the bot is still a successful user action even when the engine
+        // has no qualifying opportunity yet. Keep the bot active and let the page
+        // show the live waiting state instead of appearing to do nothing.
+        setGlobalNotice("FLEXAR AI is active and waiting for the next qualifying setup.");
         setPage("trade");
         return;
       }
