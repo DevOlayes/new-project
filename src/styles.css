@@ -1601,3 +1601,15 @@ body{background:var(--bg)}
   .ai-credit-banner{align-items:flex-start!important;flex-direction:column!important}
   .ai-credit-banner button{width:100%!important}
 }
+
+/* AI credit balance and package purchase surface */
+.ai-credit-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border:1px solid rgba(3,252,125,.16);border-radius:18px;background:linear-gradient(135deg,rgba(3,252,125,.07),rgba(255,255,255,.02));box-shadow:0 12px 32px rgba(0,0,0,.14)}
+.ai-credit-banner-copy{min-width:0}
+.ai-credit-banner-copy small{display:block;color:var(--green);font-size:8px;font-weight:900;letter-spacing:.14em}
+.ai-credit-banner-copy strong{display:block;margin-top:5px;font-size:18px;letter-spacing:-.02em}
+.ai-credit-banner-copy p{margin:5px 0 0;color:var(--muted);font-size:9px;line-height:1.45}
+.ai-credit-purchase{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.ai-credit-purchase select{height:42px;min-width:145px;padding:0 10px;border:1px solid var(--border);border-radius:11px;background:#07110e;color:#fff;font-size:9px}
+.ai-credit-purchase button{height:42px;padding:0 13px;border:1px solid var(--green);border-radius:11px;background:var(--green);color:#061009;font-size:9px;font-weight:900;white-space:nowrap}
+.ai-credit-purchase button:disabled{opacity:.65;cursor:wait}
+@media(max-width:620px){.ai-credit-banner{align-items:stretch;flex-direction:column}.ai-credit-purchase{width:100%}.ai-credit-purchase select,.ai-credit-purchase button{flex:1}.ai-credit-banner-copy strong{font-size:16px}}
