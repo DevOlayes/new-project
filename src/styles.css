@@ -1613,3 +1613,46 @@ body{background:var(--bg)}
 .ai-credit-purchase button{height:42px;padding:0 13px;border:1px solid var(--green);border-radius:11px;background:var(--green);color:#061009;font-size:9px;font-weight:900;white-space:nowrap}
 .ai-credit-purchase button:disabled{opacity:.65;cursor:wait}
 @media(max-width:620px){.ai-credit-banner{align-items:stretch;flex-direction:column}.ai-credit-purchase{width:100%}.ai-credit-purchase select,.ai-credit-purchase button{flex:1}.ai-credit-banner-copy strong{font-size:16px}}
+
+
+/* FLEXAR AI CREDITS */
+.ai-credit-status-inline{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:#111}
+.ai-credit-status-inline small{display:block;color:var(--muted);font-size:8px;letter-spacing:.13em;font-weight:800}
+.ai-credit-status-inline strong{display:block;margin-top:5px;font-size:16px}
+.ai-credit-status-inline p{margin:4px 0 0;color:var(--muted);font-size:9px}
+.ai-credit-status-inline button{flex:none;border:0;border-radius:10px;padding:10px 13px;background:var(--green);color:#080a04;font-size:9px;font-weight:900}
+.ai-credits-page{display:flex;flex-direction:column;gap:14px}
+.ai-credits-back{align-self:flex-start;border:0;background:transparent;color:var(--muted);padding:4px 0;font-size:10px;font-weight:800}
+.ai-credits-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:8px 2px 16px}
+.ai-credits-hero small,.ai-credits-section-head small{color:var(--green);font-size:8px;font-weight:900;letter-spacing:.14em}
+.ai-credits-hero h1{margin:7px 0 6px;font-size:38px;line-height:.95;letter-spacing:-.06em}
+.ai-credits-hero p{max-width:500px;margin:0;color:var(--muted);font-size:11px;line-height:1.6}
+.ai-credits-balance{min-width:145px;padding:15px 17px;border:1px solid var(--line);border-radius:16px;background:#111;text-align:right}
+.ai-credits-balance small{display:block;color:var(--muted);font-size:7px;letter-spacing:.12em}
+.ai-credits-balance strong{display:block;margin:4px 0 1px;font-size:30px;letter-spacing:-.05em}
+.ai-credits-balance span{color:var(--muted);font-size:8px}
+.ai-credit-plans{padding:17px;border:1px solid var(--line);border-radius:18px;background:#0d0d0d}
+.ai-credits-section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:14px}
+.ai-credits-section-head h2{margin:5px 0 0;font-size:20px}
+.ai-credits-section-head>span{color:var(--muted);font-size:8px}
+.ai-credit-plan-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.ai-credit-plan{position:relative;display:flex;flex-direction:column;min-width:0;padding:14px;border:1px solid var(--line);border-radius:15px;background:#111}
+.ai-credit-plan.featured{border-color:rgba(200,255,36,.4);background:linear-gradient(145deg,rgba(200,255,36,.08),#111)}
+.ai-plan-badge{position:absolute;top:10px;right:10px;padding:4px 6px;border-radius:6px;background:var(--green);color:#080a04;font-size:6px;font-weight:950}
+.ai-plan-top{display:flex;justify-content:space-between;gap:5px;align-items:center;min-height:20px}
+.ai-plan-top span{font-size:10px;font-weight:850}
+.ai-plan-top b{color:var(--green);font-size:7px}
+.ai-plan-price{display:block;margin:14px 0 2px;font-size:29px;letter-spacing:-.05em}
+.ai-plan-total{display:block;color:#ddd;font-size:8px}
+.ai-plan-total em{margin-left:4px;color:var(--green);font-style:normal;font-weight:900}
+.ai-plan-run-count{display:block;margin-top:7px;color:var(--muted);font-size:7px}
+.ai-credit-plan button{width:100%;margin-top:15px;height:37px;border:0;border-radius:9px;background:#1b1b1b;color:#fff;font-size:8px;font-weight:900}
+.ai-credit-plan.featured button{background:var(--green);color:#080a04}
+.ai-credit-plan button:disabled{opacity:.45}
+.ai-credits-notice{margin:0}
+.ai-credits-note{padding:15px 17px;border:1px solid var(--line);border-radius:16px;background:#0b0b0b}
+.ai-credits-note strong{font-size:10px}
+.ai-credits-note p{margin:6px 0 0;color:var(--muted);font-size:9px;line-height:1.6}
+@media(max-width:900px){.ai-credit-plan-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:650px){.ai-credit-status-inline{align-items:flex-start}.ai-credit-status-inline button{padding:9px 10px}.ai-credits-hero{align-items:stretch;flex-direction:column}.ai-credits-balance{text-align:left}.ai-credit-plan-grid{grid-template-columns:1fr 1fr}.ai-credits-section-head{align-items:flex-start;flex-direction:column}}
+@media(max-width:430px){.ai-credit-plan-grid{grid-template-columns:1fr}.ai-credit-status-inline{flex-direction:column}.ai-credit-status-inline button{width:100%}}
