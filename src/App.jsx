@@ -785,20 +785,53 @@ function WalletActions({ action, onClose, account, refreshAccount, assetPrices =
   </div></div>;
 }
 function Referral({ account, profile }) {
-  const code=profile?.referral_code||"—", link=code==="—"?"":window.location.origin+"/?ref="+encodeURIComponent(code), referrals=account.referrals||[];
-  const rewarded=referrals.filter(item=>item.status==="rewarded"), earned=rewarded.reduce((sum,item)=>sum+Number(item.reward_amount||0),0);
+  const [info, setInfo] = useState("");
+  const code=profile?.referral_code||"—";
+  const link=code==="—"?"":window.location.origin+"/?ref="+encodeURIComponent(code);
+  const referrals=account.referrals||[];
+  const rewarded=referrals.filter(item=>item.status==="rewarded");
+  const claimBonus=referrals.reduce((sum,item)=>sum+Number(item.referral_rewards?.[0]?.claim_bonus_amount||0),0);
+  const depositCommission=referrals.reduce((sum,item)=>sum+Number(item.referral_rewards?.[0]?.deposit_commission_amount||0),0);
+  const earned=referrals.reduce((sum,item)=>sum+Number(item.reward_amount||0),0);
   const copy=async value=>{if(!value)return;try{await navigator.clipboard.writeText(value)}catch{}};
-  return <div className="referral-page"><section className="referral-hero"><small>AFFILIATE NETWORK</small><h1>Grow FLEXAR.<br/><span>Earn with every referral.</span></h1><p>Share your personal FLEXAR link, bring new users into the platform and build a referral network around your audience.</p><div className="referral-link-box"><span>{link||"Your referral link will appear here."}</span><button onClick={()=>copy(link)} disabled={!link}>Copy link</button></div></section>
-    <section className="referral-stats"><div><small>PEOPLE REFERRED</small><strong>{referrals.length}</strong></div><div><small>REWARDED</small><strong>{rewarded.length}</strong></div><div><small>REWARDS EARNED</small><strong>{"$"+earned.toFixed(2)}</strong></div></section>
-    <section className="referral-incentive">
-      <div className="referral-incentive-copy"><small>REFERRAL INCENTIVE</small><h2>Turn qualified referrals into rewards.</h2><p>Rewards are recorded when a referred user completes the qualifying activity. Your earnings are tracked automatically in your referral activity.</p></div>
-      <div className="referral-incentive-metrics"><div><span>QUALIFIED</span><strong>{rewarded.length}</strong><small>rewarded referrals</small></div><div><span>EARNED</span><strong>{"$"+earned.toFixed(2)}</strong><small>credited rewards</small></div></div>
+  const infoContent={
+    claim:{eyebrow:"$2 REWARD CLAIM BONUS",title:"Earn $2 when they claim.",body:"When someone joins FLEXAR through your referral and successfully claims the $50 promotional reward, you receive a one-time $2 referral bonus. Claiming the $50 reward is separate from making a deposit."},
+    deposit:{eyebrow:"10% DEPOSIT COMMISSION",title:"Earn from referred deposits.",body:"You earn 10% when a referred user makes a qualifying deposit. This commission is tied to their deposit activity — it is not triggered by simply claiming the $50 promotional reward."},
+    campaign:{eyebrow:"$50 PROMOTIONAL REWARD",title:"The reward has an expiry.",body:"The $50 promotional reward is time-limited. Users should claim and use it before the expiry shown in their account. The reward itself is non-withdrawable; eligible profit rules are shown in FLEXAR."}
+  };
+  return <div className="referral-page">
+    <section className="referral-hero referral-catalyst">
+      <div className="referral-catalyst-copy"><small>AFFILIATE NETWORK</small><h1>Grow FLEXAR.<br/><span>Earn with every referral.</span></h1><p>Share your personal FLEXAR link and earn when your referred users take qualifying actions.</p></div>
+      <div className="referral-earning-strip">
+        <article><div><strong>$2</strong><span>per referred user</span></div><button type="button" className="referral-info-button" onClick={()=>setInfo("claim")} aria-label="Explain the $2 referral bonus">ⓘ</button><p>When they claim the <b>$50 reward</b>.</p></article>
+        <article><div><strong>10%</strong><span>of qualifying deposits</span></div><button type="button" className="referral-info-button" onClick={()=>setInfo("deposit")} aria-label="Explain the 10 percent deposit commission">ⓘ</button><p>When a referred user <b>makes a deposit</b>.</p></article>
+      </div>
+      <div className="referral-link-box"><span>{link||"Your referral link will appear here."}</span><button onClick={()=>copy(link)} disabled={!link}>Share link →</button></div>
     </section>
+
+    <section className="referral-stats"><div><small>PEOPLE REFERRED</small><strong>{referrals.length}</strong></div><div><small>REWARD CLAIMS</small><strong>{referrals.filter(item=>Number(item.referral_rewards?.[0]?.claim_bonus_amount||0)>0).length}</strong></div><div><small>EARNED</small><strong>{"$"+earned.toFixed(2)}</strong></div></section>
+
+    <section className="referral-incentive referral-campaign-card">
+      <div className="referral-incentive-copy"><small>WHY REFER</small><h2>One referral can create more than one earning event.</h2><p>Your referred user can trigger the <b>$2 reward-claim bonus</b> by claiming the $50 promotional reward, and can also generate <b>10% commission on qualifying deposits</b>. These are separate actions.</p><button type="button" className="referral-banner-cta" onClick={()=>copy(link)} disabled={!link}>Share your FLEXAR link →</button></div>
+      <div className="referral-incentive-metrics"><div><span>CLAIM BONUS</span><strong>{"$"+claimBonus.toFixed(2)}</strong><small>from $50 reward claims</small></div><div><span>DEPOSIT COMMISSION</span><strong>{"$"+depositCommission.toFixed(2)}</strong><small>from referred deposits</small></div></div>
+    </section>
+
+    <section className="referral-section referral-explainer-grid">
+      <button type="button" className="referral-explainer-card" onClick={()=>setInfo("claim")}><div><span>$2</span><strong>Reward claim</strong><p>Earn when your referred user claims their $50 promotional reward.</p></div><b>ⓘ</b></button>
+      <button type="button" className="referral-explainer-card" onClick={()=>setInfo("deposit")}><div><span>10%</span><strong>Qualifying deposit</strong><p>Earn when your referred user makes a qualifying deposit.</p></div><b>ⓘ</b></button>
+      <button type="button" className="referral-explainer-card" onClick={()=>setInfo("campaign")}><div><span>$50</span><strong>Promotional reward</strong><p>The reward is time-limited, so referred users should watch their expiry.</p></div><b>ⓘ</b></button>
+    </section>
+
     <section className="referral-section"><div className="section-heading"><div><small>YOUR CODE</small><h2>{code}</h2></div><button className="asset-swap-link" onClick={()=>copy(code)}>Copy code</button></div><p>Use your code anywhere you promote FLEXAR. Your link automatically attributes new registrations to your network.</p></section>
-    <section className="referral-section referral-steps"><div><span>01</span><div><strong>Share</strong><p>Post your referral link to your community, content or private network.</p></div></div><div><span>02</span><div><strong>Activate</strong><p>Your referred user creates an account and completes the qualifying activity.</p></div></div><div><span>03</span><div><strong>Earn</strong><p>Eligible referral rewards are recorded against your account.</p></div></div></section>
-    <section className="referral-section"><div className="section-heading"><div><small>NETWORK ACTIVITY</small><h2>Your referrals</h2></div></div>{referrals.length?<div className="list">{referrals.map((item,index)=><div className="row" key={item.id||index}><span>Referral {index+1}<small>{item.status}</small></span><strong className="green">{"$"+Number(item.reward_amount||0).toFixed(2)}</strong></div>)}</div>:<div className="empty-state"><strong>Your network is empty.</strong><p>Share your link to start building your FLEXAR affiliate network.</p></div>}</section>
+    <section className="referral-section referral-steps"><div><span>01</span><div><strong>Share</strong><p>Post your referral link to your community, content or private network.</p></div></div><div><span>02</span><div><strong>Activate</strong><p>Your referred user joins and takes a qualifying action.</p></div></div><div><span>03</span><div><strong>Earn</strong><p>Your eligible referral earnings are credited to your FLEXAR wallet.</p></div></section>
+    <section className="referral-section"><div className="section-heading"><div><small>NETWORK ACTIVITY</small><h2>Your referrals</h2></div></div>{referrals.length?<div className="list">{referrals.map((item,index)=><div className="row" key={item.id||index}><span>Referral {index+1}<small>{Number(item.referral_rewards?.[0]?.claim_bonus_amount||0)>0?"$2 claim bonus · ":""}{Number(item.referral_rewards?.[0]?.deposit_commission_amount||0)>0?"10% deposit commission · ":""}{item.status}</small></span><strong className="green">{"$"+Number(item.reward_amount||0).toFixed(2)}</strong></div>)}</div>:<div className="empty-state"><strong>Your network is empty.</strong><p>Share your link to start building your FLEXAR affiliate network.</p></div>}</section>
+    {info&&<ReferralInfoModal type={info} content={infoContent[info]} onClose={()=>setInfo("")}/>}
   </div>;
 }
+function ReferralInfoModal({ content, onClose }) {
+  return <div className="referral-info-backdrop" onClick={onClose}><section className="referral-info-modal" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true"><button type="button" className="auth-close" onClick={onClose} aria-label="Close">×</button><small>{content.eyebrow}</small><h2>{content.title}</h2><p>{content.body}</p><button type="button" className="referral-info-close" onClick={onClose}>Got it</button></section></div>;
+}
+
 function AdminDashboard({ onExit }) {
   const [data,setData]=useState(null), [tab,setTab]=useState("overview"), [busy,setBusy]=useState(false), [error,setError]=useState("");
   const load=useCallback(async()=>{if(!supabase)return;setBusy(true);const result=await supabase.functions.invoke("admin-control",{body:{action:"overview"}});setBusy(false);if(result.error||result.data?.error)setError(result.data?.error||result.error?.message||"Could not load admin data.");else{setError("");setData(result.data);}},[]);
