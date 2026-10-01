@@ -383,7 +383,7 @@ export default function App() {
 
   async function startAiScan(silent = false) {
     if (!supabase || aiScanning) return;
-    const notify = (message) => { if (!silent) notify(message); };
+    const notify = (message) => { if (!silent) setGlobalNotice(message); };
     const availableCredits = Number(profile?.ai_credits ?? 0);
     if (availableCredits < 1.5) {
       notify("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
