@@ -537,7 +537,7 @@ export default function App() {
     {notificationPrompt && !aiActivationOpen && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
     {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
-    {globalNotice && <div className="global-notice" role="status" onClick={() => setGlobalNotice("")}>{globalNotice}</div>}
+    {globalNotice && !aiActivationOpen && <div className="global-notice" role="status" onClick={() => setGlobalNotice("")}>{globalNotice}</div>}
     {tradeSuccess && <TradeSuccessModal trade={tradeSuccess} onClose={() => setTradeSuccess(null)} onViewActive={() => { setTradeSuccess(null); setPage("activity"); }} />}
   </div>;
 }
