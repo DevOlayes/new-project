@@ -1656,3 +1656,19 @@ body{background:var(--bg)}
 @media(max-width:900px){.ai-credit-plan-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:650px){.ai-credit-status-inline{align-items:flex-start}.ai-credit-status-inline button{padding:9px 10px}.ai-credits-hero{align-items:stretch;flex-direction:column}.ai-credits-balance{text-align:left}.ai-credit-plan-grid{grid-template-columns:1fr 1fr}.ai-credits-section-head{align-items:flex-start;flex-direction:column}}
 @media(max-width:430px){.ai-credit-plan-grid{grid-template-columns:1fr}.ai-credit-status-inline{flex-direction:column}.ai-credit-status-inline button{width:100%}}
+
+
+/* Refined AI credit micro-status inside the bot hero card */
+.ai-credit-compact{display:flex;align-items:center;gap:7px;margin-top:15px;width:max-content;max-width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.025)}
+.ai-credit-compact .ai-credit-label{color:var(--muted);font-size:7px;font-weight:900;letter-spacing:.12em}
+.ai-credit-compact strong{font-size:13px;line-height:1}
+.ai-credit-compact .ai-credit-unit{color:var(--muted);font-size:8px}
+.ai-credit-info-button{display:grid;place-items:center;width:19px;height:19px;padding:0;border:0;border-radius:50%;background:#1b1b1b;color:#aaa;font-size:11px;line-height:1;cursor:pointer}
+.ai-credit-info-button:hover{color:#fff;background:#242424}
+.ai-credit-add-button{margin-left:3px;padding:5px 8px;border:0;border-radius:7px;background:var(--green);color:#080a04;font-size:7px;font-weight:900}
+.ai-credit-info-modal{max-width:360px}
+.ai-credit-info-modal small{color:var(--green);font-size:8px;font-weight:900;letter-spacing:.13em}
+.ai-credit-info-modal h2{margin:7px 0 8px}
+.ai-credit-info-modal p{color:var(--muted);font-size:10px;line-height:1.6}
+.ai-credit-info-modal button{width:100%;margin-top:8px;border:0;border-radius:10px;padding:11px;background:#1b1b1b;color:#fff;font-size:9px;font-weight:900}
+@media(max-width:430px){.ai-credit-compact{margin-top:12px}}
