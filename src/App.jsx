@@ -108,7 +108,9 @@ export default function App() {
 
   useEffect(() => {
     const openNotifications = () => setShowNotifications(true);
-    const requestNotifications = () => {
+    const requestNotifications = (event) => {
+      const mode = event?.detail?.mode === "autopilot" ? "Autopilot" : "Manual approval";
+      setGlobalNotice(`${mode} enabled. FLEXAR AI is now looking for a qualifying setup.`);
       if (typeof Notification === "undefined" || Notification.permission !== "granted") {
         setNotificationPrompt(true);
       }
@@ -165,7 +167,7 @@ export default function App() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [user, aiEngineActive, account.trades]);
+  }, [user, aiEngineActive, account.trades?.some((trade) => trade.status === "active")]);
 
   useEffect(() => {
     const latest = (account.opportunities || []).filter((item) => ["scheduled", "open"].includes(item.status)).sort((a,b) => new Date(b.entry_window_start || b.created_at || 0) - new Date(a.entry_window_start || a.created_at || 0))[0];
@@ -877,7 +879,7 @@ function Trade({ account, startAiScan, aiScanning, aiEngineActive }) {
       if(nextMode==="autopilot") sessionStorage.setItem("flexa_ai_auto_stake",stake);
     }catch{}
     setModeOpen(false);
-    window.dispatchEvent(new CustomEvent("flexar-request-notifications"));
+    window.dispatchEvent(new CustomEvent("flexar-request-notifications", { detail: { mode: nextMode } }));
     if(!aiEngineActive&&!opportunity) startAiScan();
   }
   async function confirmAiTrade(){if(!supabase||busy||!canTrade||numericAmount<=0||!opportunity)return;setBusy(true);setNotice("");try{const {data,error}=await supabase.functions.invoke("execute-trade",{body:{mode:"ai",opportunity_id:opportunity.id,stake:numericAmount}});if(error){let message=error.message||"The AI trade could not be started.";try{const payload=await error.context?.json?.();message=payload?.error||payload?.message||message}catch{}throw new Error(message)}if(data?.error)throw new Error(data.error);const tradeResult=data?.trade||data||{};window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{tradeId:tradeResult.trade_id||null,symbol:tradeResult.symbol||symbol,direction:tradeResult.direction||opportunity.direction,stake:Number(tradeResult.stake??numericAmount),duration:tradeResult.duration_seconds?Math.round(Number(tradeResult.duration_seconds)/60):duration,fundingSource:tradeResult.funding_source||null,takeProfitPrice:tradeResult.take_profit_price||null,stopLossPrice:tradeResult.stop_loss_price||null}}))}catch(error){setNotice(error.message||"The AI trade could not be started.") }finally{setBusy(false)}}
