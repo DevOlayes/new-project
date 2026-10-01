@@ -381,17 +381,18 @@ export default function App() {
     }
   }
 
-  async function startAiScan() {
+  async function startAiScan(silent = false) {
     if (!supabase || aiScanning) return;
+    const notify = (message) => { if (!silent) notify(message); };
     const availableCredits = Number(profile?.ai_credits ?? 0);
     if (availableCredits < 1.5) {
-      setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
+      notify("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
       setPage("trade");
       return;
     }
     setAiScanning(true);
     setAiEngineActive(true);
-    setGlobalNotice("");
+    notify("");
     try {
       const { data, error } = await supabase.functions.invoke("opportunity-engine", {
         body: { source: "user", requested_at: new Date().toISOString() }
@@ -404,7 +405,7 @@ export default function App() {
         } catch {}
         if (error?.status === 402 || error?.context?.status === 402) {
           setAiEngineActive(false);
-          setGlobalNotice("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
+          notify("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
           setPage("trade");
           return;
         }
@@ -417,15 +418,15 @@ export default function App() {
       await refreshAccount();
 
       if (!created.length && !alreadyExists.length) {
-        setGlobalNotice("FLEXAR AI is active. It is monitoring the market and will surface the next qualifying setup automatically.");
+        notify("FLEXAR AI is active. It is monitoring the market and will surface the next qualifying setup automatically.");
       } else {
         try { sessionStorage.setItem("flexa_open_ai_trade", "true"); } catch {}
-        setGlobalNotice("FLEXAR AI found a qualifying opportunity. Review the setup below.");
+        notify("FLEXAR AI found a qualifying opportunity. Review the setup below.");
       }
       setPage("trade");
     } catch(error) {
       setAiEngineActive(false);
-      setGlobalNotice(error.message || "The AI engine could not start.");
+      notify(error.message || "The AI engine could not start.");
     } finally {
       setAiScanning(false);
     }
@@ -1014,7 +1015,7 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
     }catch{}
     setModeOpen(false);
     setActivationMode(nextMode);
-    if(!opportunity) startAiScan();
+    if(!opportunity) startAiScan(true);
   }
   async function confirmAiTrade(){if(!supabase||busy||!canTrade||numericAmount<=0||!opportunity)return;setBusy(true);setNotice("");try{const {data,error}=await supabase.functions.invoke("execute-trade",{body:{mode:"ai",opportunity_id:opportunity.id,stake:numericAmount}});if(error){let message=error.message||"The AI trade could not be started.";try{const payload=await error.context?.json?.();message=payload?.error||payload?.message||message}catch{}throw new Error(message)}if(data?.error)throw new Error(data.error);const tradeResult=data?.trade||data||{};window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{tradeId:tradeResult.trade_id||null,symbol:tradeResult.symbol||symbol,direction:tradeResult.direction||opportunity.direction,stake:Number(tradeResult.stake??numericAmount),maxHoldSeconds:Number(tradeResult.max_hold_seconds||0),fundingSource:tradeResult.funding_source||null,takeProfitPrice:tradeResult.take_profit_price||null,stopLossPrice:tradeResult.stop_loss_price||null,breakEvenPrice:tradeResult.break_even_price||null,trailingStopPrice:tradeResult.trailing_stop_price||null,riskProfile:tradeResult.risk_profile||riskStyle}}))}catch(error){setNotice(error.message||"The AI trade could not be started.") }finally{setBusy(false)}}
   useEffect(()=>{
