@@ -116,6 +116,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const refreshAiCredits = async () => {
+      if (!supabase || !user) return;
+      const { data } = await supabase.from("profiles").select("ai_credits,ai_credits_used").eq("id", user.id).maybeSingle();
+      if (data) setProfile((current) => current ? { ...current, ...data } : current);
+    };
+    window.addEventListener("flexar-ai-credits-updated", refreshAiCredits);
+    return () => window.removeEventListener("flexar-ai-credits-updated", refreshAiCredits);
+  }, [user]);
+
+  useEffect(() => {
     const openNotifications = () => setShowNotifications(true);
     const requestNotifications = (event) => {
       const mode = event?.detail?.mode === "autopilot" ? "Autopilot" : "Manual approval";
