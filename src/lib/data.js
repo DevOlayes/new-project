@@ -24,7 +24,7 @@ export async function getAccountData() {
       .order("entry_window_end",{ascending:true})
       .limit(12),
     supabase.from("user_rewards").select("id,reward_amount,remaining_reward,profit_earned,profit_withdrawable,profit_cap,status,claimed_at,expires_at,completed_at").order("created_at",{ascending:false}).limit(10),
-    supabase.from("referrals").select("id,referred_user_id,reward_amount,status,created_at,rewarded_at").order("created_at",{ascending:false}).limit(20),
+    supabase.from("referrals").select("id,referred_user_id,reward_amount,status,created_at,rewarded_at,referral_rewards(claim_bonus_amount,deposit_commission_amount,reward_amount,status,qualification_reason)").order("created_at",{ascending:false}).limit(20),
     supabase.from("market_instruments").select("symbol,display_symbol,market_type,source,base_asset,quote_asset,active,tradable").eq("active",true).order("market_type").order("symbol"),
     supabase.from("subscription_plans").select("id,code,name,description,monthly_price,quarterly_price,annual_price,currency,trial_days,features").eq("active",true).order("monthly_price"),
     supabase.from("user_subscriptions").select("id,plan_id,billing_cycle,status,trial_started_at,trial_ends_at,starts_at,ends_at,auto_renew,payment_provider").order("created_at",{ascending:false}).limit(5),
