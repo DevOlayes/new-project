@@ -55,6 +55,26 @@ Deno.serve(async(req)=>{
   const supplied=req.headers.get("apikey") ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i,"") ?? "";
   if(!supplied || supplied!==publishableKey) return Response.json({error:"Unauthorized"},{status:401,headers:cors});
 
+  const authHeader=req.headers.get("authorization") || "";
+  const bearer=authHeader.replace(/^Bearer\s+/i,"");
+  let userId:string | null=null;
+  if(bearer && bearer!==publishableKey){
+    const { data:authData }=await admin.auth.getUser(bearer);
+    userId=authData.user?.id || null;
+  }
+  if(!userId) return Response.json({error:"A signed-in FLEXAR account is required."},{status:401,headers:cors});
+
+  const body=await req.json().catch(()=>({}));
+  const requestSource=String(body?.source||"user");
+  const authHeader=req.headers.get("authorization") || "";
+  const bearer=authHeader.replace(/^Bearer\\s+/i,"");
+  let userId:string|null=null;
+  if(bearer && bearer!==publishableKey){
+    const {data:authData}=await admin.auth.getUser(bearer);
+    userId=authData.user?.id || null;
+  }
+  if(!userId && requestSource!=="cron") return Response.json({error:"A signed-in FLEXAR account is required."},{status:401,headers:cors});
+
   const now=new Date();
   await admin.from("ai_opportunities")
     .update({status:"expired",updated_at:now.toISOString()})
@@ -105,15 +125,16 @@ Deno.serve(async(req)=>{
     const weighted=INTERVALS.reduce((sum,i)=>sum+per[INTERVALS.indexOf(i)]*WEIGHTS[i],0);
     const abs= Math.abs(weighted);
     const direction=weighted>=0 ? "up" : "down";
-    const aligned=per.filter(v=>Math.sign(v||weighted)===Math.sign(weighted)).length/INTERVALS.length;
-    const regime= Math.abs(per[2])>=0.25 && Math.abs(per[3])>=0.25 && Math.sign(per[2]||weighted)===Math.sign(per[3]||weighted) ? 1 : 0.5;
+    const positives=per.filter(v=>v>0.08).length;
+    const negatives=per.filter(v=>v<-0.08).length;
+    const aligned=Math.max(positives,negatives)/INTERVALS.length;
     const vol=INTERVALS.reduce((s,i)=>s+quality(f[i])*WEIGHTS[i],0);
     const volume=INTERVALS.reduce((s,i)=>s+volumeQuality(f[i])*WEIGHTS[i],0);
-    const confidence=clamp(abs*.50+aligned*.25+vol*.10+volume*.10+regime*.05,0,1);
+    const confidence=clamp(abs*.55+aligned*.25+vol*.10+volume*.10,0,1);
     const price=num(f["1m"].close_price);
     if(price===null || price<=0) continue;
 
-    if(abs>=0.25 && aligned>=0.75 && regime>=0.75 && confidence>=0.62){
+    if(abs>=0.25 && aligned>=0.75 && confidence>=0.42){
       candidates.push({
         symbol,direction,duration_seconds:DURATION_SECONDS,
         signal_score:Number(confidence.toFixed(4)),
@@ -123,7 +144,6 @@ Deno.serve(async(req)=>{
           engine:VERSION,
           combined_signal:Number(weighted.toFixed(6)),
           timeframe_alignment:Number(aligned.toFixed(3)),
-          regime_consistency:Number(regime.toFixed(3)),
           volatility_quality:Number(vol.toFixed(3)),
           volume_quality:Number(volume.toFixed(3)),
           reason:"Multi-timeframe alignment, regime consistency, volatility and volume quality",
