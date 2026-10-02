@@ -6,6 +6,7 @@ const secretKeys=JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}");
 const publishableKeys=JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS")||"{}");
 const serviceKey=secretKeys.default||Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
 const publishableKey=publishableKeys.default||Deno.env.get("SUPABASE_PUBLISHABLE_KEY")||"";
+const admin=createClient(url,serviceKey);
 const cors={
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"authorization,x-client-info,apikey,content-type",
@@ -34,6 +35,13 @@ Deno.serve(async(req)=>{
     p_opportunity_id:opportunityId,
     p_stake:stake
   });
-  if(tradeError) return Response.json({error:tradeError.message},{status:400,headers:cors});
+  if(tradeError){
+    await admin.rpc("refund_ai_credit_for_opportunity",{
+      p_user_id:data.user.id,
+      p_opportunity_id:opportunityId,
+      p_reason:"AI trade execution failed after signal presentation"
+    });
+    return Response.json({error:tradeError.message},{status:400,headers:cors});
+  }
   return Response.json({ok:true,trade,mode:"ai"},{headers:cors});
 });
