@@ -80,6 +80,21 @@ Deno.serve(async(req)=>{
     .limit(1);
   if(liveError) return Response.json({error:liveError.message},{status:500,headers:cors});
   if(live?.length){
+    if(userId){
+      const {data:credit,error:creditError}=await admin.rpc("consume_ai_credit_for_opportunity",{
+        p_user_id:userId,
+        p_opportunity_id:live[0].id
+      });
+      if(creditError) return Response.json({error:creditError.message},{status:500,headers:cors});
+      if(!credit?.ok) return Response.json({
+        error:"Insufficient AI credits. 1.5 credits are required to receive an AI trade signal.",
+        credits:Number(credit?.credits||0)
+      },{status:402,headers:cors});
+      return Response.json({
+        engine:VERSION,generated_at:now.toISOString(),credits_remaining:Number(credit?.credits_remaining||0),
+        results:[{symbol:live[0].symbol,status:"already_exists",opportunity:live[0]}]
+      },{headers:cors});
+    }
     return Response.json({
       engine:VERSION,generated_at:now.toISOString(),
       results:[{symbol:live[0].symbol,status:"already_exists",opportunity:live[0]}]
@@ -164,6 +179,22 @@ Deno.serve(async(req)=>{
   }).select("id,symbol,direction,duration_seconds,entry_window_start,entry_window_end,signal_score,model_version,status,entry_price,metadata").single();
 
   if(createError) return Response.json({error:createError.message},{status:500,headers:cors});
+
+  if(userId){
+    const {data:credit,error:creditError}=await admin.rpc("consume_ai_credit_for_opportunity",{
+      p_user_id:userId,
+      p_opportunity_id:created.id
+    });
+    if(creditError) return Response.json({error:creditError.message},{status:500,headers:cors});
+    if(!credit?.ok) return Response.json({
+      error:"Insufficient AI credits. 1.5 credits are required to receive an AI trade signal.",
+      credits:Number(credit?.credits||0)
+    },{status:402,headers:cors});
+    return Response.json({
+      engine:VERSION,generated_at:now.toISOString(),credits_remaining:Number(credit?.credits_remaining||0),
+      results:[{symbol:best.symbol,status:"created",opportunity:created}]
+    },{headers:cors});
+  }
 
   return Response.json({
     engine:VERSION,generated_at:now.toISOString(),
