@@ -12,7 +12,7 @@ export async function getAccountData() {
   const [wallets, trades, transactions, notifications, opportunities, rewards, referrals, markets, plans, subscriptions, access] = await Promise.all([
     supabase.from("wallets").select("id,asset,network,available_balance,locked_balance,updated_at").order("asset"),
     supabase.from("trades").select("id,asset,direction,stake,duration_seconds,payout_rate,status,entry_price,current_price,exit_price,potential_payout,result_amount,unrealized_pnl,risk_profile,leverage,initial_stop_loss_price,initial_take_profit_price,break_even_price,trailing_stop_price,exit_reason,opened_at,closes_at,settled_at,metadata").order("opened_at",{ascending:false}).limit(25),
-    supabase.from("wallet_transactions").select("id,type,direction,amount,status,reference,tx_hash,network_fee,created_at,wallet_id").order("created_at",{ascending:false}).limit(25),
+    supabase.from("wallet_transactions").select("id,type,direction,amount,status,reference,tx_hash,network_fee,created_at,wallet_id,metadata").order("created_at",{ascending:false}).limit(25),
     supabase.from("notifications").select("id,type,title,message,is_read,created_at").order("created_at",{ascending:false}).limit(20),
     // Never surface expired opportunities to the trade ticket. The engine can retain
     // historical rows in the database, but only an opportunity whose entry window
