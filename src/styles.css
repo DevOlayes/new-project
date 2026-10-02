@@ -1,3 +1,4 @@
+:root{font-family:Inter,system-ui,sans-serif;color:#f4fff7;background:#050a07;--green:#03fc7d;--muted:#8c9b91;--border:rgba(3,252,125,.13)}*{box-sizing:border-box}body{margin:0;background:#050a07}button{font:inherit;cursor:pointer}
 .activity-page{display:flex;flex-direction:column;gap:16px}
 .activity-live-grid{display:grid;gap:10px}
 .activity-live-trade{padding:15px;border:1px solid rgba(3,252,125,.18);border-radius:16px;background:linear-gradient(145deg,rgba(3,252,125,.055),rgba(255,255,255,.012))}
