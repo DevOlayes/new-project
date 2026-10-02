@@ -963,11 +963,35 @@ function OpportunityCard({ item, setPage }) {
     <button onClick={() => { try { sessionStorage.setItem("flexa_open_ai_trade", "true"); } catch {} setPage("trade"); }}>Trade this AI setup →</button>
   </article>;
 }
-function ActivityRows({ account }) {
-  const items = [...account.trades.map((t) => ({date:t.opened_at,text:(t.metadata?.market_symbol || t.asset)+" · "+t.direction.toUpperCase()+" · "+t.status,value:t.result_amount ?? t.potential_payout ?? t.stake})), ...account.transactions.map((t) => ({date:t.created_at,text:t.type.replace("_"," ")+" · "+t.status,value:t.amount}))].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
-  if (!items.length) return <div className="empty-state"><strong>No activity yet</strong><p>Your trades and wallet transactions will appear here.</p></div>;
-  return <div className="list">{items.map((item,index)=><div className="row" key={item.date+index}><span>{item.text}</span><strong className="green">{Number(item.value||0).toLocaleString(undefined,{maximumFractionDigits:4})}</strong></div>)}</div>;
+function money(value, digits=2) {
+  return Number(value||0).toLocaleString(undefined,{minimumFractionDigits:digits,maximumFractionDigits:digits});
 }
+function signedMoney(value) {
+  const n=Number(value||0);
+  return `${n>=0?"+":"−"}$${money(Math.abs(n))}`;
+}
+function transactionLabel(type) {
+  return String(type||"transaction").replace(/_/g," ").replace(/\\b\\w/g,(m)=>m.toUpperCase());
+}
+function ActivityRows({ account }) {
+  const items=[...(account.transactions||[])].slice(0,8);
+  if(!items.length) return <div className="empty-state"><strong>No wallet activity yet</strong><p>Your deposits, trade movements, withdrawals and other wallet activity will appear here.</p></div>;
+  return <div className="activity-ledger-list">{items.map((item)=>{
+    const amount=Number(item.amount||0);
+    const pnl=item.metadata?.pnl!==undefined?Number(item.metadata.pnl):null;
+    const isCredit=item.direction==="credit";
+    const isTradeReturn=["trade_profit","trade_loss"].includes(item.type);
+    const title=isTradeReturn?(item.type==="trade_profit"?"Trade settled":"Trade loss"):transactionLabel(item.type);
+    const primary=isTradeReturn&&pnl!==null?signedMoney(pnl):`${isCredit?"+":"−"}$${money(amount)}`;
+    const detail=isTradeReturn&&pnl!==null?`Capital returned · ${new Date(item.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}`:`${item.status||"completed"} · ${new Date(item.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}`;
+    return <div className="activity-ledger-row" key={item.id}>
+      <div className={isCredit?"activity-ledger-icon credit":"activity-ledger-icon debit"}>{isCredit?"↑":"↓"}</div>
+      <div className="activity-ledger-main"><strong>{title}</strong><small>{detail}</small></div>
+      <div className="activity-ledger-value"><strong className={pnl!==null?(pnl>=0?"green":"red"):(isCredit?"green":"red")}>{primary}</strong>{isTradeReturn&&pnl!==null&&<small>NET P&L</small>}</div>
+    </div>;
+  })}</div>;
+}
+
 
 function PairIcon({ symbol, cryptoIcons = {} }) {
   if (symbol === "XRPUSDT") {
@@ -1083,50 +1107,19 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
   </div>;
 }
 function Chart() {
-  // Lightweight SVG chart so the landing/trading UI never depends on a missing chart library.
-  // Replace the data points with live market candles when the market-data service is connected.
-  const points = "0,122 34,116 68,126 102,92 136,100 170,78 204,88 238,61 272,72 306,48 340,56 374,31 408,42 442,20";
-  return <div className="chart-wrap" aria-label="Market price chart">
-    <svg viewBox="0 0 442 150" preserveAspectRatio="none" role="img">
-      <defs>
-        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(124,255,156,.24)" />
-          <stop offset="100%" stopColor="rgba(124,255,156,0)" />
-        </linearGradient>
-      </defs>
-      <path d={`M 0 122 L 34 116 L 68 126 L 102 92 L 136 100 L 170 78 L 204 88 L 238 61 L 272 72 L 306 48 L 340 56 L 374 31 L 408 42 L 442 20 L 442 150 L 0 150 Z`} fill="url(#chartFill)" />
-      <polyline points={points} fill="none" stroke="#7cff9c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <line x1="0" y1="128" x2="442" y2="128" stroke="rgba(124,255,156,.08)" />
-      <line x1="0" y1="82" x2="442" y2="82" stroke="rgba(124,255,156,.08)" />
-      <line x1="0" y1="36" x2="442" y2="36" stroke="rgba(124,255,156,.08)" />
-    </svg>
-  </div>;
-}
-
-
-function Activity({ account }) {
+  // Lightweight SVG chart so the landing/trading UI never depends on a missing chfunction Activity({ account }) {
   const trades=account.trades||[];
   const activeTrades=trades.filter(t=>t.status==="active");
   const wins=trades.filter(t=>t.status==="won").length;
   const losses=trades.filter(t=>t.status==="lost").length;
-  const profit=trades.reduce((sum,t)=>sum+Number(t.result_amount||0)-Number(t.stake||0),0);
-  return <div className="activity-page"><section className="intro activity-intro"><div className="activity-intro-copy"><small>ACTIVITY CENTER</small><h1>Track every move.</h1><p>Trades, outcomes and wallet activity — organized in one clear view.</p></div><div className="activity-intro-watermark" aria-hidden="true" /></section>
-    {activeTrades.length>0&&<section className="active-trades-card activity-feature-card"><div className="section-heading"><div><small>LIVE NOW · {activeTrades.length}/2 POSITIONS</small><h2>Active trades</h2></div><span className="live-badge">● ACTIVE</span></div>{activeTrades.map(t=>{
-  const pnl=Number(t.unrealized_pnl||0), current=Number(t.current_price||0), entry=Number(t.entry_price||0);
-  const riskLabel=String(t.risk_profile||"balanced").toUpperCase();
-  return <div className="active-trade-row flexar-live-trade" key={t.id}>
-    <div>
-      <div className="active-trade-title"><strong>{t.metadata?.market_symbol || t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ UP":"↘ DOWN"}</span><em>{riskLabel}</em></div>
-      <small>Entry {entry?entry.toLocaleString(undefined,{maximumFractionDigits:6}):"—"} · Current {current?current.toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</small>
-      <div className="active-risk-row">
-        <span>TP {t.initial_take_profit_price?Number(t.initial_take_profit_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span>
-        <span>SL {t.trailing_stop_price?Number(t.trailing_stop_price).toLocaleString(undefined,{maximumFractionDigits:6}):t.initial_stop_loss_price?Number(t.initial_stop_loss_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span>
-        <span>BE {t.break_even_price?Number(t.break_even_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span>
-      </div>
-    </div>
-    <div className="active-trade-pnl"><strong className={pnl>=0?"green":"red"}>{pnl>=0?"+":"−"}{Math.abs(pnl).toFixed(4)}</strong><small>UNREALIZED P&L</small></div>
-  </div>
-})}</section>}
-    <section className="activity-stats activity-kpi-card"><div><span className="activity-stat-icon">↗</span><div><small>TRADES</small><strong>{trades.length}</strong></div></div><div><span className="activity-stat-icon">✓</span><div><small>WINS</small><strong>{wins}</strong></div></div><div><span className="activity-stat-icon">×</span><div><small>LOSSES</small><strong>{losses}</strong></div></div><div><span className="activity-stat-icon net" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 17V7a2 2 0 0 1 2-2h8"/><path d="M8 15l3-3 3 2 5-6"/><path d="M16 8h3v3"/></svg></span><div className="activity-stat-copy net-copy"><small>NET RESULT</small><strong className={profit>=0?"green":"red"}>{profit>=0?"+":"−"}{Math.abs(profit).toFixed(2)}</strong></div></div></section><section className="activity-section"><div className="section-heading"><div><small>TRADE HISTORY</small><h2>Recent trades</h2></div><span className="activity-section-count">{trades.length}</span></div>{trades.length?<div className="timeline">{trades.map(t=><div className="timeline-row" key={t.id}><div className="timeline-dot" /><div className="timeline-main"><div className="timeline-title"><strong>{t.metadata?.market_symbol || t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</span></div><small>{new Date(t.opened_at).toLocaleDateString()} · {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} · {t.risk_profile ? String(t.risk_profile).toUpperCase()+" RISK" : "RISK MANAGED"}</small></div><div className="timeline-value"><strong className={t.status==="won"?"green":t.status==="lost"?"red":""}>{t.status==="won"?"+":""}{Number(t.result_amount??t.potential_payout??t.stake).toFixed(2)}</strong><small>{t.status==="won"?"WON":t.status==="lost"?"LOST":t.status.toUpperCase()}</small></div></div>)}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your completed and active trades will appear here.</p></div>}</section><section className="activity-section"><div className="section-heading"><div><small>WALLET LEDGER</small><h2>Recent transactions</h2></div><span className="activity-section-count">{account.transactions?.length||0}</span></div><ActivityRows account={{...account,trades:[]}} /></section></div>;
+  const netProfit=trades.reduce((sum,t)=>sum+(t.status==="active"?Number(t.unrealized_pnl||0):Number(t.result_amount||0)-Number(t.stake||0)),0);
+  return <div className="activity-page">
+    <section className="intro activity-intro"><div className="activity-intro-copy"><small>ACTIVITY CENTER</small><h1>Track every move.</h1><p>See active positions, trade results and wallet movements without having to decode the numbers.</p></div><div className="activity-intro-watermark" aria-hidden="true" /></section>
+    {activeTrades.length>0&&<section className="active-trades-card activity-feature-card"><div className="section-heading"><div><small>LIVE NOW · {activeTrades.length}/2 POSITIONS</small><h2>Active trades</h2></div><span className="live-badge">● ACTIVE</span></div><div className="activity-live-grid">{activeTrades.map(t=>{const pnl=Number(t.unrealized_pnl||0),entry=Number(t.entry_price||0),current=Number(t.current_price||0);return <article className="activity-live-trade" key={t.id}><div className="activity-trade-top"><div><strong>{t.metadata?.market_symbol||t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</span></div><b className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</b></div><div className="activity-trade-capital"><span>CAPITAL <strong>{"$"+money(t.stake)}</strong></span><span>LEVERAGE <strong>{Number(t.leverage||1).toFixed(0)}×</strong></span><span>ENTRY <strong>{entry?entry.toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</strong></span><span>NOW <strong>{current?current.toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</strong></span></div><div className="active-risk-row"><span>Target {t.initial_take_profit_price?Number(t.initial_take_profit_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span><span>Stop {t.trailing_stop_price?Number(t.trailing_stop_price).toLocaleString(undefined,{maximumFractionDigits:6}):t.initial_stop_loss_price?Number(t.initial_stop_loss_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span><span>Break-even {t.break_even_price?Number(t.break_even_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span></div><small className="activity-live-caption">Unrealized P&L · updates with the market</small></article>})}</div></section>}
+    <section className="activity-stats activity-kpi-card"><div><span className="activity-stat-icon">↗</span><div><small>TRADES</small><strong>{trades.length}</strong></div></div><div><span className="activity-stat-icon">✓</span><div><small>WINS</small><strong>{wins}</strong></div></div><div><span className="activity-stat-icon">×</span><div><small>LOSSES</small><strong>{losses}</strong></div></div><div><span className="activity-stat-icon net" aria-hidden="true">Σ</span><div className="activity-stat-copy net-copy"><small>NET P&L</small><strong className={netProfit>=0?"green":"red"}>{signedMoney(netProfit)}</strong></div></div></section>
+    <section className="activity-section"><div className="section-heading"><div><small>TRADE HISTORY</small><h2>Recent trades</h2></div><span className="activity-section-count">{trades.length}</span></div>{trades.length?<div className="trade-history-list">{trades.map(t=>{const pnl=t.status==="active"?Number(t.unrealized_pnl||0):Number(t.result_amount||0)-Number(t.stake||0);const returned=t.status==="active"?null:Number(t.result_amount||0);return <article className="trade-history-card" key={t.id}><div className="trade-history-head"><div><strong>{t.metadata?.market_symbol||t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</span></div><span className={t.status==="won"?"trade-status win":t.status==="lost"?"trade-status loss":"trade-status live"}>{t.status==="won"?"WON":t.status==="lost"?"LOSS":"ACTIVE"}</span></div><div className="trade-history-main"><div><small>CAPITAL</small><strong>{"$"+money(t.stake)}</strong></div><div><small>LEVERAGE</small><strong>{Number(t.leverage||1).toFixed(0)}×</strong></div><div className="trade-history-pnl"><small>{t.status==="active"?"LIVE P&L":"NET P&L"}</small><strong className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</strong></div></div><div className="trade-history-footer"><span>{new Date(t.opened_at).toLocaleDateString()} · {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{returned!==null&&<span>Returned {"$"+money(returned)}</span>}<span>{t.risk_profile?String(t.risk_profile).toUpperCase():"RISK MANAGED"}</span></div></article>})}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your completed and active trades will appear here.</p></div>}</section>
+    <section className="activity-section"><div className="section-heading"><div><small>WALLET LEDGER</small><h2>Recent transactions</h2></div><span className="activity-section-count">{account.transactions?.length||0}</span></div><ActivityRows account={{...account,trades:[]}} /></section>
+  </div>;
+}" /><div className="timeline-main"><div className="timeline-title"><strong>{t.metadata?.market_symbol || t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</span></div><small>{new Date(t.opened_at).toLocaleDateString()} · {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} · {t.risk_profile ? String(t.risk_profile).toUpperCase()+" RISK" : "RISK MANAGED"}</small></div><div className="timeline-value"><strong className={t.status==="won"?"green":t.status==="lost"?"red":""}>{t.status==="won"?"+":""}{Number(t.result_amount??t.potential_payout??t.stake).toFixed(2)}</strong><small>{t.status==="won"?"WON":t.status==="lost"?"LOST":t.status.toUpperCase()}</small></div></div>)}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your completed and active trades will appear here.</p></div>}</section><section className="activity-section"><div className="section-heading"><div><small>WALLET LEDGER</small><h2>Recent transactions</h2></div><span className="activity-section-count">{account.transactions?.length||0}</span></div><ActivityRows account={{...account,trades:[]}} /></section></div>;
 
 }
