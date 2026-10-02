@@ -596,7 +596,7 @@ body{background:var(--bg)}
 .app-wordmark{width:112px;height:32px;display:block;object-fit:contain}
 .content{padding:14px 14px 96px;max-width:720px}
 .page-transition{width:100%}
-.bottom-nav{bottom:8px;width:min(calc(100% - 16px),680px);padding:5px;background:rgba(4,14,12,.97);border:1px solid var(--line);border-radius:17px}
+.bottom-nav{position:fixed;left:50%;bottom:calc(8px + env(safe-area-inset-bottom));top:auto;transform:translateX(-50%);width:min(calc(100% - 16px),680px);padding:5px;background:rgba(4,14,12,.97);border:1px solid var(--line);border-radius:17px;z-index:100;display:grid;grid-template-columns:repeat(5,1fr);pointer-events:auto;touch-action:manipulation}
 .nav{min-height:46px;border-radius:12px;color:#74817b}
 .nav span{font-size:17px;line-height:17px}.nav small{font-size:8px;margin-top:3px}
 .nav.active{color:var(--green);background:rgba(3,252,125,.07)}
