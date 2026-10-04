@@ -340,12 +340,13 @@ export default function App() {
       // Read the profile after onboarding so first-time users do not race
       // the profile upsert and get stuck with an empty profile/admin state.
       const { data: profileData } = await supabase.from("profiles")
-        .select("id,display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference,ai_credits,ai_credits_used")
+        .select("id,display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference,ai_credits,ai_credits_used,ai_trading_enabled,ai_trade_mode,ai_autopilot_stake")
         .eq("id", user.id)
         .maybeSingle();
 
       if (cancelled) return;
       setProfile(profileData || null);
+      setAiEngineActive(Boolean(profileData?.ai_trading_enabled));
       setOnboardingState(profileData ? {
         completed: Boolean(profileData.onboarding_completed),
         step: Math.min(3, Math.max(0, Number(profileData.onboarding_step || 0))),
@@ -440,9 +441,10 @@ export default function App() {
     }
   }
 
-  function stopAiEngine() {
+  async function stopAiEngine() {
     setAiEngineActive(false);
     setAiScanning(false);
+    try { await supabase?.rpc("set_ai_trading_mode", { p_mode: profile?.ai_trade_mode || "manual", p_enabled: false, p_stake: Number(profile?.ai_autopilot_stake || 25) }); } catch {}
     try {
       sessionStorage.removeItem("flexa_ai_auto_opportunity_id");
     } catch {}
