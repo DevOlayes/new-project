@@ -144,7 +144,6 @@ Deno.serve(async(req)=>{
   }
 
   candidates.sort((a,b)=>b.signal_score-a.signal_score);
-  candidates.sort((a,b)=>b.signal_score-a.signal_score);
   const selected=candidates.slice(0,2);
   if(!selected.length){
     return Response.json({
@@ -168,23 +167,5 @@ Deno.serve(async(req)=>{
     results.push({symbol:best.symbol,status:"created",opportunity:created});
   }
 
-  return Response.json({
-    engine:VERSION,generated_at:now.toISOString(),
-    results
-  },{headers:cors});
-    if(creditError) return Response.json({error:creditError.message},{status:500,headers:cors});
-    if(!credit?.ok) return Response.json({
-      error:"Insufficient AI credits. 1.5 credits are required to receive an AI trade signal.",
-      credits:Number(credit?.credits||0)
-    },{status:402,headers:cors});
-    return Response.json({
-      engine:VERSION,generated_at:now.toISOString(),credits_remaining:Number(credit?.credits_remaining||0),
-      results:[{symbol:best.symbol,status:"created",opportunity:created}]
-    },{headers:cors});
-  }
-
-  return Response.json({
-    engine:VERSION,generated_at:now.toISOString(),
-    results:[{symbol:best.symbol,status:"created",opportunity:created}]
-  },{headers:cors});
+  return Response.json({engine:VERSION,generated_at:now.toISOString(),results},{headers:cors});
 });
