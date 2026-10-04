@@ -1146,7 +1146,3 @@ function Activity({ account, setPage }) {
     <section className="activity-section"><div className="section-heading"><div><small>WALLET LEDGER</small><h2>Recent transactions</h2></div><button type="button" className="activity-expand-button" onClick={()=>setPage("activity-transactions")}>View all <span>→</span></button></div><ActivityRows account={{...account,trades:[]}} limit={3}/></section>
   </div>;
 }
-
-
-  </div>;
-}
