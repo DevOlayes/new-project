@@ -77,30 +77,14 @@ Deno.serve(async(req)=>{
     .in("status",["scheduled","open"])
     .gt("entry_window_end",now.toISOString())
     .order("signal_score",{ascending:false})
-    .limit(1);
+    .limit(2);
   if(liveError) return Response.json({error:liveError.message},{status:500,headers:cors});
   if(live?.length){
-    if(userId){
-      const {data:credit,error:creditError}=await admin.rpc("consume_ai_credit_for_opportunity",{
-        p_user_id:userId,
-        p_opportunity_id:live[0].id
-      });
-      if(creditError) return Response.json({error:creditError.message},{status:500,headers:cors});
-      if(!credit?.ok) return Response.json({
-        error:"Insufficient AI credits. 1.5 credits are required to receive an AI trade signal.",
-        credits:Number(credit?.credits||0)
-      },{status:402,headers:cors});
-      return Response.json({
-        engine:VERSION,generated_at:now.toISOString(),credits_remaining:Number(credit?.credits_remaining||0),
-        results:[{symbol:live[0].symbol,status:"already_exists",opportunity:live[0]}]
-      },{headers:cors});
-    }
     return Response.json({
       engine:VERSION,generated_at:now.toISOString(),
-      results:[{symbol:live[0].symbol,status:"already_exists",opportunity:live[0]}]
+      results:live.map((item)=>({symbol:item.symbol,status:"already_exists",opportunity:item}))
     },{headers:cors});
   }
-
   const intervalResults=await Promise.all(INTERVALS.map(async (interval)=>{
     const response=await admin.from("market_features")
       .select("symbol,interval,candle_open_time,close_price,volatility_20,volume_change_20,trend_score,momentum_score,structure_score")
@@ -160,8 +144,9 @@ Deno.serve(async(req)=>{
   }
 
   candidates.sort((a,b)=>b.signal_score-a.signal_score);
-  const best=candidates[0];
-  if(!best){
+  candidates.sort((a,b)=>b.signal_score-a.signal_score);
+  const selected=candidates.slice(0,2);
+  if(!selected.length){
     return Response.json({
       engine:VERSION,generated_at:now.toISOString(),
       status:"no_high_quality_opportunity",
@@ -171,20 +156,22 @@ Deno.serve(async(req)=>{
 
   const entryStart=new Date(Math.floor(Date.now()/60000)*60000);
   const entryEnd=new Date(entryStart.getTime()+DURATION_SECONDS*1000);
-  const {data:created,error:createError}=await admin.from("ai_opportunities").insert({
-    symbol:best.symbol,direction:best.direction,duration_seconds:DURATION_SECONDS,
-    entry_window_start:entryStart.toISOString(),entry_window_end:entryEnd.toISOString(),
-    signal_score:best.signal_score,model_version:best.model_version,status:"scheduled",
-    entry_price:best.entry_price,metadata:best.metadata
-  }).select("id,symbol,direction,duration_seconds,entry_window_start,entry_window_end,signal_score,model_version,status,entry_price,metadata").single();
+  const results=[];
+  for(const best of selected){
+    const {data:created,error:createError}=await admin.from("ai_opportunities").insert({
+      symbol:best.symbol,direction:best.direction,duration_seconds:DURATION_SECONDS,
+      entry_window_start:entryStart.toISOString(),entry_window_end:entryEnd.toISOString(),
+      signal_score:best.signal_score,model_version:best.model_version,status:"scheduled",
+      entry_price:best.entry_price,metadata:best.metadata
+    }).select("id,symbol,direction,duration_seconds,entry_window_start,entry_window_end,signal_score,model_version,status,entry_price,metadata").single();
+    if(createError) return Response.json({error:createError.message},{status:500,headers:cors});
+    results.push({symbol:best.symbol,status:"created",opportunity:created});
+  }
 
-  if(createError) return Response.json({error:createError.message},{status:500,headers:cors});
-
-  if(userId){
-    const {data:credit,error:creditError}=await admin.rpc("consume_ai_credit_for_opportunity",{
-      p_user_id:userId,
-      p_opportunity_id:created.id
-    });
+  return Response.json({
+    engine:VERSION,generated_at:now.toISOString(),
+    results
+  },{headers:cors});
     if(creditError) return Response.json({error:creditError.message},{status:500,headers:cors});
     if(!credit?.ok) return Response.json({
       error:"Insufficient AI credits. 1.5 credits are required to receive an AI trade signal.",
