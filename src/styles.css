@@ -1759,3 +1759,8 @@ body{background:var(--bg)}
 .activity-detail-page .activity-intro{margin-top:2px}.activity-detail-page .activity-section{margin-top:16px}
 .activity-detail-page .trade-history-list,.activity-detail-page .activity-ledger-list{display:grid;gap:9px}
 @media(max-width:520px){.activity-expand-button{font-size:8px}.activity-back-button{font-size:8px}}
+
+/* Match the AI trading mode dialog to the same full-screen modal behavior as wallet actions. */
+.ai-mode-backdrop{z-index:500!important;position:fixed!important;inset:0!important;display:grid!important;place-items:center!important;padding:20px!important;background:rgba(0,0,0,.72)!important;backdrop-filter:blur(12px)!important}
+.ai-mode-modal{position:relative;width:min(420px,calc(100vw - 28px))!important;max-height:86vh!important;overflow:auto!important;padding:17px!important;border:1px solid var(--line)!important;border-radius:16px!important;background:#06100d!important;box-shadow:0 30px 90px rgba(0,0,0,.65)!important}
+.ai-mode-option{cursor:pointer}
