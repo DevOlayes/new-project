@@ -537,13 +537,15 @@ export default function App() {
           {page === "home" && <Home account={account} profile={profile} setPage={setPage} onWalletAction={setWalletAction} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
           {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onOpenCredits={() => setPage("ai-credits")} onActivationChange={(open) => { setAiActivationOpen(open); if (open) setGlobalNotice(""); }} onStopAi={stopAiEngine} />}
           {page === "ai-credits" && <AICreditsPage profile={profile} account={account} onBack={() => setPage("trade")} refreshAccount={refreshAccount} />}
-          {page === "activity" && <Activity account={account} />}
+          {page === "activity" && <Activity account={account} setPage={setPage} />}
+          {page === "activity-trades" && <ActivityDetailPage account={account} type="trades" onBack={() => setPage("activity")} />}
+          {page === "activity-transactions" && <ActivityDetailPage account={account} type="transactions" onBack={() => setPage("activity")} />}
           {page === "referral" && <Referral account={account} profile={profile} />}
           {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
         </div>
       </AppErrorBoundary>
     </main>
-    <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={page === id ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
+    <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={(page === id || (id === "activity" && page.startsWith("activity-"))) ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
     {notificationPrompt && !aiActivationOpen && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
     {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
@@ -973,8 +975,8 @@ function signedMoney(value) {
 function transactionLabel(type) {
   return String(type||"transaction").replace(/_/g," ").replace(/\\b\\w/g,(m)=>m.toUpperCase());
 }
-function ActivityRows({ account }) {
-  const items=[...(account.transactions||[])].slice(0,8);
+function ActivityRows({ account, limit=8 }) {
+  const items=[...(account.transactions||[])].slice(0,limit);
   if(!items.length) return <div className="empty-state"><strong>No wallet activity yet</strong><p>Your deposits, trade movements, withdrawals and other wallet activity will appear here.</p></div>;
   return <div className="activity-ledger-list">{items.map((item)=>{
     const amount=Number(item.amount||0);
@@ -992,6 +994,22 @@ function ActivityRows({ account }) {
   })}</div>;
 }
 
+
+function TradeHistoryCard({ trade:t }) {
+  const pnl=t.status==="active"?Number(t.unrealized_pnl||0):Number(t.result_amount||0)-Number(t.stake||0);
+  const returned=t.status==="active"?null:Number(t.result_amount||0);
+  return <article className="trade-history-card"><div className="trade-history-head"><div><strong>{t.metadata?.market_symbol||t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</span></div><span className={t.status==="won"?"trade-status win":t.status==="lost"?"trade-status loss":"trade-status live"}>{t.status==="won"?"WON":t.status==="lost"?"LOSS":"ACTIVE"}</span></div><div className="trade-history-main"><div><small>CAPITAL</small><strong>{"$"+money(t.stake)}</strong></div><div><small>LEVERAGE</small><strong>{Number(t.leverage||1).toFixed(0)}×</strong></div><div className="trade-history-pnl"><small>{t.status==="active"?"LIVE P&L":"NET P&L"}</small><strong className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</strong></div></div><div className="trade-history-footer"><span>{new Date(t.opened_at).toLocaleDateString()} · {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{returned!==null&&<span>Returned {"$"+money(returned)}</span>}<span>{t.risk_profile?String(t.risk_profile).toUpperCase():"RISK MANAGED"}</span></div></article>;
+}
+
+function ActivityDetailPage({ account, type, onBack }) {
+  const isTrades=type==="trades";
+  const items=isTrades?(account.trades||[]):(account.transactions||[]);
+  return <div className="activity-page activity-detail-page">
+    <button type="button" className="activity-back-button" onClick={onBack}>← Back to Activity</button>
+    <section className="intro activity-intro"><div className="activity-intro-copy"><small>{isTrades?"TRADE HISTORY":"WALLET LEDGER"}</small><h1>{isTrades?"Recent trades.":"Recent transactions."}</h1><p>{isTrades?"Review every trade, including active positions and completed results.":"Review every wallet movement, deposit, withdrawal and trade settlement."}</p></div><div className="activity-intro-watermark" aria-hidden="true" /></section>
+    <section className="activity-section"><div className="section-heading"><div><small>{isTrades?"ALL TRADES":"ALL TRANSACTIONS"}</small><h2>{isTrades?"Trade history":"Transaction history"}</h2></div><span className="activity-section-count">{items.length}</span></div>{isTrades?(items.length?<div className="trade-history-list">{items.map(t=><TradeHistoryCard key={t.id} trade={t}/>)}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your completed and active trades will appear here.</p></div>):<ActivityRows account={{...account,trades:[]}}/>}</section>
+  </div>;
+}
 
 function PairIcon({ symbol, cryptoIcons = {} }) {
   if (symbol === "XRPUSDT") {
@@ -1111,17 +1129,24 @@ function Chart() {
   return <div className="chart-wrap" aria-label="Market price chart"><svg viewBox="0 0 442 150" preserveAspectRatio="none" role="img"><defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(124,255,156,.24)" /><stop offset="100%" stopColor="rgba(124,255,156,0)" /></linearGradient></defs><path d={`M 0 122 L 34 116 L 68 126 L 102 92 L 136 100 L 170 78 L 204 88 L 238 61 L 272 72 L 306 48 L 340 56 L 374 31 L 408 42 L 442 20 L 442 150 L 0 150 Z`} fill="url(#chartFill)" /><polyline points={points} fill="none" stroke="#7cff9c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /><line x1="0" y1="128" x2="442" y2="128" stroke="rgba(124,255,156,.08)" /><line x1="0" y1="82" x2="442" y2="82" stroke="rgba(124,255,156,.08)" /><line x1="0" y1="36" x2="442" y2="36" stroke="rgba(124,255,156,.08)" /></svg></div>;
 }
 
-function Activity({ account }) {
+function Activity({ account, setPage }) {
   const trades=account.trades||[];
   const activeTrades=trades.filter(t=>t.status==="active");
   const wins=trades.filter(t=>t.status==="won").length;
   const losses=trades.filter(t=>t.status==="lost").length;
   const netProfit=trades.reduce((sum,t)=>sum+(t.status==="active"?Number(t.unrealized_pnl||0):Number(t.result_amount||0)-Number(t.stake||0)),0);
+  const recentTrades=trades.slice(0,3);
+  const recentTransactions=(account.transactions||[]).slice(0,3);
   return <div className="activity-page">
     <section className="intro activity-intro"><div className="activity-intro-copy"><small>ACTIVITY CENTER</small><h1>Track every move.</h1><p>See active positions, trade results and wallet movements without having to decode the numbers.</p></div><div className="activity-intro-watermark" aria-hidden="true" /></section>
     {activeTrades.length>0&&<section className="active-trades-card activity-feature-card"><div className="section-heading"><div><small>LIVE NOW · {activeTrades.length}/2 POSITIONS</small><h2>Active trades</h2></div><span className="live-badge">● ACTIVE</span></div><div className="activity-live-grid">{activeTrades.map(t=>{const pnl=Number(t.unrealized_pnl||0),entry=Number(t.entry_price||0),current=Number(t.current_price||0);return <article className="activity-live-trade" key={t.id}><div className="activity-trade-top"><div><strong>{t.metadata?.market_symbol||t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</span></div><b className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</b></div><div className="activity-trade-capital"><span>CAPITAL <strong>{"$"+money(t.stake)}</strong></span><span>LEVERAGE <strong>{Number(t.leverage||1).toFixed(0)}×</strong></span><span>ENTRY <strong>{entry?entry.toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</strong></span><span>NOW <strong>{current?current.toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</strong></span></div><div className="active-risk-row"><span>Target {t.initial_take_profit_price?Number(t.initial_take_profit_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span><span>Stop {t.trailing_stop_price?Number(t.trailing_stop_price).toLocaleString(undefined,{maximumFractionDigits:6}):t.initial_stop_loss_price?Number(t.initial_stop_loss_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span><span>Break-even {t.break_even_price?Number(t.break_even_price).toLocaleString(undefined,{maximumFractionDigits:6}):"—"}</span></div><small className="activity-live-caption">Unrealized P&L · updates with the market</small></article>})}</div></section>}
     <section className="activity-stats activity-kpi-card"><div><span className="activity-stat-icon">↗</span><div><small>TRADES</small><strong>{trades.length}</strong></div></div><div><span className="activity-stat-icon">✓</span><div><small>WINS</small><strong>{wins}</strong></div></div><div><span className="activity-stat-icon">×</span><div><small>LOSSES</small><strong>{losses}</strong></div></div><div><span className="activity-stat-icon net" aria-hidden="true">Σ</span><div className="activity-stat-copy net-copy"><small>NET P&L</small><strong className={netProfit>=0?"green":"red"}>{signedMoney(netProfit)}</strong></div></div></section>
-    <section className="activity-section"><div className="section-heading"><div><small>TRADE HISTORY</small><h2>Recent trades</h2></div><span className="activity-section-count">{trades.length}</span></div>{trades.length?<div className="trade-history-list">{trades.map(t=>{const pnl=t.status==="active"?Number(t.unrealized_pnl||0):Number(t.result_amount||0)-Number(t.stake||0);const returned=t.status==="active"?null:Number(t.result_amount||0);return <article className="trade-history-card" key={t.id}><div className="trade-history-head"><div><strong>{t.metadata?.market_symbol||t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</span></div><span className={t.status==="won"?"trade-status win":t.status==="lost"?"trade-status loss":"trade-status live"}>{t.status==="won"?"WON":t.status==="lost"?"LOSS":"ACTIVE"}</span></div><div className="trade-history-main"><div><small>CAPITAL</small><strong>{"$"+money(t.stake)}</strong></div><div><small>LEVERAGE</small><strong>{Number(t.leverage||1).toFixed(0)}×</strong></div><div className="trade-history-pnl"><small>{t.status==="active"?"LIVE P&L":"NET P&L"}</small><strong className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</strong></div></div><div className="trade-history-footer"><span>{new Date(t.opened_at).toLocaleDateString()} · {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{returned!==null&&<span>Returned {"$"+money(returned)}</span>}<span>{t.risk_profile?String(t.risk_profile).toUpperCase():"RISK MANAGED"}</span></div></article>})}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your completed and active trades will appear here.</p></div>}</section>
-    <section className="activity-section"><div className="section-heading"><div><small>WALLET LEDGER</small><h2>Recent transactions</h2></div><span className="activity-section-count">{account.transactions?.length||0}</span></div><ActivityRows account={{...account,trades:[]}} /></section>
+    <section className="activity-section"><div className="section-heading"><div><small>TRADE HISTORY</small><h2>Recent trades</h2></div><button type="button" className="activity-expand-button" onClick={()=>setPage("activity-trades")}>View all <span>→</span></button></div>{recentTrades.length?<div className="trade-history-list">{recentTrades.map(t=><TradeHistoryCard key={t.id} trade={t}/>)}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your completed and active trades will appear here.</p></div>}</section>
+
+    <section className="activity-section"><div className="section-heading"><div><small>WALLET LEDGER</small><h2>Recent transactions</h2></div><button type="button" className="activity-expand-button" onClick={()=>setPage("activity-transactions")}>View all <span>→</span></button></div><ActivityRows account={{...account,trades:[]}} limit={3}/></section>
+  </div>;
+}
+
+
   </div>;
 }
