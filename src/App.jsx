@@ -1047,9 +1047,12 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
   const [mode,setMode]=useState(()=>{try{return sessionStorage.getItem("flexa_ai_mode")||"manual"}catch{return "manual"}});
   const [modeOpen,setModeOpen]=useState(false),[aiCreditInfo,setAiCreditInfo]=useState(false),[activationMode,setActivationMode]=useState("");
   const [autoStake,setAutoStake]=useState(()=>{try{return sessionStorage.getItem("flexa_ai_auto_stake")||"25"}catch{return "25"}});
-  const [autoBusy,setAutoBusy]=useState(false);
+  const [autoBusy,setAutoBusy]=useState(false),[detailsExpanded,setDetailsExpanded]=useState(false),[selectedOpportunityId,setSelectedOpportunityId]=useState("");
   const [autoTradeOpportunityId,setAutoTradeOpportunityId]=useState(()=>{try{return sessionStorage.getItem("flexa_ai_auto_opportunity_id")||""}catch{return ""}});
-  const opportunity=account.opportunities?.find(item=>{if(!["scheduled","open"].includes(item.status))return false;const end=new Date(item.entry_window_end||0).getTime(),start=new Date(item.entry_window_start||0).getTime(),now=Date.now();return Number.isFinite(end)&&end>now&&Number.isFinite(start)&&start<=now})||null;
+  const availableOpportunities=(aiEngineActive?(account.opportunities||[]):[]).filter(item=>["scheduled","open"].includes(item.status)).filter(item=>{const end=new Date(item.entry_window_end||0).getTime(),start=new Date(item.entry_window_start||0).getTime(),now=Date.now();return Number.isFinite(end)&&end>now&&Number.isFinite(start)&&start<=now});
+  const opportunities=availableOpportunities.slice(0,2);
+  const selectedOpportunity=opportunities.find(item=>item.id===selectedOpportunityId)||opportunities[0]||null;
+  const opportunity=mode==="autopilot"?(opportunities[0]||null):selectedOpportunity;
   const direction=opportunity?.direction==="down"?"DOWN":"UP",score=Math.round(Number(opportunity?.signal_score||0)*100),symbol=opportunity?.symbol||"—",price=Number(opportunity?.entry_price||0);
   const riskStyle=String(profile?.trading_style||"balanced").toLowerCase();
   const risk={conservative:{stop:.003,target:.006,breakEven:.003,maxHoldHours:4},balanced:{stop:.0045,target:.009,breakEven:.004,maxHoldHours:6},growth:{stop:.007,target:.012,breakEven:.006,maxHoldHours:8}}[riskStyle]||{stop:.0045,target:.009,breakEven:.004,maxHoldHours:6};
@@ -1060,9 +1063,11 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
   const activeTradeCount=activeTrades.length;
   const canOpenAnotherTrade=activeTradeCount<2;
   const usdt=account.wallets.find(item=>item.asset==="USDT"),reward=account.rewards?.find(item=>item.status==="active"),walletBalance=Number(usdt?.available_balance||0),bonusBalance=Number(reward?.remaining_reward||0),numericAmount=Number(amount),tradingFunds=walletBalance+bonusBalance,canTrade=Boolean(account.tradingAccess?.has_access)&&tradingFunds>=numericAmount&&canOpenAnotherTrade;
+  useEffect(()=>{if(profile?.ai_trade_mode)setMode(profile.ai_trade_mode);if(profile?.ai_autopilot_stake)setAutoStake(String(profile.ai_autopilot_stake))},[profile?.ai_trade_mode,profile?.ai_autopilot_stake]);
+  useEffect(()=>setDetailsExpanded(false),[opportunity?.id]);
   const cryptoIcons={BTCUSDT:"https://cdn.simpleicons.org/bitcoin",ETHUSDT:"https://cdn.simpleicons.org/ethereum",SOLUSDT:"https://cdn.simpleicons.org/solana",BNBUSDT:"https://cdn.simpleicons.org/binance",XRPUSDT:"https://cdn.simpleicons.org/xrp",DOGEUSDT:"https://cdn.simpleicons.org/dogecoin"},marketType=symbol.includes("USD")&&!symbol.includes("USDT")?"FOREX":"CRYPTO";
   function updateAmount(value){if(value===""||/^\d*(\.\d{0,2})?$/.test(value))setAmount(value)}
-  function chooseMode(nextMode){
+  async function chooseMode(nextMode){
     const requestedStake=Number(autoStake);
     if(nextMode==="autopilot"&&(!Number.isFinite(requestedStake)||requestedStake<=0)){
       setNotice("Set a valid Autopilot stake limit first.");
@@ -1075,6 +1080,8 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
       sessionStorage.setItem("flexa_ai_mode",nextMode);
       if(nextMode==="autopilot") sessionStorage.setItem("flexa_ai_auto_stake",stake);
     }catch{}
+    const { error: modeError } = await supabase.rpc("set_ai_trading_mode",{p_mode:nextMode,p_enabled:true,p_stake:requestedStake});
+    if(modeError){setNotice(modeError.message||"Could not save the AI trading mode.");return;}
     setModeOpen(false);
     setActivationMode(nextMode);
     onActivationChange?.(true);
