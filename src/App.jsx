@@ -1053,13 +1053,13 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
   const opportunities=availableOpportunities.slice(0,2);
   const selectedOpportunity=opportunities.find(item=>item.id===selectedOpportunityId)||opportunities[0]||null;
   const opportunity=mode==="autopilot"?(opportunities[0]||null):selectedOpportunity;
+  const activeTrades=(account.trades||[]).filter((trade)=>trade.status==="active");
+  const activeTrade=activeTrades.find((trade)=>String(trade.metadata?.trade_mode||"")==="ai")||null;
   const direction=String(activeTrade?.direction||opportunity?.direction||"up")==="down"?"DOWN":"UP",score=Math.round(Number(activeTrade?.metadata?.confidence_percent||opportunity?.signal_score*100||0)),symbol=activeTrade?.metadata?.market_symbol||opportunity?.symbol||"—",price=Number(activeTrade?.entry_price||opportunity?.entry_price||0);
   const riskStyle=String(profile?.trading_style||"balanced").toLowerCase();
   const risk={conservative:{stop:.003,target:.006,breakEven:.003,maxHoldHours:4},balanced:{stop:.0045,target:.009,breakEven:.004,maxHoldHours:6},growth:{stop:.007,target:.012,breakEven:.006,maxHoldHours:8}}[riskStyle]||{stop:.0045,target:.009,breakEven:.004,maxHoldHours:6};
   const previewTakeProfit=price>0?price*(direction==="UP"?1+risk.target:1-risk.target):0;
   const previewStopLoss=price>0?price*(direction==="UP"?1-risk.stop:1+risk.stop):0;
-  const activeTrades=(account.trades||[]).filter((trade)=>trade.status==="active");
-  const activeTrade=activeTrades.find((trade)=>String(trade.metadata?.trade_mode||"")==="ai")||null;
   const activeTradeCount=activeTrades.length;
   const canOpenAnotherTrade=activeTradeCount<2;
   const usdt=account.wallets.find(item=>item.asset==="USDT"),reward=account.rewards?.find(item=>item.status==="active"),walletBalance=Number(usdt?.available_balance||0),bonusBalance=Number(reward?.remaining_reward||0),numericAmount=Number(amount),tradingFunds=walletBalance+bonusBalance,canTrade=Boolean(account.tradingAccess?.has_access)&&tradingFunds>=numericAmount&&canOpenAnotherTrade;
