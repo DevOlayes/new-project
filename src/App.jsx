@@ -24,6 +24,7 @@ export default function App() {
   const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], tradingAccess: null, error: null };
   const [account, setAccount] = useState(EMPTY_ACCOUNT);
   const [loading, setLoading] = useState(true);
+  const [loadingStartedAt, setLoadingStartedAt] = useState(() => Date.now());
   const [authError, setAuthError] = useState("");
   const [market, setMarket] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
@@ -45,6 +46,7 @@ export default function App() {
 
   const refreshAccount = useCallback(async () => {
     if (!supabase || !user) return;
+    setLoadingStartedAt(Date.now());
     setLoading(true);
     try {
       const result = await getAccountData();
@@ -318,6 +320,7 @@ export default function App() {
     let cancelled = false;
 
     const loadAccount = async () => {
+      setLoadingStartedAt(Date.now());
       setLoading(true);
 
       const onboarding = await supabase.functions.invoke("account-onboarding", {
@@ -523,6 +526,19 @@ export default function App() {
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => setPage("home")} />;
   if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
+  if (user && loading) {
+    const elapsed=Date.now()-loadingStartedAt;
+    const remaining=Math.max(0,900-elapsed);
+    if (remaining>0) {
+      setTimeout(()=>setLoadingStartedAt((value)=>value),remaining);
+    }
+    return <div className="flexar-loading-screen" role="status" aria-live="polite">
+      <div className="flexar-loading-mark"><img src="/flexa-symbol.webp" alt="FLEXAR AI" /><span className="flexar-loading-ring"/></div>
+      <strong>FLEXAR AI</strong>
+      <span>Syncing your account…</span>
+      <i className="flexar-loading-bar"><b/></i>
+    </div>;
+  }
   if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
   if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open FLEXAR AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
   if (user && profile && onboardingState && !onboardingState.completed) return <Onboarding profile={profile} initialState={onboardingState} onComplete={(next) => { setOnboardingState({...next, completed:true}); setProfile((current) => ({...(current || {}), onboarding_completed:true, onboarding_step:4, country_code:next.countryCode, trading_experience:next.experience, onboarding_goals:next.goals, trading_style:next.style, ai_preference:next.aiPreference})); setPage("home"); }} />;
@@ -821,7 +837,7 @@ function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBu
           <small>AVAILABLE BALANCE</small>
           <div><strong><b className="balance-currency">$</b>{usdtBalance.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>USDT</span></div>
           <div className="home-balance-growth">
-            <span><small>PORTFOLIO VALUE</small><strong>$ {portfolioValue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></span>
+            <span><small>PORTFOLIO VALUE</small><strong className={activePnl>=0?"green":"red"}>$ {portfolioValue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></span>
             <span><small>OPEN P&L</small><strong className={activePnl>=0?"green":"red"}>{signedMoney(activePnl)}</strong></span>
             <span><small>RETURN</small><strong className={activeReturn>=0?"green":"red"}>{activeReturn>=0?"+":""}{activeReturn.toFixed(2)}%</strong></span>
           </div>
