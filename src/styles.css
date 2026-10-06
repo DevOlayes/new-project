@@ -2174,14 +2174,15 @@ body{background:var(--bg)}
 .flexar-loading-mark img{
   position:relative;
   z-index:2;
-  width:48px;
-  height:48px;
+  width:56px;
+  height:56px;
   object-fit:contain;
   background:transparent;
   mix-blend-mode:screen;
   filter:drop-shadow(0 0 16px rgba(3,252,125,.25));
 }
 .flexar-loading-ring{
+  display:none;
   position:absolute;
   inset:0;
   border:1px solid rgba(3,252,125,.13);
