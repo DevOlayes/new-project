@@ -24,7 +24,6 @@ export default function App() {
   const EMPTY_ACCOUNT = { wallets: [], trades: [], transactions: [], notifications: [], opportunities: [], rewards: [], referrals: [], markets: [], plans: [], subscriptions: [], tradingAccess: null, error: null };
   const [account, setAccount] = useState(EMPTY_ACCOUNT);
   const [loading, setLoading] = useState(true);
-  const [loadingStartedAt, setLoadingStartedAt] = useState(() => Date.now());
   const [authError, setAuthError] = useState("");
   const [market, setMarket] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
@@ -46,7 +45,6 @@ export default function App() {
 
   const refreshAccount = useCallback(async () => {
     if (!supabase || !user) return;
-    setLoadingStartedAt(Date.now());
     setLoading(true);
     try {
       const result = await getAccountData();
@@ -320,7 +318,6 @@ export default function App() {
     let cancelled = false;
 
     const loadAccount = async () => {
-      setLoadingStartedAt(Date.now());
       setLoading(true);
 
       const onboarding = await supabase.functions.invoke("account-onboarding", {
@@ -527,11 +524,6 @@ export default function App() {
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => setPage("home")} />;
   if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
   if (user && loading) {
-    const elapsed=Date.now()-loadingStartedAt;
-    const remaining=Math.max(0,900-elapsed);
-    if (remaining>0) {
-      setTimeout(()=>setLoadingStartedAt((value)=>value),remaining);
-    }
     return <div className="flexar-loading-screen" role="status" aria-live="polite">
       <div className="flexar-loading-mark"><img src="/flexa-symbol.webp" alt="FLEXAR AI" /><span className="flexar-loading-ring"/></div>
       <strong>FLEXAR AI</strong>
