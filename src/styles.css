@@ -2069,3 +2069,78 @@ body{background:var(--bg)}
   .ai-active-position button{grid-column:2;grid-row:2;justify-self:end}
   .home-balance-performance{grid-template-columns:1.4fr 1fr .8fr}
 }
+
+/* Portfolio growth metrics: keep available cash distinct from open-position equity. */
+.home-balance-growth{
+  display:grid;
+  grid-template-columns:1.25fr 1fr .72fr;
+  gap:0;
+  margin-top:13px;
+  padding-top:11px;
+  border-top:1px solid rgba(255,255,255,.055);
+}
+.home-balance-growth>span{
+  min-width:0;
+  padding-right:10px;
+}
+.home-balance-growth>span+span{
+  padding-left:10px;
+  border-left:1px solid rgba(255,255,255,.055);
+}
+.home-balance-growth small{
+  display:block;
+  color:var(--muted);
+  font-size:6px;
+  letter-spacing:.09em;
+  font-weight:800;
+  line-height:1.2;
+}
+.home-balance-growth strong{
+  display:block;
+  margin-top:4px;
+  font-size:10px;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.activity-open-pnl{
+  display:grid;
+  grid-template-columns:1.3fr .9fr 1fr;
+  gap:0;
+  margin:11px 0 12px;
+  padding:11px 12px;
+  border:1px solid rgba(3,252,125,.12);
+  border-radius:13px;
+  background:rgba(3,252,125,.025);
+}
+.activity-open-pnl>div{
+  min-width:0;
+}
+.activity-open-pnl>div+div{
+  padding-left:12px;
+  border-left:1px solid rgba(255,255,255,.055);
+}
+.activity-open-pnl small{
+  display:block;
+  color:var(--muted);
+  font-size:6px;
+  letter-spacing:.1em;
+  font-weight:800;
+}
+.activity-open-pnl strong{
+  display:block;
+  margin-top:4px;
+  font-size:12px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+@media(max-width:560px){
+  .home-balance-growth{grid-template-columns:1.2fr 1fr .7fr}
+  .home-balance-growth>span{padding-right:7px}
+  .home-balance-growth>span+span{padding-left:7px}
+  .home-balance-growth strong{font-size:9px}
+  .activity-open-pnl{grid-template-columns:1.2fr 1fr 1fr;padding:10px}
+  .activity-open-pnl>div+div{padding-left:8px}
+  .activity-open-pnl strong{font-size:10px}
+}
