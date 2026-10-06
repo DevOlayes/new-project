@@ -185,7 +185,7 @@ export default function App() {
         if (!cancelled) setAccount(result);
       } catch {}
     };
-    const timer = window.setInterval(poll, 15000);
+    const timer = window.setInterval(poll, 5000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
@@ -464,14 +464,10 @@ export default function App() {
         });
         if (cancelled || error || data?.error) return;
 
-        const created = (data?.results || []).some((item) => ["created", "already_exists"].includes(item?.status));
+        const created = (data?.results || []).some((item) => item?.status === "created");
         if (data?.credits_remaining !== undefined) setProfile((current) => current ? { ...current, ai_credits: Number(data.credits_remaining) } : current);
         if (created) {
-          await refreshAccount();
-          if (!cancelled) {
-            try { sessionStorage.setItem("flexa_open_ai_trade", "true"); } catch {}
-            setGlobalNotice("FLEXAR AI found a qualifying opportunity. Review the setup below.");
-          }
+          await refreshAccount({ silent: true });
         }
       } catch {}
     };
