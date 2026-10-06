@@ -41,16 +41,15 @@ export default function App() {
   const [walletAction, setWalletAction] = useState("");
   const [tradeSuccess, setTradeSuccess] = useState(null);
   const notificationSeenRef = useRef(null);
-  const opportunitySeenRef = useRef(null);
 
-  const refreshAccount = useCallback(async () => {
+  const refreshAccount = useCallback(async ({ silent = false } = {}) => {
     if (!supabase || !user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const result = await getAccountData();
       setAccount(result);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [user]);
 
@@ -192,25 +191,6 @@ export default function App() {
       window.clearInterval(timer);
     };
   }, [user, aiEngineActive, account.trades?.some((trade) => trade.status === "active")]);
-
-  useEffect(() => {
-    const latest = (account.opportunities || []).filter((item) => ["scheduled", "open"].includes(item.status)).sort((a,b) => new Date(b.entry_window_start || b.created_at || 0) - new Date(a.entry_window_start || a.created_at || 0))[0];
-    if (!latest) return;
-    const key = latest.id || latest.created_at || latest.symbol;
-    if (opportunitySeenRef.current === null) {
-      opportunitySeenRef.current = key;
-      return;
-    }
-    if (opportunitySeenRef.current === key) return;
-    opportunitySeenRef.current = key;
-    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification("FLEXAR AI setup available", {
-        body: modeForNotification(account) === "autopilot"
-          ? "Autopilot is monitoring the qualifying setup."
-          : "A qualifying AI trade is ready for your review."
-      });
-    }
-  }, [account.opportunities]);
 
   useEffect(() => {
     const latest = (account.notifications || [])[0];
@@ -510,7 +490,7 @@ export default function App() {
     const latestEnd = Math.max(...live.map((item) => new Date(item.entry_window_end || 0).getTime()).filter(Number.isFinite));
     if (!Number.isFinite(latestEnd) || latestEnd <= Date.now()) return;
     const timer = setTimeout(() => {
-      refreshAccount();
+      refreshAccount({ silent: true });
     }, Math.max(1000, latestEnd - Date.now() + 1500));
     return () => clearTimeout(timer);
   }, [account.opportunities, aiEngineActive, aiScanning, refreshAccount]);
