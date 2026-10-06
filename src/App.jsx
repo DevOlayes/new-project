@@ -996,7 +996,7 @@ function ActivityLedgerItem({item,amount,relatedTrade,isTrade,isSwap}) {
   const pnl=metadata.pnl!==undefined?Number(metadata.pnl):relatedTrade&&relatedTrade.status!=="active"?Number(relatedTrade.result_amount||0)-Number(relatedTrade.stake||0):null;
   const tradeIsLoss=item.type==="trade_loss"||(pnl!==null&&pnl<0);
   const title=isSwap?"Portfolio swap":isTrade?(item.type==="trade_lock"?"AI trade opened":tradeIsLoss?"Trade loss":"Trade profit"):transactionLabel(item.type);
-  const primary=isTrade&&item.type!=="trade_lock"&&pnl!==null?signedMoney(pnl):${item.direction==="credit"?"+":"−"}${money(amount)};
+  const primary=isTrade&&item.type!=="trade_lock"&&pnl!==null?signedMoney(pnl):(item.direction==="credit"?"+":"−")+money(amount);
   const date=item.created_at?new Date(item.created_at):null;
   const detail=date&&!Number.isNaN(date.getTime())?date.toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"Recent";
   const hasDetails=isTrade||isSwap||Boolean(metadata.network||metadata.address||metadata.reason);
