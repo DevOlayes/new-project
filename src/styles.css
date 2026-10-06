@@ -2104,6 +2104,8 @@ body{background:var(--bg)}
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.home-balance-growth strong.green{color:var(--green)!important}
+.home-balance-growth strong.red{color:#ff7676!important}
 .activity-open-pnl{
   display:grid;
   grid-template-columns:1.3fr .9fr 1fr;
@@ -2175,6 +2177,8 @@ body{background:var(--bg)}
   width:48px;
   height:48px;
   object-fit:contain;
+  background:transparent;
+  mix-blend-mode:screen;
   filter:drop-shadow(0 0 16px rgba(3,252,125,.25));
 }
 .flexar-loading-ring{
