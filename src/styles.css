@@ -2144,3 +2144,85 @@ body{background:var(--bg)}
   .activity-open-pnl>div+div{padding-left:8px}
   .activity-open-pnl strong{font-size:10px}
 }
+
+/* Premium F-mark account sync screen. Shown while authenticated account data is being hydrated. */
+.flexar-loading-screen{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  background:
+    radial-gradient(circle at 50% 42%,rgba(3,252,125,.075),transparent 24%),
+    radial-gradient(circle at 50% 100%,rgba(3,252,125,.025),transparent 38%),
+    #050806;
+  color:#eef7f1;
+}
+.flexar-loading-mark{
+  position:relative;
+  width:82px;
+  height:82px;
+  display:grid;
+  place-items:center;
+  margin-bottom:9px;
+}
+.flexar-loading-mark img{
+  position:relative;
+  z-index:2;
+  width:48px;
+  height:48px;
+  object-fit:contain;
+  filter:drop-shadow(0 0 16px rgba(3,252,125,.25));
+}
+.flexar-loading-ring{
+  position:absolute;
+  inset:0;
+  border:1px solid rgba(3,252,125,.13);
+  border-top-color:rgba(3,252,125,.9);
+  border-right-color:rgba(3,252,125,.42);
+  border-radius:50%;
+  animation:flexarLoaderSpin 1.15s linear infinite;
+  box-shadow:0 0 24px rgba(3,252,125,.06);
+}
+.flexar-loading-ring::after{
+  content:"";
+  position:absolute;
+  inset:7px;
+  border:1px solid rgba(255,255,255,.045);
+  border-radius:50%;
+}
+.flexar-loading-screen>strong{
+  font-size:12px;
+  letter-spacing:.22em;
+  font-weight:800;
+}
+.flexar-loading-screen>span{
+  color:#718078;
+  font-size:9px;
+  letter-spacing:.06em;
+}
+.flexar-loading-bar{
+  width:86px;
+  height:2px;
+  margin-top:8px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(255,255,255,.07);
+}
+.flexar-loading-bar b{
+  display:block;
+  width:38%;
+  height:100%;
+  border-radius:inherit;
+  background:var(--green,#03fc7d);
+  animation:flexarLoaderProgress 1.35s ease-in-out infinite;
+}
+@keyframes flexarLoaderSpin{to{transform:rotate(360deg)}}
+@keyframes flexarLoaderProgress{
+  0%{transform:translateX(-120%)}
+  50%{transform:translateX(150%)}
+  100%{transform:translateX(300%)}
+}
