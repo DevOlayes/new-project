@@ -978,73 +978,52 @@ function transactionLabel(type) {
   return String(type||"transaction").replace(/_/g," ").replace(/\\b\\w/g,(m)=>m.toUpperCase());
 }
 function ActivityRows({ account, limit=8 }) {
-  const items=[...(account.transactions||[])].slice(0,limit);
-  if(!items.length) return <div className="empty-state"><strong>No wallet activity yet</strong><p>Your deposits, trade settlements, swaps and other wallet activity will appear here.</p></div>;
+  const items=[...(account.transactions||[])].slice(0,limit), trades=account.trades||[];
+  if(!items.length) return <div className="empty-state"><strong>No wallet activity yet</strong><p>Your deposits, withdrawals, swaps and trade activity will appear here.</p></div>;
   return <div className="activity-ledger-list">{items.map((item)=>{
-    const amount=Number(item.amount||0);
-    const pnl=item.metadata?.pnl!==undefined?Number(item.metadata.pnl):null;
-    const isCredit=item.direction==="credit";
-    const isTradeReturn=["trade_profit","trade_loss"].includes(item.type);
-    const title=isTradeReturn?(item.type==="trade_profit"?"Trade profit":"Trade loss"):transactionLabel(item.type);
-    const primary=isTradeReturn&&pnl!==null?signedMoney(pnl):`${isCredit?"+":"−"}${money(amount)}`;
-    const detail=isTradeReturn&&pnl!==null?`Trading result · ${new Date(item.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}`:`${item.status||"completed"} · ${new Date(item.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}`;
-    return <ActivityLedgerItem key={item.id} item={item} amount={amount} pnl={pnl} isCredit={isCredit} isTradeReturn={isTradeReturn} title={title} primary={primary} detail={detail}/>;
+    const amount=Number(item.amount||0), metadata=item.metadata||{}, tradeId=metadata.trade_id||"";
+    const relatedTrade=tradeId?trades.find(t=>String(t.id)===String(tradeId)):null;
+    const isTrade=["trade_profit","trade_loss","trade_lock"].includes(item.type)||Boolean(tradeId&&metadata.market_symbol);
+    const isSwap=String(item.type||"").toLowerCase().includes("swap")||Boolean(metadata.from_asset&&metadata.to_asset);
+    return <ActivityLedgerItem key={item.id} item={item} amount={amount} relatedTrade={relatedTrade} isTrade={isTrade} isSwap={isSwap}/>;
   })}</div>;
 }
-
-function ActivityLedgerItem({item,amount,pnl,isCredit,isTradeReturn,title,primary,detail}) {
-  const [expanded,setExpanded]=useState(false);
-  const tradeId=item.metadata?.trade_id;
-  const trade=(item.metadata?.trade_id && item.metadata?.market_symbol)
-    ? {metadata:item.metadata,direction:item.metadata.direction,stake:item.metadata.stake,entry_price:item.metadata.entry_price,exit_price:item.metadata.exit_price,leverage:item.metadata.leverage,exit_reason:item.metadata.exit_reason}
-    : null;
-  return <div className={isTradeReturn?"activity-ledger-row trade-outcome-row":"activity-ledger-row"}>
-    <button type="button" className="activity-ledger-summary" onClick={()=>isTradeReturn&&setExpanded(v=>!v)}>
-      <div className={isCredit?"activity-ledger-icon credit":"activity-ledger-icon debit"}>{isTradeReturn?(pnl>=0?"✓":"×"):(isCredit?"↑":"↓")}</div>
-      <div className="activity-ledger-main"><strong>{title}</strong><small>{isTradeReturn&&item.metadata?.market_symbol?item.metadata.market_symbol+" · ":""}{detail}</small></div>
-      <div className="activity-ledger-value"><strong className={pnl!==null?(pnl>=0?"green":"red"):(isCredit?"green":"red")}>{primary}</strong>{isTradeReturn&&pnl!==null&&<small>{pnl>=0?"PROFIT":"LOSS"} · {expanded?"HIDE":"DETAILS"}</small>}</div>
+function ActivityLedgerItem({item,amount,relatedTrade,isTrade,isSwap}) {
+  const [expanded,setExpanded]=useState(false), metadata=item.metadata||{};
+  const tradeSymbol=metadata.market_symbol||relatedTrade?.metadata?.market_symbol||relatedTrade?.asset||"AI TRADE";
+  const direction=metadata.direction||relatedTrade?.direction, leverage=Number(metadata.leverage||relatedTrade?.leverage||1);
+  const stake=Number(metadata.stake||relatedTrade?.stake||amount||0);
+  const pnl=metadata.pnl!==undefined?Number(metadata.pnl):relatedTrade&&relatedTrade.status!=="active"?Number(relatedTrade.result_amount||0)-Number(relatedTrade.stake||0):null;
+  const tradeIsLoss=item.type==="trade_loss"||(pnl!==null&&pnl<0);
+  const title=isSwap?"Portfolio swap":isTrade?(item.type==="trade_lock"?"AI trade opened":tradeIsLoss?"Trade loss":"Trade profit"):transactionLabel(item.type);
+  const primary=isTrade&&item.type!=="trade_lock"&&pnl!==null?signedMoney(pnl):${item.direction==="credit"?"+":"−"}${money(amount)};
+  const date=item.created_at?new Date(item.created_at):null;
+  const detail=date&&!Number.isNaN(date.getTime())?date.toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"Recent";
+  const hasDetails=isTrade||isSwap||Boolean(metadata.network||metadata.address||metadata.reason);
+  return <article className={isTrade?"activity-ledger-row trade-outcome-row":"activity-ledger-row"}>
+    <button type="button" className="activity-ledger-summary" onClick={()=>hasDetails&&setExpanded(v=>!v)}>
+      <div className={isTrade?(tradeIsLoss?"activity-ledger-icon trade-loss":"activity-ledger-icon trade-win"):isSwap?"activity-ledger-icon swap":"activity-ledger-icon "+(item.direction==="credit"?"credit":"debit")}>{isTrade?(tradeIsLoss?"−":"↗"):isSwap?"⇄":(item.direction==="credit"?"↑":"↓")}</div>
+      <div className="activity-ledger-main"><strong>{title}</strong><small>{isTrade?${tradeSymbol} · ${direction==="up"?"LONG":direction==="down"?"SHORT":"AI TRADE"} · ${detail}:isSwap?${metadata.from_asset||"ASSET"} → ${metadata.to_asset||"ASSET"} · ${detail}:${item.status||"completed"} · ${detail}}</small></div>
+      <div className="activity-ledger-value"><strong className={isTrade?(tradeIsLoss?"red":"green"):(item.direction==="credit"?"green":"red")}>{primary}</strong>{isTrade&&<small>{item.type==="trade_lock"?"CAPITAL LOCKED":${tradeIsLoss?"LOSS":"PROFIT"} · ${expanded?"HIDE":"DETAILS"}}</small>}{!isTrade&&isSwap&&<small>{expanded?"HIDE":"DETAILS"}</small>}</div>
     </button>
-    {expanded&&isTradeReturn&&<div className="activity-ledger-breakdown">
-      <div><small>OUTCOME</small><strong className={pnl>=0?"green":"red"}>{pnl>=0?"PROFIT":"LOSS"} {signedMoney(pnl)}</strong></div>
-      <div><small>TRADE</small><strong>{item.metadata?.market_symbol||"AI TRADE"}</strong></div>
-      <div><small>CAPITAL RESULT</small><strong>{pnl>=0?"+$"+money(amount):"−$"+money(Math.abs(pnl))}</strong></div>
-      <div><small>EXIT</small><strong>{item.metadata?.exit_reason?String(item.metadata.exit_reason).replace(/_/g," "):"Trade settled"}</strong></div>
-    </div>}
-  </div>;
-}
-
-function TradeHistoryCard({ trade:t }) {
-  const [expanded,setExpanded]=useState(false);
-  const pnl=t.status==="active"?Number(t.unrealized_pnl||0):Number(t.result_amount||0)-Number(t.stake||0);
-  const returned=t.status==="active"?null:Number(t.result_amount||0);
-  const symbol=t.metadata?.market_symbol||t.asset;
-  return <article className="trade-history-card">
-    <button type="button" className="trade-history-summary" onClick={()=>setExpanded(v=>!v)}>
-      <div className="trade-history-identity"><PairIcon symbol={symbol}/><div><strong>{symbol}</strong><small className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"} · {new Date(t.opened_at).toLocaleDateString()}</small></div></div>
-      <div className="trade-history-result"><span className={t.status==="won"?"trade-status win":t.status==="lost"?"trade-status loss":"trade-status live"}>{t.status==="won"?"WON":t.status==="lost"?"LOSS":"ACTIVE"}</span><strong className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</strong><small>{t.status==="active"?"LIVE P&L":"NET RESULT"} · {expanded?"Hide":"Details"}</small></div>
-    </button>
-    {expanded&&<div className="trade-history-breakdown">
-      <div><small>OUTCOME</small><strong className={pnl>=0?"green":"red"}>{pnl>=0?"PROFIT":"LOSS"} {signedMoney(pnl)}</strong></div>
-      <div><small>CAPITAL USED</small><strong>$ {money(t.stake)}</strong></div>
-      <div><small>ENTRY</small><strong>{Number(t.entry_price||0).toLocaleString(undefined,{maximumFractionDigits:8})}</strong></div>
-      <div><small>EXIT</small><strong>{t.exit_price==null?"—":Number(t.exit_price).toLocaleString(undefined,{maximumFractionDigits:8})}</strong></div>
-      <div><small>LEVERAGE</small><strong>{Number(t.leverage||1).toFixed(0)}×</strong></div>
-      <div><small>EXIT REASON</small><strong>{t.exit_reason?String(t.exit_reason).replace(/_/g," "):"Position active"}</strong></div>
-      {returned!==null&&<div><small>CAPITAL AFTER TRADE</small><strong>$ {money(returned)}</strong></div>}
+    {expanded&&<div className="activity-ledger-breakdown">
+      {isTrade&&<><div className="ledger-breakdown-hero"><span className={tradeIsLoss?"red":"green"}>{tradeIsLoss?"LOSS":"PROFIT"}</span><strong className={tradeIsLoss?"red":"green"}>{item.type==="trade_lock"?"$ "+money(stake):signedMoney(pnl||0)}</strong></div><div><small>MARKET</small><strong>{tradeSymbol}</strong></div><div><small>DIRECTION</small><strong className={direction==="up"?"green":"red"}>{direction==="up"?"↗ LONG":direction==="down"?"↘ SHORT":"—"}</strong></div><div><small>CAPITAL</small><strong>$ {money(stake)} USDT</strong></div><div><small>POSITION VALUE</small><strong>$ {money(stake*leverage)} USDT</strong></div><div><small>LEVERAGE</small><strong>{leverage.toFixed(0)}×</strong></div><div><small>ENTRY</small><strong>{metadata.entry_price||relatedTrade?.entry_price?Number(metadata.entry_price||relatedTrade?.entry_price).toLocaleString(undefined,{maximumFractionDigits:8}):"—"}</strong></div><div><small>EXIT</small><strong>{metadata.exit_price||relatedTrade?.exit_price?Number(metadata.exit_price||relatedTrade?.exit_price).toLocaleString(undefined,{maximumFractionDigits:8}):"—"}</strong></div><div><small>RESULT</small><strong className={tradeIsLoss?"red":"green"}>{item.type==="trade_lock"?"Position opened":signedMoney(pnl||0)}</strong></div><div><small>EXIT REASON</small><strong>{metadata.exit_reason?String(metadata.exit_reason).replace(/_/g," "):relatedTrade?.exit_reason?String(relatedTrade.exit_reason).replace(/_/g," "):item.type==="trade_lock"?"Position active":"Trade settled"}</strong></div></>}
+      {isSwap&&<><div className="ledger-breakdown-hero"><span>SWAP</span><strong>{metadata.from_asset||"ASSET"} → {metadata.to_asset||"ASSET"}</strong></div><div><small>YOU SENT</small><strong>{metadata.from_amount?money(metadata.from_amount):money(amount)} {metadata.from_asset||""}</strong></div><div><small>YOU RECEIVED</small><strong>{metadata.to_amount?money(metadata.to_amount):"—"} {metadata.to_asset||""}</strong></div><div><small>RATE</small><strong>{metadata.rate?Number(metadata.rate).toLocaleString(undefined,{maximumFractionDigits:8}):"Market rate"}</strong></div></>}
+      {!isTrade&&!isSwap&&<><div><small>TYPE</small><strong>{transactionLabel(item.type)}</strong></div><div><small>STATUS</small><strong>{item.status||"completed"}</strong></div><div><small>AMOUNT</small><strong>{item.direction==="credit"?"+":"−"}{money(amount)}</strong></div>{metadata.network&&<div><small>NETWORK</small><strong>{metadata.network}</strong></div>}</>}
     </div>}
   </article>;
 }
-
-function ActivityDetailPage({ account, type, onBack }) {
-  const isTrades=type==="trades";
-  const items=isTrades?(account.trades||[]):(account.transactions||[]);
-  return <div className="activity-page activity-detail-page">
-    <button type="button" className="activity-back-button" onClick={onBack}>← Back to Activity</button>
-    <section className="intro activity-intro"><div className="activity-intro-copy"><small>{isTrades?"TRADE HISTORY":"WALLET LEDGER"}</small><h1>{isTrades?"Recent trades.":"Recent transactions."}</h1><p>{isTrades?"Review every trade, including active positions and completed results.":"Review every wallet movement, deposit, withdrawal and trade settlement."}</p></div><div className="activity-intro-watermark" aria-hidden="true" /></section>
-    <section className="activity-section"><div className="section-heading"><div><small>{isTrades?"ALL TRADES":"ALL TRANSACTIONS"}</small><h2>{isTrades?"Trade history":"Transaction history"}</h2></div><span className="activity-section-count">{items.length}</span></div>{isTrades?(items.length?<div className="trade-history-list">{items.map(t=><TradeHistoryCard key={t.id} trade={t}/>)}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your completed and active trades will appear here.</p></div>):<ActivityRows account={{...account,trades:[]}}/>}</section>
-  </div>;
+function TradeHistoryCard({ trade:t }) {
+  const [expanded,setExpanded]=useState(false), pnl=t.status==="active"?Number(t.unrealized_pnl||0):Number(t.result_amount||0)-Number(t.stake||0), returned=t.status==="active"?null:Number(t.result_amount||0);
+  const symbol=t.metadata?.market_symbol||t.asset, leverage=Number(t.leverage||1);
+  return <article className="trade-history-card"><button type="button" className="trade-history-summary" onClick={()=>setExpanded(v=>!v)}><div className="trade-history-identity"><PairIcon symbol={symbol}/><div><strong>{symbol}</strong><small className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"} · {new Date(t.opened_at).toLocaleDateString()}</small></div></div><div className="trade-history-result"><span className={t.status==="won"?"trade-status win":t.status==="lost"?"trade-status loss":"trade-status live"}>{t.status==="won"?"WON":t.status==="lost"?"LOSS":"ACTIVE"}</span><strong className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</strong><small>{t.status==="active"?"LIVE P&L":"NET RESULT"} · {expanded?"Hide":"Details"}</small></div></button>
+    {expanded&&<div className="trade-history-breakdown"><div className="ledger-breakdown-hero"><span className={pnl>=0?"green":"red"}>{pnl>=0?"PROFIT":"LOSS"}</span><strong className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</strong></div><div><small>MARKET</small><strong>{symbol}</strong></div><div><small>DIRECTION</small><strong className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</strong></div><div><small>CAPITAL USED</small><strong>$ {money(t.stake)} USDT</strong></div><div><small>POSITION VALUE</small><strong>$ {money(Number(t.stake||0)*leverage)} USDT</strong></div><div><small>ENTRY</small><strong>{Number(t.entry_price||0).toLocaleString(undefined,{maximumFractionDigits:8})}</strong></div><div><small>EXIT</small><strong>{t.exit_price==null?"—":Number(t.exit_price).toLocaleString(undefined,{maximumFractionDigits:8})}</strong></div><div><small>LEVERAGE</small><strong>{leverage.toFixed(0)}×</strong></div><div><small>EXIT REASON</small><strong>{t.exit_reason?String(t.exit_reason).replace(/_/g," "):"Position active"}</strong></div>{returned!==null&&<div><small>CAPITAL AFTER TRADE</small><strong>$ {money(returned)}</strong></div>}</div>}
+  </article>;
 }
-
+function ActivityDetailPage({ account, type, onBack }) {
+  const isTrades=type==="trades", items=isTrades?(account.trades||[]):(account.transactions||[]);
+  return <div className="activity-page activity-detail-page"><button type="button" className="activity-back-button" onClick={()=>onBack()}>← Back to Activity</button><section className="intro activity-intro"><div className="activity-intro-copy"><small>{isTrades?"TRADE HISTORY":"WALLET LEDGER"}</small><h1>{isTrades?"Recent trades.":"Recent transactions."}</h1><p>{isTrades?"Review every trade, including active positions and completed results.":"Review every wallet movement, deposits, withdrawals, swaps and trade activity."}</p></div><div className="activity-intro-watermark" aria-hidden="true" /></section><section className="activity-section"><div className="section-heading"><div><small>{isTrades?"ALL TRADES":"ALL TRANSACTIONS"}</small><h2>{isTrades?"Trade history":"Transaction history"}</h2></div><span className="activity-section-count">{items.length}</span></div>{isTrades?(items.length?<div className="trade-history-list">{items.map(t=><TradeHistoryCard key={t.id} trade={t}/>)}</div>:<div className="empty-state"><strong>No trades yet</strong><p>Your completed and active trades will appear here.</p></div>):<ActivityRows account={account}/>}</section></div>;
+}
 function PairIcon({ symbol, cryptoIcons = {} }) {
   if (symbol === "XRPUSDT") {
     return <span className="market-icon pair-icon crypto-pair xrp-pair" aria-label="XRP">
