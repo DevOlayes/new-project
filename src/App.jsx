@@ -979,28 +979,60 @@ function transactionLabel(type) {
 }
 function ActivityRows({ account, limit=8 }) {
   const items=[...(account.transactions||[])].slice(0,limit);
-  if(!items.length) return <div className="empty-state"><strong>No wallet activity yet</strong><p>Your deposits, trade movements, withdrawals and other wallet activity will appear here.</p></div>;
+  if(!items.length) return <div className="empty-state"><strong>No wallet activity yet</strong><p>Your deposits, trade settlements, swaps and other wallet activity will appear here.</p></div>;
   return <div className="activity-ledger-list">{items.map((item)=>{
     const amount=Number(item.amount||0);
     const pnl=item.metadata?.pnl!==undefined?Number(item.metadata.pnl):null;
     const isCredit=item.direction==="credit";
     const isTradeReturn=["trade_profit","trade_loss"].includes(item.type);
-    const title=isTradeReturn?(item.type==="trade_profit"?"Trade settled":"Trade loss"):transactionLabel(item.type);
-    const primary=isTradeReturn&&pnl!==null?signedMoney(pnl):`${isCredit?"+":"−"}$${money(amount)}`;
-    const detail=isTradeReturn&&pnl!==null?`Capital returned · ${new Date(item.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}`:`${item.status||"completed"} · ${new Date(item.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}`;
-    return <div className="activity-ledger-row" key={item.id}>
-      <div className={isCredit?"activity-ledger-icon credit":"activity-ledger-icon debit"}>{isCredit?"↑":"↓"}</div>
-      <div className="activity-ledger-main"><strong>{title}</strong><small>{detail}</small></div>
-      <div className="activity-ledger-value"><strong className={pnl!==null?(pnl>=0?"green":"red"):(isCredit?"green":"red")}>{primary}</strong>{isTradeReturn&&pnl!==null&&<small>NET P&L</small>}</div>
-    </div>;
+    const title=isTradeReturn?(item.type==="trade_profit"?"Trade profit":"Trade loss"):transactionLabel(item.type);
+    const primary=isTradeReturn&&pnl!==null?signedMoney(pnl):`${isCredit?"+":"−"}${money(amount)}`;
+    const detail=isTradeReturn&&pnl!==null?`Trading result · ${new Date(item.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}`:`${item.status||"completed"} · ${new Date(item.created_at).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}`;
+    return <ActivityLedgerItem key={item.id} item={item} amount={amount} pnl={pnl} isCredit={isCredit} isTradeReturn={isTradeReturn} title={title} primary={primary} detail={detail}/>;
   })}</div>;
 }
 
+function ActivityLedgerItem({item,amount,pnl,isCredit,isTradeReturn,title,primary,detail}) {
+  const [expanded,setExpanded]=useState(false);
+  const tradeId=item.metadata?.trade_id;
+  const trade=(item.metadata?.trade_id && item.metadata?.market_symbol)
+    ? {metadata:item.metadata,direction:item.metadata.direction,stake:item.metadata.stake,entry_price:item.metadata.entry_price,exit_price:item.metadata.exit_price,leverage:item.metadata.leverage,exit_reason:item.metadata.exit_reason}
+    : null;
+  return <div className={isTradeReturn?"activity-ledger-row trade-outcome-row":"activity-ledger-row"}>
+    <button type="button" className="activity-ledger-summary" onClick={()=>isTradeReturn&&setExpanded(v=>!v)}>
+      <div className={isCredit?"activity-ledger-icon credit":"activity-ledger-icon debit"}>{isTradeReturn?(pnl>=0?"✓":"×"):(isCredit?"↑":"↓")}</div>
+      <div className="activity-ledger-main"><strong>{title}</strong><small>{isTradeReturn&&item.metadata?.market_symbol?item.metadata.market_symbol+" · ":""}{detail}</small></div>
+      <div className="activity-ledger-value"><strong className={pnl!==null?(pnl>=0?"green":"red"):(isCredit?"green":"red")}>{primary}</strong>{isTradeReturn&&pnl!==null&&<small>{pnl>=0?"PROFIT":"LOSS"} · {expanded?"HIDE":"DETAILS"}</small>}</div>
+    </button>
+    {expanded&&isTradeReturn&&<div className="activity-ledger-breakdown">
+      <div><small>OUTCOME</small><strong className={pnl>=0?"green":"red"}>{pnl>=0?"PROFIT":"LOSS"} {signedMoney(pnl)}</strong></div>
+      <div><small>TRADE</small><strong>{item.metadata?.market_symbol||"AI TRADE"}</strong></div>
+      <div><small>CAPITAL RESULT</small><strong>{pnl>=0?"+$"+money(amount):"−$"+money(Math.abs(pnl))}</strong></div>
+      <div><small>EXIT</small><strong>{item.metadata?.exit_reason?String(item.metadata.exit_reason).replace(/_/g," "):"Trade settled"}</strong></div>
+    </div>}
+  </div>;
+}
 
 function TradeHistoryCard({ trade:t }) {
+  const [expanded,setExpanded]=useState(false);
   const pnl=t.status==="active"?Number(t.unrealized_pnl||0):Number(t.result_amount||0)-Number(t.stake||0);
   const returned=t.status==="active"?null:Number(t.result_amount||0);
-  return <article className="trade-history-card"><div className="trade-history-head"><div><strong>{t.metadata?.market_symbol||t.asset}</strong><span className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"}</span></div><span className={t.status==="won"?"trade-status win":t.status==="lost"?"trade-status loss":"trade-status live"}>{t.status==="won"?"WON":t.status==="lost"?"LOSS":"ACTIVE"}</span></div><div className="trade-history-main"><div><small>CAPITAL</small><strong>{"$"+money(t.stake)}</strong></div><div><small>LEVERAGE</small><strong>{Number(t.leverage||1).toFixed(0)}×</strong></div><div className="trade-history-pnl"><small>{t.status==="active"?"LIVE P&L":"NET P&L"}</small><strong className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</strong></div></div><div className="trade-history-footer"><span>{new Date(t.opened_at).toLocaleDateString()} · {new Date(t.opened_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{returned!==null&&<span>Returned {"$"+money(returned)}</span>}<span>{t.risk_profile?String(t.risk_profile).toUpperCase():"RISK MANAGED"}</span></div></article>;
+  const symbol=t.metadata?.market_symbol||t.asset;
+  return <article className="trade-history-card">
+    <button type="button" className="trade-history-summary" onClick={()=>setExpanded(v=>!v)}>
+      <div className="trade-history-identity"><PairIcon symbol={symbol}/><div><strong>{symbol}</strong><small className={t.direction==="up"?"green":"red"}>{t.direction==="up"?"↗ LONG":"↘ SHORT"} · {new Date(t.opened_at).toLocaleDateString()}</small></div></div>
+      <div className="trade-history-result"><span className={t.status==="won"?"trade-status win":t.status==="lost"?"trade-status loss":"trade-status live"}>{t.status==="won"?"WON":t.status==="lost"?"LOSS":"ACTIVE"}</span><strong className={pnl>=0?"green":"red"}>{signedMoney(pnl)}</strong><small>{t.status==="active"?"LIVE P&L":"NET RESULT"} · {expanded?"Hide":"Details"}</small></div>
+    </button>
+    {expanded&&<div className="trade-history-breakdown">
+      <div><small>OUTCOME</small><strong className={pnl>=0?"green":"red"}>{pnl>=0?"PROFIT":"LOSS"} {signedMoney(pnl)}</strong></div>
+      <div><small>CAPITAL USED</small><strong>$ {money(t.stake)}</strong></div>
+      <div><small>ENTRY</small><strong>{Number(t.entry_price||0).toLocaleString(undefined,{maximumFractionDigits:8})}</strong></div>
+      <div><small>EXIT</small><strong>{t.exit_price==null?"—":Number(t.exit_price).toLocaleString(undefined,{maximumFractionDigits:8})}</strong></div>
+      <div><small>LEVERAGE</small><strong>{Number(t.leverage||1).toFixed(0)}×</strong></div>
+      <div><small>EXIT REASON</small><strong>{t.exit_reason?String(t.exit_reason).replace(/_/g," "):"Position active"}</strong></div>
+      {returned!==null&&<div><small>CAPITAL AFTER TRADE</small><strong>$ {money(returned)}</strong></div>}
+    </div>}
+  </article>;
 }
 
 function ActivityDetailPage({ account, type, onBack }) {
