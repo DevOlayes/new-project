@@ -2106,6 +2106,14 @@ body{background:var(--bg)}
 }
 .home-balance-growth strong.green{color:var(--green)!important}
 .home-balance-growth strong.red{color:#ff7676!important}
+.trading-profit-card{margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:15px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(3,252,125,.018));box-shadow:0 12px 28px rgba(0,0,0,.12)}
+.profit-live-badge{padding:5px 8px;border:1px solid rgba(3,252,125,.18);border-radius:999px;color:#7cff9c;font-size:7px;font-weight:900;letter-spacing:.1em}
+.trading-profit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.trading-profit-grid>div{min-width:0;padding:12px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.014)}
+.trading-profit-grid small{display:block;color:var(--muted);font-size:6px;font-weight:900;letter-spacing:.1em}
+.trading-profit-grid strong{display:block;margin-top:5px;font-size:18px;line-height:1.05}
+.trading-profit-grid span{display:block;margin-top:6px;color:var(--muted);font-size:7px;line-height:1.35}
+@media(max-width:560px){.trading-profit-grid{grid-template-columns:1fr}.trading-profit-grid>div{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 10px}.trading-profit-grid small{grid-column:1}.trading-profit-grid strong{grid-column:2;grid-row:1 / span 2;margin-top:0}.trading-profit-grid span{grid-column:1}}
 .activity-open-pnl{
   display:grid;
   grid-template-columns:1.3fr .9fr 1fr;
