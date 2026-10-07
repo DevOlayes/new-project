@@ -41,6 +41,7 @@ export default function App() {
   const [walletAction, setWalletAction] = useState("");
   const [tradeSuccess, setTradeSuccess] = useState(null);
   const notificationSeenRef = useRef(null);
+  const tradeNotificationStateRef = useRef(null);
 
   const refreshAccount = useCallback(async ({ silent = false } = {}) => {
     if (!supabase || !user) return;
@@ -159,13 +160,32 @@ export default function App() {
       setNotificationPrompt(false);
       if (permission === "granted") {
         setGlobalNotice("Notifications enabled. FLEXAR will alert you about AI setups and trade updates.");
-        new Notification("FLEXAR AI notifications enabled", { body: "You will be alerted when an AI setup or trade update needs your attention." });
+        showFlexarNotification("FLEXAR AI notifications enabled", "You will be alerted when an AI setup or trade update needs your attention.");
       } else {
         setGlobalNotice("Notifications are off. You can enable them later from your browser or device settings.");
       }
     } catch {
       setNotificationPrompt(false);
     }
+  }
+
+  function showFlexarNotification(title, body) {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const options = {
+      body,
+      icon: "/flexa-symbol.webp",
+      badge: "/flexa-symbol.webp",
+      tag: "flexar-ai-trade-update",
+      renotify: true,
+      data: { url: window.location.origin }
+    };
+    try {
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: "FLEXAR_NOTIFICATION", title, options });
+        return;
+      }
+    } catch {}
+    try { new Notification(title, options); } catch {}
   }
 
   function dismissNotificationPrompt() {
@@ -202,12 +222,33 @@ export default function App() {
     }
     if (notificationSeenRef.current === key) return;
     notificationSeenRef.current = key;
-    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification(latest.title || "FLEXAR AI update", {
-        body: latest.message || latest.body || "You have a new FLEXAR AI account or trade update."
-      });
-    }
+    showFlexarNotification(latest.title || "FLEXAR AI update", latest.message || latest.body || "You have a new FLEXAR AI account or trade update.");
   }, [account.notifications]);
+
+  useEffect(() => {
+    const trades = account.trades || [];
+    const snapshot = new Map(trades.map((trade) => [trade.id, trade.status]));
+    if (tradeNotificationStateRef.current === null) {
+      tradeNotificationStateRef.current = snapshot;
+      return;
+    }
+
+    const previous = tradeNotificationStateRef.current;
+    trades.forEach((trade) => {
+      const oldStatus = previous.get(trade.id);
+      const market = trade.metadata?.market_symbol || trade.asset || "AI trade";
+      const direction = String(trade.direction || "").toUpperCase();
+      const side = direction ? " · " + direction : "";
+      if (oldStatus === undefined && trade.status === "active") {
+        showFlexarNotification("FLEXAR AI · Trade opened", market + side + " is now active. Stake: $" + Number(trade.stake || 0).toFixed(2) + " USDT.");
+      } else if (oldStatus === "active" && (trade.status === "won" || trade.status === "lost")) {
+        const pnl = Number(trade.result_amount || 0) - Number(trade.stake || 0);
+        const outcome = trade.status === "won" ? "Profit secured" : "Trade closed at a loss";
+        showFlexarNotification("FLEXAR AI · " + outcome, market + side + " · " + (pnl >= 0 ? "+" : "") + "$" + pnl.toFixed(2) + " USDT realized.");
+      }
+    });
+    tradeNotificationStateRef.current = snapshot;
+  }, [account.trades]);
 
   useEffect(() => {
     const handleInstallPrompt = (event) => {
