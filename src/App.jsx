@@ -1136,7 +1136,7 @@ function Activity({ account, setPage }) {
   const closedTrades=trades.filter(t=>["won","lost"].includes(t.status));
   const realizedProfit=closedTrades.reduce((sum,t)=>sum+Number(t.result_amount||0)-Number(t.stake||0),0);
   const todayKey=new Date().toLocaleDateString("en-CA");
-  const todayProfit=closedTrades.reduce((sum,t)=>new Date(t.opened_at||t.created_at||0).toLocaleDateString("en-CA")===todayKey?sum+Number(t.result_amount||0)-Number(t.stake||0):sum,0);
+  const todayProfit=closedTrades.reduce((sum,t)=>new Date(t.settled_at||t.opened_at||t.created_at||0).toLocaleDateString("en-CA")===todayKey?sum+Number(t.result_amount||0)-Number(t.stake||0):sum,0);
   const netProfit=realizedProfit+activeTrades.reduce((sum,t)=>sum+Number(t.unrealized_pnl||0),0);
   const activeOpenPnl=activeTrades.reduce((sum,t)=>sum+Number(t.unrealized_pnl||0),0);
   const activeCapital=activeTrades.reduce((sum,t)=>sum+Number(t.stake||0),0);
