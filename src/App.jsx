@@ -15,6 +15,11 @@ const ONBOARDING_COUNTRIES = ONBOARDING_COUNTRY_CODES.map((code) => ({
 
 const FLEXAR_APP_URL = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "");
 
+const withTimeout = (promise, ms, message = "Request timed out") => Promise.race([
+  promise,
+  new Promise((_, reject) => window.setTimeout(() => reject(new Error(message)), ms)),
+]);
+
 export default function App() {
   const [inMiniApp, setInMiniApp] = useState(false);
   const [page, setPage] = useState("home");
@@ -324,7 +329,11 @@ export default function App() {
           }
         }
       } else {
-        const { data, error } = await supabase.auth.getSession();
+        const { data, error } = await withTimeout(
+          supabase.auth.getSession(),
+          12000,
+          "Session restore timed out. Please check your connection and try again."
+        );
         if (!mounted) return;
         if (error) {
           setAuthError(error.message || "Could not restore your FLEXAR AI session.");
@@ -333,9 +342,21 @@ export default function App() {
       }
     };
 
-    initialize();
+    initialize().catch((error) => {
+      if (!mounted) return;
+      setAuthError(error?.message || "Could not restore your FLEXAR AI session.");
+      setLoading(false);
+    });
+
+    const authFallbackTimer = window.setTimeout(() => {
+      if (mounted) {
+        setAuthError((current) => current || "Connection is taking longer than expected. Please refresh and try again.");
+        setLoading(false);
+      }
+    }, 15000);
 
     return () => {
+      window.clearTimeout(authFallbackTimer);
       mounted = false;
       authSubscription.subscription.unsubscribe();
       window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
@@ -354,14 +375,19 @@ export default function App() {
     const loadAccount = async () => {
       setLoading(true);
 
-      const onboarding = await supabase.functions.invoke("account-onboarding", {
-        body: {
-          referral_code:
-            new URLSearchParams(window.location.search).get("ref") ||
-            localStorage.getItem("flexa_referral_code") ||
-            "",
-        },
-      });
+      let onboarding = { data: null, error: null };
+      try {
+        onboarding = await withTimeout(supabase.functions.invoke("account-onboarding", {
+          body: {
+            referral_code:
+              new URLSearchParams(window.location.search).get("ref") ||
+              localStorage.getItem("flexa_referral_code") ||
+              "",
+          },
+        }), 10000, "Account setup is taking too long.");
+      } catch (error) {
+        onboarding = { data: null, error };
+      }
 
       if (cancelled) return;
 
@@ -373,10 +399,21 @@ export default function App() {
 
       // Read the profile after onboarding so first-time users do not race
       // the profile upsert and get stuck with an empty profile/admin state.
-      const { data: profileData } = await supabase.from("profiles")
-        .select("id,display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference,ai_credits,ai_credits_used,ai_trading_enabled,ai_trade_mode,ai_autopilot_stake")
-        .eq("id", user.id)
-        .maybeSingle();
+      let profileData = null;
+      try {
+        const profileResult = await withTimeout(
+          supabase.from("profiles")
+            .select("id,display_name,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference,ai_credits,ai_credits_used,ai_trading_enabled,ai_trade_mode,ai_autopilot_stake")
+            .eq("id", user.id)
+            .maybeSingle(),
+          10000,
+          "Profile loading timed out."
+        );
+        profileData = profileResult.data || null;
+        if (profileResult.error) setAuthError(profileResult.error.message || "Could not load your profile.");
+      } catch (error) {
+        setAuthError(error?.message || "Could not load your profile.");
+      }
 
       if (cancelled) return;
       setProfile(profileData || null);
@@ -391,7 +428,17 @@ export default function App() {
         aiPreference: profileData.ai_preference || "",
       } : null);
 
-      const result = await getAccountData();
+      let result;
+      try {
+        result = await withTimeout(
+          getAccountData(),
+          12000,
+          "Account data is taking too long to load. Please refresh in a moment."
+        );
+      } catch (error) {
+        result = { ...EMPTY_ACCOUNT, error };
+        setAuthError(error?.message || "Could not load your FLEXAR AI account.");
+      }
       if (cancelled) return;
       setAccount(result);
       setLoading(false);
