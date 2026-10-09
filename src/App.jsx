@@ -311,12 +311,16 @@ export default function App() {
     let initialAuthResolved = false;
     const clearAuthFallback = () => {
       // Remember resolution even if the auth event arrives before the timer
-      // has been assigned below.
+      // has been assigned below. This helper is also used during cleanup, so
+      // it must not update React state.
       initialAuthResolved = true;
       if (authFallbackTimer !== null) {
         window.clearTimeout(authFallbackTimer);
         authFallbackTimer = null;
       }
+    };
+    const clearStaleConnectionWarning = () => {
+      if (!mounted) return;
       setAuthError((current) =>
         current === "Connection is taking longer than expected. Please refresh and try again."
           ? ""
@@ -328,7 +332,10 @@ export default function App() {
       if (!mounted) return;
 
       setUser(session?.user || null);
-      if (event === "INITIAL_SESSION" && !miniApp?.initData) clearAuthFallback();
+      if (event === "INITIAL_SESSION" && !miniApp?.initData) {
+        clearAuthFallback();
+        clearStaleConnectionWarning();
+      }
 
       if (event === "SIGNED_OUT") {
         setProfile(null);
@@ -351,6 +358,7 @@ export default function App() {
 
         if (error || data?.error) {
           clearAuthFallback();
+          clearStaleConnectionWarning();
           setAuthError(data?.error || error?.message || "Telegram authentication failed.");
           setLoading(false);
         } else if (data?.session?.access_token && data?.session?.refresh_token) {
@@ -360,14 +368,17 @@ export default function App() {
           });
           if (sessionError) {
             clearAuthFallback();
+            clearStaleConnectionWarning();
             setAuthError(sessionError.message || "Could not establish your FLEXAR AI session.");
             setLoading(false);
           } else {
             clearAuthFallback();
+            clearStaleConnectionWarning();
             setAuthError("");
           }
         } else {
           clearAuthFallback();
+          clearStaleConnectionWarning();
           setAuthError("Telegram authentication did not return a valid session.");
           setLoading(false);
         }
@@ -379,6 +390,7 @@ export default function App() {
         );
         if (!mounted) return;
         clearAuthFallback();
+        clearStaleConnectionWarning();
         if (error) {
           setAuthError(error.message || "Could not restore your FLEXAR AI session.");
         }
@@ -389,6 +401,7 @@ export default function App() {
     initialize().catch((error) => {
       if (!mounted) return;
       clearAuthFallback();
+      clearStaleConnectionWarning();
       setAuthError(error?.message || "Could not restore your FLEXAR AI session.");
       setLoading(false);
     });
