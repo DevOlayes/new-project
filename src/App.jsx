@@ -16,10 +16,20 @@ const ONBOARDING_COUNTRIES = ONBOARDING_COUNTRY_CODES.map((code) => ({
 
 const FLEXAR_APP_URL = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "");
 
-const withTimeout = (promise, ms, message = "Request timed out") => Promise.race([
-  promise,
-  new Promise((_, reject) => window.setTimeout(() => reject(new Error(message)), ms)),
-]);
+const withTimeout = (promise, ms, message = "Request timed out") =>
+  new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    Promise.resolve(promise).then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 
 export default function App() {
   const [inMiniApp, setInMiniApp] = useState(false);
