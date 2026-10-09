@@ -2239,3 +2239,23 @@ body{background:var(--bg)}
   50%{transform:translateX(150%)}
   100%{transform:translateX(300%)}
 }
+
+
+/* Shared FLEXAR dialog shell: deposit, withdrawal, AI mode, activation and credit info. */
+.referral-info-backdrop,
+.ai-activation-backdrop{
+  position:fixed!important;inset:0!important;z-index:305!important;
+  display:grid!important;place-items:center!important;padding:18px!important;
+  background:rgba(0,0,0,.70)!important;backdrop-filter:blur(12px)!important;
+}
+.referral-info-modal,
+.ai-activation-modal{
+  width:min(420px,calc(100vw - 28px))!important;max-height:min(86vh,720px)!important;
+  overflow:auto!important;margin:0!important;padding:20px!important;
+  border:1px solid var(--line)!important;border-radius:16px!important;
+  background:#06100d!important;box-shadow:0 28px 90px rgba(0,0,0,.62)!important;
+  animation:panelIn .22s ease both;
+}
+.ai-mode-backdrop,.ai-activation-backdrop{place-items:center!important}
+.ai-credit-add-button{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-height:30px;padding:7px 11px!important;border:1px solid rgba(3,252,125,.25)!important;border-radius:9px!important;background:var(--green)!important;color:#061009!important;font-size:9px!important;font-weight:900!important;cursor:pointer}
+.ai-credits-hero .ai-credit-add-button{margin-top:12px}
