@@ -2,7 +2,12 @@ import { supabase } from "./supabase";
 import { reportDiagnosticError } from "./diagnostics";
 
 // Account reads stay scoped by Supabase RLS; market instruments are public read-only metadata.
-export async function getAccountData() {
+let accountDataInFlight = null;
+
+// Multiple UI refresh paths can fire together (active-trade polling, AI
+// opportunity updates, and user actions). Share one in-flight snapshot so a
+// slow request cannot multiply into overlapping sets of 11 database reads.
+async function fetchAccountData() {
   if (!supabase) {
     return {
       wallets: [], trades: [], transactions: [], notifications: [], opportunities: [],
@@ -60,4 +65,12 @@ export async function getAccountData() {
     tradingAccess: access.data?.[0] || null,
     error: wallets.error || trades.error || transactions.error || notifications.error || opportunities.error || rewards.error || referrals.error || markets.error || plans.error || subscriptions.error || access.error
   };
+}
+
+export function getAccountData() {
+  if (accountDataInFlight) return accountDataInFlight;
+  accountDataInFlight = fetchAccountData().finally(() => {
+    accountDataInFlight = null;
+  });
+  return accountDataInFlight;
 }
