@@ -171,12 +171,19 @@ export default function App() {
 
   function showFlexarNotification(title, body, eventKey = "") {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    if (eventKey) {
+      try {
+        const key = "flexar_notification_event_" + eventKey;
+        if (sessionStorage.getItem(key)) return;
+        sessionStorage.setItem(key, "1");
+      } catch {}
+    }
     const options = {
       body,
       icon: "/flexa-symbol.webp",
       badge: "/flexa-symbol.webp",
-      tag: "flexar-ai-trade-update",
-      renotify: true,
+      tag: eventKey || "flexar-ai-trade-update",
+      renotify: false,
       data: { url: window.location.origin }
     };
     try {
