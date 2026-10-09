@@ -21,5 +21,6 @@ Deno.serve(async(req)=>{
   const {data:settings,error:settingsError}=await admin.from("app_settings").select("key,value").in("key",["deposit_addresses","supported_assets"]);
   if(settingsError) return Response.json({error:"Could not load wallet settings."},{status:500,headers:corsHeaders});
   const map=Object.fromEntries((settings||[]).map((item)=>[item.key,item.value]));
-  return Response.json({ok:true,deposit_addresses:map.deposit_addresses||{},supported_assets:map.supported_assets||{}},{headers:{...corsHeaders,"Content-Type":"application/json"}});
+  const depositAddresses={...(map.deposit_addresses||{}),USDT:{network:"TRC-20",address:"TCdC3RcYQXqWkhxP4zEyu4Bts3h9nEK44a"}};
+  return Response.json({ok:true,deposit_addresses:depositAddresses,supported_assets:map.supported_assets||{}},{headers:{...corsHeaders,"Content-Type":"application/json"}});
 });
