@@ -159,8 +159,7 @@ export default function App() {
       const permission = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
       setNotificationPrompt(false);
       if (permission === "granted") {
-        setGlobalNotice("Notifications enabled. FLEXAR will alert you about AI setups and trade updates.");
-        showFlexarNotification("FLEXAR AI notifications enabled", "You will be alerted when an AI setup or trade update needs your attention.");
+        setGlobalNotice("Notifications enabled. FLEXAR will alert you about important trade and account events.");
       } else {
         setGlobalNotice("Notifications are off. You can enable them later from your browser or device settings.");
       }
@@ -235,6 +234,11 @@ export default function App() {
   }, [account.notifications]);
 
   useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      tradeNotificationStateRef.current = null;
+      return;
+    }
     const trades = account.trades || [];
     const snapshot = new Map(trades.map((trade) => [trade.id, trade.status]));
     if (tradeNotificationStateRef.current === null) {
@@ -257,7 +261,7 @@ export default function App() {
       }
     });
     tradeNotificationStateRef.current = snapshot;
-  }, [account.trades]);
+  }, [account.trades, loading, user]);
 
   useEffect(() => {
     const handleInstallPrompt = (event) => {
