@@ -25,7 +25,7 @@ Deno.serve(async(req)=>{
     const action=body.action||"overview";
 
     if(action==="overview"){
-      const [users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets,deposits]=await Promise.all([
+      const [users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets]=await Promise.all([
         admin.from("profiles").select("id,display_name,telegram_username,email,is_admin,created_at,last_login_provider").order("created_at",{ascending:false}).limit(200),
         admin.from("wallet_transactions").select("id,user_id,type,direction,amount,status,reference,created_at").order("created_at",{ascending:false}).limit(200),
         admin.from("trades").select("id,user_id,asset,direction,stake,status,result_amount,opened_at,settled_at").order("opened_at",{ascending:false}).limit(200),
@@ -38,19 +38,11 @@ Deno.serve(async(req)=>{
         admin.from("referrals").select("id,referrer_id,referred_user_id,reward_amount,status,created_at,rewarded_at").order("created_at",{ascending:false}).limit(200),
         admin.from("app_settings").select("*").order("key"),
         admin.from("adaptive_model_weights").select("*").order("symbol"),
-        admin.from("wallets").select("id,user_id,asset,network,available_balance,locked_balance,updated_at").order("updated_at",{ascending:false}).limit(500),
-        admin.from("deposit_requests").select("id,user_id,amount,tx_hash,status,admin_note,created_at,reviewed_at").order("created_at",{ascending:false}).limit(500)
+        admin.from("wallets").select("id,user_id,asset,network,available_balance,locked_balance,updated_at").order("updated_at",{ascending:false}).limit(500)
       ]);
-      return json({users:users.data||[],transactions:transactions.data||[],trades:trades.data||[],opportunities:opportunities.data||[],learning:learning.data||[],markets:markets.data||[],plans:plans.data||[],subscriptions:subs.data||[],rewards:rewards.data||[],referrals:referrals.data||[],settings:settings.data||[],adaptive:jobs.data||[],wallets:wallets.data||[],deposits:deposits.data||[],errors:[users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets,deposits].filter(x=>x.error).map(x=>x.error.message)});
+      return json({users:users.data||[],transactions:transactions.data||[],trades:trades.data||[],opportunities:opportunities.data||[],learning:learning.data||[],markets:markets.data||[],plans:plans.data||[],subscriptions:subs.data||[],rewards:rewards.data||[],referrals:referrals.data||[],settings:settings.data||[],adaptive:jobs.data||[],wallets:wallets.data||[],errors:[users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets].filter(x=>x.error).map(x=>x.error.message)});
     }
 
-    if(action==="review_deposit"){
-      const {request_id,decision,note=null}=body;
-      if(!request_id||!["approve","reject"].includes(decision))return json({error:"Invalid deposit review request."},400);
-      const {data,error}=await admin.rpc("review_usdt_deposit",{p_request_id:request_id,p_admin_id:user.id,p_decision:decision,p_note:typeof note==="string"?note.slice(0,500):null});
-      if(error)return json({error:error.message},400);
-      return json(data||{ok:true});
-    }
     if(action==="update_setting"){
       const {key,value}=body; if(!key) return json({error:"key required"},400);
       const {error}=await admin.from("app_settings").upsert({key,value,updated_at:new Date().toISOString()},{onConflict:"key"});
