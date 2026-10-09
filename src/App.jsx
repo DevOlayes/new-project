@@ -298,11 +298,20 @@ export default function App() {
     let mounted = true;
 
     let authFallbackTimer = null;
+    let initialAuthResolved = false;
     const clearAuthFallback = () => {
+      // Remember resolution even if the auth event arrives before the timer
+      // has been assigned below.
+      initialAuthResolved = true;
       if (authFallbackTimer !== null) {
         window.clearTimeout(authFallbackTimer);
         authFallbackTimer = null;
       }
+      setAuthError((current) =>
+        current === "Connection is taking longer than expected. Please refresh and try again."
+          ? ""
+          : current
+      );
     };
 
     const { data: authSubscription } = supabase.auth.onAuthStateChange((event, session) => {
@@ -374,15 +383,17 @@ export default function App() {
       setLoading(false);
     });
 
-    authFallbackTimer = window.setTimeout(() => {
-      authFallbackTimer = null;
-      if (mounted) {
-        const timeoutError = new Error("Initial authentication state was not resolved within 15 seconds.");
-        reportDiagnosticError(timeoutError, "auth:initial_session_timeout");
-        setAuthError((current) => current || "Connection is taking longer than expected. Please refresh and try again.");
-        setLoading(false);
-      }
-    }, 15000);
+    if (!initialAuthResolved) {
+      authFallbackTimer = window.setTimeout(() => {
+        authFallbackTimer = null;
+        if (mounted && !initialAuthResolved) {
+          const timeoutError = new Error("Initial authentication state was not resolved within 15 seconds.");
+          reportDiagnosticError(timeoutError, "auth:initial_session_timeout");
+          setAuthError((current) => current || "Connection is taking longer than expected. Please refresh and try again.");
+          setLoading(false);
+        }
+      }, 15000);
+    }
 
     return () => {
       clearAuthFallback();
