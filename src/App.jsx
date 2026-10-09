@@ -289,10 +289,19 @@ export default function App() {
 
     let mounted = true;
 
+    let authFallbackTimer = null;
+    const clearAuthFallback = () => {
+      if (authFallbackTimer !== null) {
+        window.clearTimeout(authFallbackTimer);
+        authFallbackTimer = null;
+      }
+    };
+
     const { data: authSubscription } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
       setUser(session?.user || null);
+      if (event === "INITIAL_SESSION" && !miniApp?.initData) clearAuthFallback();
 
       if (event === "SIGNED_OUT") {
         setProfile(null);
@@ -314,6 +323,7 @@ export default function App() {
         if (!mounted) return;
 
         if (error || data?.error) {
+          clearAuthFallback();
           setAuthError(data?.error || error?.message || "Telegram authentication failed.");
           setLoading(false);
         } else if (data?.session?.access_token && data?.session?.refresh_token) {
@@ -322,11 +332,17 @@ export default function App() {
             refresh_token: data.session.refresh_token,
           });
           if (sessionError) {
+            clearAuthFallback();
             setAuthError(sessionError.message || "Could not establish your FLEXAR AI session.");
             setLoading(false);
           } else {
+            clearAuthFallback();
             setAuthError("");
           }
+        } else {
+          clearAuthFallback();
+          setAuthError("Telegram authentication did not return a valid session.");
+          setLoading(false);
         }
       } else {
         const { data, error } = await withTimeout(
@@ -335,6 +351,7 @@ export default function App() {
           "Session restore timed out. Please check your connection and try again."
         );
         if (!mounted) return;
+        clearAuthFallback();
         if (error) {
           setAuthError(error.message || "Could not restore your FLEXAR AI session.");
         }
@@ -344,11 +361,13 @@ export default function App() {
 
     initialize().catch((error) => {
       if (!mounted) return;
+      clearAuthFallback();
       setAuthError(error?.message || "Could not restore your FLEXAR AI session.");
       setLoading(false);
     });
 
-    const authFallbackTimer = window.setTimeout(() => {
+    authFallbackTimer = window.setTimeout(() => {
+      authFallbackTimer = null;
       if (mounted) {
         setAuthError((current) => current || "Connection is taking longer than expected. Please refresh and try again.");
         setLoading(false);
@@ -356,7 +375,7 @@ export default function App() {
     }, 15000);
 
     return () => {
-      window.clearTimeout(authFallbackTimer);
+      clearAuthFallback();
       mounted = false;
       authSubscription.subscription.unsubscribe();
       window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
