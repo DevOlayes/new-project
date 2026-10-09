@@ -2,6 +2,7 @@ import { Component, useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
+import { reportDiagnosticError } from "./lib/diagnostics";
 
 const nav = [["home","⌂","Home"],["trade","✦","AI Trade"],["activity","◷","Activity"],["referral","↗","Referral"],["profile","◉","Profile"]];
 
@@ -376,6 +377,8 @@ export default function App() {
     authFallbackTimer = window.setTimeout(() => {
       authFallbackTimer = null;
       if (mounted) {
+        const timeoutError = new Error("Initial authentication state was not resolved within 15 seconds.");
+        reportDiagnosticError(timeoutError, "auth:initial_session_timeout");
         setAuthError((current) => current || "Connection is taking longer than expected. Please refresh and try again.");
         setLoading(false);
       }
