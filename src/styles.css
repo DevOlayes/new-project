@@ -2267,3 +2267,26 @@ body{background:var(--bg)}
 }
 .ai-credit-add-button{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-height:30px;padding:7px 11px!important;border:1px solid rgba(3,252,125,.25)!important;border-radius:9px!important;background:var(--green)!important;color:#061009!important;font-size:9px!important;font-weight:900!important;cursor:pointer}
 .ai-credits-hero .ai-credit-add-button{margin-top:12px}
+
+
+/* Clear, premium access guidance when neither a plan nor AI credits are available. */
+.subscription-lock{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:14px;
+  padding:13px 14px;
+  border:1px solid rgba(255,118,118,.22);
+  border-radius:13px;
+  background:linear-gradient(135deg,rgba(255,118,118,.075),rgba(255,255,255,.015));
+}
+.subscription-lock b{
+  color:#ffaaaa;
+  font-size:10px;
+  line-height:1.4;
+}
+.subscription-lock span{
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.55;
+}
