@@ -144,7 +144,7 @@ Deno.serve(async (req: Request) => {
   });
   if (creditError) {
     const message = String(creditError.message || "");
-    if (/already been credited or submitted|duplicate key/i.test(message)) {
+    if (/already been credited|already been claimed|already been submitted|cannot be reused|duplicate key/i.test(message)) {
       return json({ error: "This transaction hash has already been credited or claimed. Each on-chain transfer can only fund one account." }, 409);
     }
     return json({ error: "The transaction was verified, but FLEXAR could not update your wallet. Please contact support with this TXID; do not submit a different transaction." }, 500);
