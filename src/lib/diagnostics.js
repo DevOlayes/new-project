@@ -199,21 +199,26 @@ export function initializeDiagnostics() {
 
   // Capture initial page-load timing without collecting URL query strings or user content.
   window.addEventListener("load", () => {
-    const navEntry = performance.getEntriesByType("navigation")[0];
-    if (navEntry) {
-      record({
-        level: navEntry.loadEventEnd - navEntry.startTime > 12000 ? "warning" : "info",
-        source: "performance",
-        eventName: "page_load_timing",
-        message: "Page load timing captured",
-        durationMs: navEntry.loadEventEnd - navEntry.startTime,
-        metadata: {
-          domContentLoadedMs: Math.round(navEntry.domContentLoadedEventEnd - navEntry.startTime),
-          responseMs: Math.round(navEntry.responseEnd - navEntry.requestStart),
-        },
-      });
-    }
-    void flushDiagnostics();
+    // Navigation timing values can still be zero while the load handler runs.
+    // Read them on the next task so loadEventEnd has been populated.
+    window.setTimeout(() => {
+      const navEntry = performance.getEntriesByType("navigation")[0];
+      if (navEntry) {
+        const durationMs = Math.max(0, Math.round(navEntry.loadEventEnd - navEntry.startTime));
+        record({
+          level: durationMs > 12000 ? "warning" : "info",
+          source: "performance",
+          eventName: "page_load_timing",
+          message: "Page load timing captured",
+          durationMs,
+          metadata: {
+            domContentLoadedMs: Math.round(navEntry.domContentLoadedEventEnd - navEntry.startTime),
+            responseMs: Math.round(navEntry.responseEnd - navEntry.requestStart),
+          },
+        });
+      }
+      void flushDiagnostics();
+    }, 0);
   }, { once: true });
 }
 
