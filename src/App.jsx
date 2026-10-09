@@ -211,15 +211,22 @@ export default function App() {
     if (!aiEngineActive && !activeTradeExists) return;
     let cancelled = false;
     const poll = async () => {
+      // Avoid background-tab database traffic; refresh when the user returns.
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
       try {
         const result = await getAccountData();
         if (!cancelled) setAccount(result);
       } catch {}
     };
-    const timer = window.setInterval(poll, 5000);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    const timer = window.setInterval(poll, 15000);
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [user, aiEngineActive, account.trades?.some((trade) => trade.status === "active")]);
 
