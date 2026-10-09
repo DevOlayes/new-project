@@ -33,7 +33,9 @@ function parseAmountUnits(value: unknown): bigint | null {
   catch { return null; }
 }
 function normalizedContract(value: unknown): string {
-  let v = String(value || "").toLowerCase().replace(/^0x/,"");
+  const raw = String(value || "").trim();
+  if (raw.toLowerCase() === USDT_CONTRACT.toLowerCase()) return USDT_CONTRACT_HEX;
+  let v = raw.toLowerCase().replace(/^0x/,"");
   if (v.startsWith("41") && v.length === 42) v = v.slice(2);
   return v;
 }
