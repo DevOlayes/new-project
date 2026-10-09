@@ -447,7 +447,7 @@ export default function App() {
         } catch {}
         if (error?.status === 402 || error?.context?.status === 402) {
           setAiEngineActive(false);
-          notify("Your AI credits are finished. Buy 5 AI credits for $8 to continue.");
+          notify("Your AI credits are running low. Buy a package to continue using FLEXAR AI.");
           setPage("trade");
           return;
         }
