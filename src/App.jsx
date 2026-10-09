@@ -222,7 +222,8 @@ export default function App() {
     }
     if (notificationSeenRef.current === key) return;
     notificationSeenRef.current = key;
-    const type = String(latest.type || "").toLowerCase();\n    if (!["trade_opened","trade_profit","trade_loss","trade_won","trade_lost","deposit_completed","withdrawal_completed","withdrawal_failed"].includes(type)) return;\n    showFlexarNotification(latest.title || "FLEXAR AI update", latest.message || latest.body || "You have an important FLEXAR account update.", "db-" + key);
+    const type = String(latest.type || "").toLowerCase();
+    if (!["trade_opened","trade_profit","trade_loss","trade_won","trade_lost","deposit_completed","withdrawal_completed","withdrawal_failed"].includes(type)) return;\n    showFlexarNotification(latest.title || "FLEXAR AI update", latest.message || latest.body || "You have an important FLEXAR account update.", "db-" + key);
   }, [account.notifications]);
 
   useEffect(() => {
