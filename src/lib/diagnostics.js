@@ -1,5 +1,3 @@
-import { supabase } from "./supabase";
-
 const DIAGNOSTIC_ENDPOINT = "/functions/v1/diagnostic-ingest";
 const SLOW_REQUEST_MS = 10000;
 const MAX_QUEUE = 60;
@@ -10,6 +8,7 @@ let initialized = false;
 let queue = [];
 let flushInProgress = false;
 let flushTimer = null;
+let diagnosticClient = null;
 let originalFetch = null;
 
 const makeId = () => {
@@ -86,11 +85,11 @@ function record(event) {
 }
 
 async function flushDiagnostics() {
-  if (flushInProgress || queue.length === 0 || !supabase) return;
+  if (flushInProgress || queue.length === 0 || !diagnosticClient) return;
   flushInProgress = true;
   const batch = queue.splice(0, FLUSH_BATCH);
   try {
-    const { error } = await supabase.functions.invoke("diagnostic-ingest", {
+    const { error } = await diagnosticClient.functions.invoke("diagnostic-ingest", {
       body: { events: batch },
     });
     if (error) {
@@ -112,6 +111,26 @@ function requestUrl(input) {
   if (typeof input === "string") return input;
   if (input && typeof input.url === "string") return input.url;
   return "";
+}
+
+export function setDiagnosticClient(client) { diagnosticClient = client || null; }
+
+export async function diagnosticFetch(input, init = {}) {
+  const baseFetch = originalFetch || (typeof window !== "undefined" ? window.fetch.bind(window) : fetch);
+  const url = requestUrl(input);
+  if (!initialized || isDiagnosticRequest(url)) return baseFetch(input, init);
+  const started = performance.now();
+  const method = String(init.method || input?.method || "GET").toUpperCase();
+  try {
+    const response = await baseFetch(input, init);
+    const durationMs = performance.now() - started;
+    if (response.status >= 400) record({ level: response.status >= 500 ? "error" : "warning", source: "network", eventName: "http_request_failed", message: "Request returned HTTP " + response.status, requestPath: url, httpStatus: response.status, durationMs, metadata: { method } });
+    else if (durationMs >= SLOW_REQUEST_MS) record({ level: "warning", source: "performance", eventName: "slow_http_request", message: "Request took longer than 10 seconds", requestPath: url, httpStatus: response.status, durationMs, metadata: { method } });
+    return response;
+  } catch (error) {
+    record({ level: "error", source: "network", eventName: "http_request_exception", message: error?.message || "Network request failed", stack: error?.stack || "", requestPath: url, durationMs: performance.now() - started, metadata: { method } });
+    throw error;
+  }
 }
 
 export function initializeDiagnostics() {
@@ -171,57 +190,6 @@ export function initializeDiagnostics() {
   window.addEventListener("offline", () => record({
     level: "warning", source: "network", eventName: "network_offline", message: "Browser reports no network connection",
   }));
-
-  if (!window.__flexarDiagnosticFetchPatched) {
-    originalFetch = window.fetch.bind(window);
-    window.fetch = async (input, init = {}) => {
-      const url = requestUrl(input);
-      if (isDiagnosticRequest(url)) return originalFetch(input, init);
-      const started = performance.now();
-      const method = String(init.method || input?.method || "GET").toUpperCase();
-      try {
-        const response = await originalFetch(input, init);
-        const durationMs = performance.now() - started;
-        if (response.status >= 400) {
-          record({
-            level: response.status >= 500 ? "error" : "warning",
-            source: "network",
-            eventName: "http_request_failed",
-            message: "Request returned HTTP " + response.status,
-            requestPath: url,
-            httpStatus: response.status,
-            durationMs,
-            metadata: { method },
-          });
-        } else if (durationMs >= SLOW_REQUEST_MS) {
-          record({
-            level: "warning",
-            source: "performance",
-            eventName: "slow_http_request",
-            message: "Request took longer than 10 seconds",
-            requestPath: url,
-            httpStatus: response.status,
-            durationMs,
-            metadata: { method },
-          });
-        }
-        return response;
-      } catch (error) {
-        record({
-          level: "error",
-          source: "network",
-          eventName: "http_request_exception",
-          message: error?.message || "Network request failed",
-          stack: error?.stack || "",
-          requestPath: url,
-          durationMs: performance.now() - started,
-          metadata: { method },
-        });
-        throw error;
-      }
-    };
-    window.__flexarDiagnosticFetchPatched = true;
-  }
 
   flushTimer = window.setInterval(() => void flushDiagnostics(), FLUSH_INTERVAL_MS);
   window.addEventListener("pagehide", () => void flushDiagnostics());
