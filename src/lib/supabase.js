@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { diagnosticFetch, setDiagnosticClient } from "./diagnostics";
 
 // Flexa AI uses only Supabase's browser-safe project URL and publishable key.
 // These fallback values let the Cloudflare deployment work even when VITE_*
@@ -14,5 +15,8 @@ const supabasePublishableKey =
 
 export const supabase = createClient(
   supabaseUrl,
-  supabasePublishableKey
+  supabasePublishableKey,
+  { global: { fetch: diagnosticFetch } }
 );
+
+setDiagnosticClient(supabase);
