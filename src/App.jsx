@@ -716,6 +716,14 @@ class AppErrorBoundary extends Component {
 
   componentDidCatch(error) {
     console.error("FLEXAR page error:", error);
+    reportDiagnosticError(error, "page:" + (this.props.page || "unknown"));
+  }
+
+  componentDidUpdate(previousProps) {
+    // A page-level crash must not poison every page visited afterward.
+    if (previousProps.page !== this.props.page && this.state.hasError) {
+      this.setState({ hasError: false, message: "" });
+    }
   }
 
   render() {
