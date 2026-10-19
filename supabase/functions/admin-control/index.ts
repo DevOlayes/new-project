@@ -127,7 +127,7 @@ Deno.serve(async(req)=>{
       if("username" in patch){
         const username=String(patch.username||"").trim().replace(/^@/,"").toLowerCase();
         if(!/^[a-z0-9_]{3,24}$/.test(username))return json({error:"Username must be 3–24 letters, numbers or underscores."},400);
-        const {data:existingUsername,error:usernameError}=await admin.from("profiles").select("id").ilike("username",username).neq("id",user_id).maybeSingle();
+        const {data:existingUsername,error:usernameError}=await admin.from("profiles").select("id").eq("username",username).neq("id",user_id).maybeSingle();
         if(usernameError)return json({error:"Could not validate username availability."},400);
         if(existingUsername)return json({error:"That username is already in use. Choose another."},409);
         clean.username=username;
@@ -144,6 +144,7 @@ Deno.serve(async(req)=>{
       const {error}=await admin.from("profiles").update(clean).eq("id",user_id).eq("is_admin",false);
       if(error){
         if(authEmail)console.error("Profile update failed after auth email update for",user_id,error.message);
+        if(error.code==="23505"&&String(error.message||"").includes("profiles_username_lower_unique_idx"))return json({error:"That username is already in use. Choose another."},409);
         return json({error:error.message},400);
       }
       await recordAudit(user.id,"update_user","profile",String(user_id),{fields:Object.keys(clean)});
