@@ -1,4 +1,5 @@
 import { Component, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "./lib/supabase";
 import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
@@ -1039,56 +1040,69 @@ function WalletActions({ action, onClose, account, refreshAccount, assetPrices =
 
 function AssetSelector({ assets, value, onChange, label }) {
   const [open, setOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({});
+  const [menuPosition, setMenuPosition] = useState(null);
   const selectorRef = useRef(null);
   const menuRef = useRef(null);
   const selected = assets.find((asset) => asset.asset === value) || assets[0];
 
+  const updatePosition = () => {
+    const rect = selectorRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const width = Math.min(280, Math.max(220, viewportWidth - 24));
+    const left = Math.max(12, Math.min(rect.right - width, viewportWidth - width - 12));
+    const below = Math.max(0, viewportHeight - rect.bottom - 16);
+    const above = Math.max(0, rect.top - 16);
+    const expectedHeight = Math.min(300, assets.length * 54 + (assets.length > 4 ? 34 : 12));
+    const showBelow = below >= Math.min(expectedHeight, 160) || below >= above;
+    const available = Math.max(48, (showBelow ? below : above) - 8);
+    const maxHeight = Math.max(48, Math.min(300, available));
+    const top = showBelow ? Math.max(8, Math.min(rect.bottom + 7, viewportHeight - maxHeight - 8)) : Math.max(8, rect.top - Math.min(maxHeight, expectedHeight) - 7);
+    setMenuPosition({ position: "fixed", left, top, width, maxHeight });
+  };
+
   useEffect(() => {
     if (!open) return;
-    const updatePosition = () => {
-      const rect = selectorRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const width = Math.min(280, window.innerWidth - 24);
-      const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
-      const below = window.innerHeight - rect.bottom - 18;
-      const above = rect.top - 18;
-      const showBelow = below >= Math.min(190, above) || below >= above;
-      const maxHeight = Math.max(120, Math.min(280, (showBelow ? below : above) - 8));
-      setMenuPosition({ position: "fixed", left, width, maxHeight, top: showBelow ? rect.bottom + 7 : "auto", bottom: showBelow ? "auto" : window.innerHeight - rect.top + 7 });
-    };
     const closeOutside = (event) => {
       if (!selectorRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setOpen(false);
     };
     const closeEscape = (event) => { if (event.key === "Escape") setOpen(false); };
+    const handleScroll = (event) => {
+      if (menuRef.current && event.target !== menuRef.current && !menuRef.current.contains(event.target)) setOpen(false);
+    };
     updatePosition();
     document.addEventListener("pointerdown", closeOutside);
     document.addEventListener("keydown", closeEscape);
+    document.addEventListener("scroll", handleScroll, true);
     window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
     return () => {
       document.removeEventListener("pointerdown", closeOutside);
       document.removeEventListener("keydown", closeEscape);
+      document.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [open]);
+  }, [open, assets.length]);
 
   if (!selected) return null;
-  return <div className="asset-selector" ref={selectorRef}>
-    <button type="button" className="asset-selector-trigger" aria-label={label} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
-      <img src={selected.icon} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
-      <span><strong>{selected.symbol}</strong><small>{selected.label}</small></span>
-      <i aria-hidden="true">{open ? "⌃" : "⌄"}</i>
-    </button>
-    {open && <div ref={menuRef} style={menuPosition} className="asset-selector-menu" role="listbox" aria-label={label} onWheel={(event) => event.stopPropagation()} onTouchMove={(event) => event.stopPropagation()}>
+  const menu = open && menuPosition ? createPortal(
+    <div ref={menuRef} style={menuPosition} className="asset-selector-menu" role="listbox" aria-label={label} onWheel={(event) => event.stopPropagation()} onTouchMove={(event) => event.stopPropagation()}>
       {assets.length > 4 && <div className="asset-selector-scroll-hint"><span>SCROLL TO VIEW ASSETS</span><span aria-hidden="true">↕</span></div>}
       {assets.map((asset) => <button type="button" role="option" aria-selected={asset.asset === value} key={asset.asset} className={asset.asset === value ? "asset-selector-option selected" : "asset-selector-option"} onClick={() => { onChange(asset.asset); setOpen(false); }}>
         <img src={asset.icon} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
         <span><strong>{asset.label}</strong><small>{asset.symbol}{asset.network && asset.network !== "Internal" ? " · " + asset.network : ""}</small></span>
         {asset.asset === value && <b aria-hidden="true">✓</b>}
       </button>)}
-    </div>}
+    </div>, document.body
+  ) : null;
+
+  return <div className="asset-selector" ref={selectorRef}>
+    <button type="button" className="asset-selector-trigger" aria-label={label} aria-haspopup="listbox" aria-expanded={open} onClick={() => { if (open) { setOpen(false); return; } updatePosition(); setOpen(true); }}>
+      <img src={selected.icon} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
+      <span><strong>{selected.symbol}</strong><small>{selected.label}</small></span>
+      <i aria-hidden="true">{open ? "⌃" : "⌄"}</i>
+    </button>
+    {menu}
   </div>;
 }
 function Referral({ account, profile }) {
