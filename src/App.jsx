@@ -381,7 +381,6 @@ export default function App() {
           setAuthError(error.message || "Could not restore your FLEXAR AI session.");
         }
         if (!data?.session) setLoading(false);
-      }
     };
 
     initialize().catch((error) => {
