@@ -95,7 +95,7 @@ Additional high-priority gap: the currently deployed `private.request_withdrawal
 - Withdrawal history now exposes the saved administrator review reason, destination, and transaction hash in the expandable transaction details.
 - A rejected withdrawal is stored with the supported `failed` status and shown to users as **Transaction failed**; the saved failure reason and refund entry remain available in history. The failed status uses the existing theme's red status treatment, while the existing amount styling is preserved.
 - The rejection migration now creates a separate `withdrawal_refund` credit ledger entry in the same database transaction as the balance refund, so the refund is explicitly visible for reconciliation.
-- The Wrangler `previews` configuration was added after the Cloudflare preview build failed because the config did not contain the required block. GitHub's frontend build verification passed after the initial config fix; the latest SQL/UI follow-up still needs a fresh build result.
+- The Wrangler `previews` configuration was added after the Cloudflare preview build failed because the config did not contain the required block. GitHub frontend build verification passed on commit `6cac2d7686f214bdeee4a40df985bd0123e3142b`: https://github.com/DevOlayes/new-project/actions/runs/39218518467. The withdrawal-review RPC response was also corrected to return `failed` after rejection, matching the stored database status. This build validates the frontend compile only, not the SQL migration or financial workflows.
 
 These additions remain on the draft branch. No migration has been applied to production, and none of the new database functions has been validated against a non-production database yet.
 
