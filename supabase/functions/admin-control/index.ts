@@ -31,7 +31,7 @@ Deno.serve(async(req)=>{
       const expiryResult = await admin.rpc("expire_incomplete_payment_requests");
       if (expiryResult.error) console.warn("Payment expiry check failed", expiryResult.error.message);
       const [users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets,depositRequests,paymentOrders,aiCreditOrders,diagnostics,creditTransactions,modelStats,audit,usersCount,transactionsCount,tradesCount,opportunitiesCount,aiCreditOrdersCount]=await Promise.all([
-        admin.from("profiles").select("id,display_name,telegram_username,email,is_admin,created_at,last_login_provider").order("created_at",{ascending:false}).limit(500),
+        admin.from("profiles").select("id,username,display_name,telegram_username,email,is_admin,is_deleted,created_at,last_login_provider").order("created_at",{ascending:false}).limit(500),
         admin.from("wallet_transactions").select("id,user_id,type,direction,amount,status,reference,tx_hash,metadata,created_at,completed_at").order("created_at",{ascending:false}).limit(500),
         admin.from("trades").select("id,user_id,asset,direction,stake,status,result_amount,opened_at,settled_at").order("opened_at",{ascending:false}).limit(500),
         admin.from("ai_opportunities").select("id,symbol,direction,signal_score,status,outcome,model_version,entry_window_start,created_at").order("created_at",{ascending:false}).limit(300),
@@ -101,6 +101,33 @@ Deno.serve(async(req)=>{
       await recordAudit(user.id,"adjust_wallet","wallet",String(user_id),{asset,network,amount:numericAmount,direction,reason,adjustment_id:adjustment?.id||null});
       return json({ok:true,adjustment});
     }
+    if(action==="update_user"){
+      const {user_id,patch={}}=body;
+      if(!user_id||!patch||typeof patch!=="object"||Array.isArray(patch))return json({error:"A user and profile changes are required."},400);
+      const clean:any={};
+      if("display_name" in patch){if(typeof patch.display_name!=="string"||!patch.display_name.trim()||patch.display_name.length>100)return json({error:"Display name must be 1–100 characters."},400);clean.display_name=patch.display_name.trim();}
+      if("username" in patch){const username=String(patch.username||"").trim().replace(/^@/,"");if(!/^[A-Za-z0-9_]{3,24}$/.test(username))return json({error:"Username must be 3–24 letters, numbers or underscores."},400);clean.username=username.toLowerCase();}
+      if("email" in patch){const email=String(patch.email||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({error:"A valid email address is required."},400);const {error:authError}=await admin.auth.admin.updateUserById(user_id,{email});if(authError)return json({error:authError.message},400);clean.email=email;}
+      if(!Object.keys(clean).length)return json({error:"No supported profile changes supplied."},400);
+      clean.updated_at=new Date().toISOString();
+      const {error}=await admin.from("profiles").update(clean).eq("id",user_id).eq("is_admin",false);
+      if(error)return json({error:error.message},400);
+      await recordAudit(user.id,"update_user","profile",String(user_id),{fields:Object.keys(clean)});
+      return json({ok:true});
+    }
+    if(action==="delete_user"){
+      const {user_id}=body;if(!user_id)return json({error:"user_id required"},400);
+      const {data:target,error:targetError}=await admin.from("profiles").select("id,is_admin,is_deleted").eq("id",user_id).maybeSingle();
+      if(targetError)return json({error:targetError.message},400);
+      if(!target||target.is_admin)return json({error:"Only customer accounts can be deactivated here."},400);
+      if(target.is_deleted)return json({ok:true});
+      const {error:banError}=await admin.auth.admin.updateUserById(user_id,{ban_duration:"876000h"});
+      if(banError)return json({error:banError.message},400);
+      const {error}=await admin.from("profiles").update({is_deleted:true,deleted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",user_id).eq("is_admin",false);
+      if(error)return json({error:error.message},400);
+      await recordAudit(user.id,"deactivate_user","profile",String(user_id),{preserveFinancialHistory:true});
+      return json({ok:true});
+    }
     if(action==="update_setting"){
       const {key,value}=body; if(!key) return json({error:"key required"},400);
       const {error}=await admin.from("app_settings").upsert({key,value,updated_at:new Date().toISOString()},{onConflict:"key"});
@@ -132,11 +159,11 @@ Deno.serve(async(req)=>{
       const {error}=await admin.from("user_subscriptions").update({status:"cancelled",auto_renew:false,updated_at:new Date().toISOString()}).eq("id",subscription_id);
       if(error)return json({error:error.message},400);await recordAudit(user.id,"cancel_subscription","user_subscription",String(subscription_id),{});return json({ok:true});
     }
-    if(action==="set_user_admin"){
+    if(action==="set_admin_access"){
       const {user_id,is_admin}=body;if(!user_id||typeof is_admin!=="boolean")return json({error:"invalid request"},400);
       if(user_id===user.id&&is_admin===false)return json({error:"You cannot remove your own admin access from this panel."},400);
       const {error}=await admin.from("profiles").update({is_admin,updated_at:new Date().toISOString()}).eq("id",user_id);
-      if(error)return json({error:error.message},400);await recordAudit(user.id,"set_user_admin","profile",String(user_id),{is_admin});return json({ok:true});
+      if(error)return json({error:error.message},400);await recordAudit(user.id,"set_admin_access","profile",String(user_id),{is_admin});return json({ok:true});
     }
     return json({error:"Unknown action"},400);
   }catch(e){return json({error:e instanceof Error?e.message:"Request failed"},401);}
