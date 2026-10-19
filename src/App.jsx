@@ -1364,7 +1364,7 @@ function AdminGrantSubscription({users,plans,onAction}){
 
 function Kpi({label,value}){return <div className="admin-kpi"><small>{label}</small><strong>{value}</strong></div>}
 function AdminPanel({title,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div>{children}</section>}
-function AdminTable({title,columns,children,emptyMessage="No records to display."}){const hasRows=Array.isArray(children)?children.some(child=>child!==null&&child!==false):Boolean(children);return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div><div className="admin-table-scroll" style={{"--admin-columns":columns.length}}><div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>{hasRows?children:<div className="admin-empty-row">{emptyMessage}</div>}</div></section>}
+function AdminTable({title,columns,children,emptyMessage="No records to display."}){const hasRows=Array.isArray(children)?children.flat(Infinity).some(child=>child!==null&&child!==false&&child!==undefined):Boolean(children);return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div><div className="admin-table-scroll" style={{"--admin-columns":columns.length}}><div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>{hasRows?children:<div className="admin-empty-row">{emptyMessage}</div>}</div></section>}
 function AdminWithdrawals({transactions,onAction,userName=(id)=>String(id||"").slice(0,8)+"…"}){
   const [notes,setNotes]=useState({});
   const [hashes,setHashes]=useState({});
