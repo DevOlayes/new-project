@@ -1435,14 +1435,17 @@ function AdminTable({title,columns,children,emptyMessage="No records to display.
   const pageCount=Math.max(1,Math.ceil(rows.length/pageSize));
   const currentPage=Math.min(page,pageCount-1);
   const visibleRows=rows.slice(currentPage*pageSize,(currentPage+1)*pageSize);
-  return <section className="admin-card">
-    <div className="admin-section-title"><h2>{title}</h2></div>
+  return <section className="admin-card admin-table-card">
+    <div className="admin-section-title admin-table-title">
+      <div><h2>{title}</h2><p>{rows.length ? "Operational records · latest first" : "Nothing requires attention here right now."}</p></div>
+      <span className="admin-table-count"><i />{rows.length.toLocaleString()} {rows.length===1?"record":"records"}</span>
+    </div>
     <div className="admin-table-scroll" style={{"--admin-columns":columns.length}}>
       <div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>
-      {rows.length?visibleRows:<div className="admin-empty-row">{emptyMessage}</div>}
+      {rows.length?visibleRows:<div className="admin-empty-row"><span className="admin-empty-icon">✓</span><strong>{emptyMessage}</strong><small>New records will appear here when available.</small></div>}
     </div>
     {rows.length>pageSize&&<div className="admin-table-pagination">
-      <span>Showing {currentPage*pageSize+1}–{Math.min((currentPage+1)*pageSize,rows.length)} of {rows.length} loaded records</span>
+      <span>Showing {currentPage*pageSize+1}–{Math.min((currentPage+1)*pageSize,rows.length)} of {rows.length.toLocaleString()} loaded records</span>
       <div><button type="button" disabled={currentPage===0} onClick={()=>setPage(Math.max(0,currentPage-1))} aria-label="Previous page">← Previous</button><span>Page {currentPage+1} of {pageCount}</span><button type="button" disabled={currentPage>=pageCount-1} onClick={()=>setPage(Math.min(pageCount-1,currentPage+1))} aria-label="Next page">Next →</button></div>
     </div>}
   </section>;
