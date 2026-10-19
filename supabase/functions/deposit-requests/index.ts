@@ -65,7 +65,7 @@ async function tronPost(path: string, body: Record<string, unknown>): Promise<{r
 }
 async function getOrder(orderId: string, userId: string) {
   return await admin.from("payment_orders")
-    .select("id,user_id,purpose,base_amount,payment_amount,credits,status,created_at,expires_at,tx_hash,verification_details")
+    .select("id,user_id,purpose,base_amount,payment_amount,credits,status,created_at,expires_at,tx_hash,verification_details,payment_attempted_at")
     .eq("id",orderId).eq("user_id",userId).maybeSingle();
 }
 async function createOrder(userId: string, body: Record<string,unknown>) {
@@ -106,13 +106,20 @@ async function recordPaymentReview(order:any, txHash:string, reason:string, evid
   if(error) console.error("Could not record payment for manual review",error.message);
 }
 
-async function confirmOrder(orderId: string, userId: string, submittedHashValue = "") {
+async function confirmOrder(orderId: string, userId: string, submittedHashValue = "", markAttempt = false) {
   if (!/^[0-9a-f-]{36}$/i.test(orderId)) return json({error:"Select a valid payment request."},400);
   const submittedHash = String(submittedHashValue || "").trim().replace(/^0x/i,"").toLowerCase();
   if (submittedHashValue && !/^[a-f0-9]{64}$/.test(submittedHash)) return json({error:"Enter a valid 64-character transaction hash."},400);
   const {data:order,error:orderError} = await getOrder(orderId,userId);
   if (orderError || !order) return json({error:"Payment request not found."},404);
   if (order.status === "paid") return json({error:"This payment has already been completed.",status:"paid"},409);
+  if (markAttempt || submittedHash) {
+    const attemptedAt = order.payment_attempted_at || new Date().toISOString();
+    const {error:attemptError} = await admin.from("payment_orders")
+      .update({payment_attempted_at:attemptedAt})
+      .eq("id",order.id).eq("user_id",userId).neq("status","paid");
+    if (attemptError) return json({error:"Could not record your payment attempt. Please retry shortly."},500);
+  }
   const expectedUnits = parseAmountUnits(order.payment_amount);
   if (expectedUnits === null) return json({error:"Payment request amount is invalid."},500);
 
@@ -276,7 +283,7 @@ Deno.serve(async(req:Request)=>{
     return json({ok:true,requests:data||[]});
   }
   if(body.action==="create") return await createOrder(user.id,body);
-  if(body.action==="confirm") return await confirmOrder(String(body.order_id||""),user.id);
-  if(body.action==="submit_hash") return await confirmOrder(String(body.order_id||""),user.id,String(body.tx_hash||""));
+  if(body.action==="confirm") return await confirmOrder(String(body.order_id||""),user.id,"",body.manual_check===true);
+  if(body.action==="submit_hash") return await confirmOrder(String(body.order_id||""),user.id,String(body.tx_hash||""),true);
   return json({error:"Unsupported payment action."},400);
 });
