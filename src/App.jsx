@@ -721,7 +721,13 @@ export default function App() {
         </div>
       </AppErrorBoundary>
     </main>
-    <nav className="bottom-nav" aria-label="Primary navigation"><div className="sidebar-menu-head"><span>FLEXAR AI</span><button type="button" className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close side menu">×</button></div>{nav.map(([id, icon, label]) => <button type="button" key={id} className={(page === id || (id === "activity" && page.startsWith("activity-"))) ? "nav active" : "nav"} onClick={() => { setPage(id); if (window.matchMedia("(min-width: 760px)").matches) setSidebarOpen(false); }}><span>{icon}</span><small>{label}</small></button>)}</nav>
+    <nav className="bottom-nav" aria-label="Primary navigation" onClickCapture={(event) => {
+      if (
+        window.matchMedia("(min-width: 760px)").matches &&
+        event.target instanceof Element &&
+        event.target.closest("button.nav")
+      ) setSidebarOpen(false);
+    }}><div className="sidebar-menu-head"><span>FLEXAR AI</span><button type="button" className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close side menu">×</button></div>{nav.map(([id, icon, label]) => <button type="button" key={id} className={(page === id || (id === "activity" && page.startsWith("activity-"))) ? "nav active" : "nav"} onClick={() => { setPage(id); if (window.matchMedia("(min-width: 760px)").matches) setSidebarOpen(false); }}><span>{icon}</span><small>{label}</small></button>)}</nav>
     {notificationPrompt && !aiActivationOpen && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
     {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
@@ -1435,14 +1441,17 @@ function AdminTable({title,columns,children,emptyMessage="No records to display.
   const pageCount=Math.max(1,Math.ceil(rows.length/pageSize));
   const currentPage=Math.min(page,pageCount-1);
   const visibleRows=rows.slice(currentPage*pageSize,(currentPage+1)*pageSize);
-  return <section className="admin-card">
-    <div className="admin-section-title"><h2>{title}</h2></div>
+  return <section className="admin-card admin-table-card">
+    <div className="admin-section-title admin-table-title">
+      <div><h2>{title}</h2><p>{rows.length ? "Operational records · latest first" : "Nothing requires attention here right now."}</p></div>
+      <span className="admin-table-count"><i />{rows.length.toLocaleString()} {rows.length===1?"record":"records"}</span>
+    </div>
     <div className="admin-table-scroll" style={{"--admin-columns":columns.length}}>
       <div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>
-      {rows.length?visibleRows:<div className="admin-empty-row">{emptyMessage}</div>}
+      {rows.length?visibleRows:<div className="admin-empty-row"><span className="admin-empty-icon">✓</span><strong>{emptyMessage}</strong><small>New records will appear here when available.</small></div>}
     </div>
     {rows.length>pageSize&&<div className="admin-table-pagination">
-      <span>Showing {currentPage*pageSize+1}–{Math.min((currentPage+1)*pageSize,rows.length)} of {rows.length} loaded records</span>
+      <span>Showing {currentPage*pageSize+1}–{Math.min((currentPage+1)*pageSize,rows.length)} of {rows.length.toLocaleString()} loaded records</span>
       <div><button type="button" disabled={currentPage===0} onClick={()=>setPage(Math.max(0,currentPage-1))} aria-label="Previous page">← Previous</button><span>Page {currentPage+1} of {pageCount}</span><button type="button" disabled={currentPage>=pageCount-1} onClick={()=>setPage(Math.min(pageCount-1,currentPage+1))} aria-label="Next page">Next →</button></div>
     </div>}
   </section>;
