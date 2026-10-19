@@ -3066,3 +3066,36 @@ body{background:var(--bg)}
 .admin-row>*{min-width:0;overflow-wrap:anywhere}
 @media(max-width:760px){.admin-header-actions{width:100%;justify-content:stretch}.admin-header-actions button{flex:1}.admin-toolbar{align-items:stretch}.admin-toolbar label{width:100%}.admin-wallet-adjust-form{padding:12px}.admin-referral-tree>summary{align-items:flex-start;padding:12px;gap:8px}.admin-referral-child{grid-template-columns:1fr;gap:7px;padding:12px 0}.admin-referral-children{margin-left:12px;padding-left:12px}}
 @media(prefers-reduced-motion:reduce){.admin-header-actions button,.admin-setting-card{transition:none}}
+
+/* FLEXAR payment verification + explicit identity state */
+.identity-status-pill{display:inline-flex;align-items:center;gap:5px;width:max-content;max-width:100%;padding:6px 8px;border:1px solid rgba(255,255,255,.1);border-radius:999px;font-size:7px;font-weight:900;letter-spacing:.07em;white-space:nowrap}
+.identity-status-pill.approved{color:var(--green,#03fc7d);background:rgba(3,252,125,.08);border-color:rgba(3,252,125,.24)}
+.identity-status-pill.pending,.identity-status-pill.checking{color:#f2d18a;background:rgba(242,209,138,.07);border-color:rgba(242,209,138,.2)}
+.identity-status-pill.unverified{color:#c7d0ca;background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.1)}
+.profile-verify-cta{flex:0 0 auto;padding:9px 11px;border:1px solid rgba(3,252,125,.28);border-radius:10px;background:rgba(3,252,125,.09);color:var(--green,#03fc7d);font-size:9px;font-weight:900}
+.profile-verify-cta:active,.deposit-hash-form button:active{transform:translateY(1px)}
+#profile-identity-verification{scroll-margin-top:18px}
+.deposit-auto-status{display:grid;grid-template-columns:9px minmax(0,1fr) auto;align-items:center;gap:10px;padding:11px 12px;margin:12px 0;border:1px solid rgba(3,252,125,.16);border-radius:12px;background:linear-gradient(120deg,rgba(3,252,125,.055),rgba(255,255,255,.012))}
+.deposit-auto-status>div{min-width:0}
+.deposit-auto-status strong{display:block;color:#eaf5ee;font-size:10px;font-weight:850}
+.deposit-auto-status small{display:block;margin-top:4px;color:var(--muted,#99a69e);font-size:8px;line-height:1.5}
+.deposit-auto-indicator{width:8px;height:8px;border-radius:50%;background:var(--green,#03fc7d);box-shadow:0 0 0 4px rgba(3,252,125,.1)}
+.deposit-auto-indicator.review{background:#f2bd67;box-shadow:0 0 0 4px rgba(242,189,103,.1)}
+.deposit-auto-live{font-size:7px;font-weight:950;letter-spacing:.12em;color:var(--green,#03fc7d)}
+.deposit-hash-form{display:grid;gap:10px;margin:12px 0;padding:13px;border:1px solid rgba(242,189,103,.22);border-radius:13px;background:linear-gradient(145deg,rgba(242,189,103,.045),rgba(255,255,255,.012))}
+.deposit-hash-form>div strong{display:block;color:#f5f7f5;font-size:11px}
+.deposit-hash-form>div p{margin:5px 0 0;color:var(--muted,#99a69e);font-size:9px;line-height:1.55}
+.deposit-hash-form label{display:grid;gap:6px;color:#d5ded8;font-size:9px;font-weight:800}
+.deposit-hash-form input{width:100%;min-width:0;padding:11px 10px;border:1px solid var(--line,rgba(255,255,255,.1));border-radius:9px;background:#020806;color:#f4f8f5;font:inherit;font-size:10px;outline:none}
+.deposit-hash-form input:focus{border-color:rgba(3,252,125,.55);box-shadow:0 0 0 3px rgba(3,252,125,.07)}
+.deposit-hash-form button{min-height:40px;padding:10px 12px;border:1px solid rgba(3,252,125,.2);border-radius:10px;background:var(--green,#03fc7d);color:#041008;font-size:10px;font-weight:950}
+.deposit-hash-form button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:560px){
+  .profile-hero-card{flex-wrap:wrap;align-items:center}
+  .profile-identity{min-width:0}
+  .identity-status-pill{white-space:normal;line-height:1.35}
+  .profile-verify-cta{margin-left:auto}
+  .deposit-auto-status{gap:8px;padding:10px}
+  .deposit-auto-status small{font-size:8px}
+}
+
