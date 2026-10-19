@@ -56,7 +56,7 @@ Deno.serve(async(req)=>{
         users:users.data||[],transactions:transactions.data||[],trades:trades.data||[],opportunities:opportunities.data||[],learning:learning.data||[],markets:markets.data||[],
         plans:plans.data||[],subscriptions:subs.data||[],rewards:rewards.data||[],referrals:referrals.data||[],settings:settings.data||[],adaptive:jobs.data||[],wallets:wallets.data||[],
         depositRequests:depositRequests.data||[],paymentOrders:paymentOrders.data||[],diagnostics:diagnostics.data||[],creditTransactions:creditTransactions.data||[],modelStats:modelStats.data||[],audit:audit.data||[],
-        counts:{users:usersCount.count??users.data?.length??0,transactions:transactionsCount.count??transactions.data?.length??0,trades:tradesCount.count??trades.data?.length??0,opportunities:opportunitiesCount.count??opportunities.data?.length??0},
+        currentAdminId:user.id,counts:{users:usersCount.count??users.data?.length??0,transactions:transactionsCount.count??transactions.data?.length??0,trades:tradesCount.count??trades.data?.length??0,opportunities:opportunitiesCount.count??opportunities.data?.length??0},
         errors:all.filter(x=>x.error).map(x=>x.error.message)
       });
     }
