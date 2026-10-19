@@ -23,11 +23,13 @@ Deno.serve(async(req)=>{
   const network=String(body.network||"");
   const amount=Number(body.amount);
   const address=String(body.address||"").trim();
-  if(!asset||!network||!Number.isFinite(amount)||amount<=0||!address)
-    return Response.json({error:"Asset, network, amount and destination address are required."},{status:400,headers:corsHeaders});
+  const requestId=String(body.request_id||"");
+  const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if(!asset||!network||!Number.isFinite(amount)||amount<=0||!address||!uuidPattern.test(requestId))
+    return Response.json({error:"Asset, network, valid amount, destination address and request ID are required."},{status:400,headers:corsHeaders});
 
   const {data:result,error:rpcError}=await admin.schema("private").rpc("request_withdrawal",{
-    p_user_id:data.user.id,p_asset:asset,p_network:network,p_amount:amount,p_address:address
+    p_user_id:data.user.id,p_asset:asset,p_network:network,p_amount:amount,p_address:address,p_request_id:requestId
   });
   if(rpcError) return Response.json({error:rpcError.message},{status:400,headers:corsHeaders});
   return Response.json({ok:true,withdrawal:result},{headers:{...corsHeaders,"Content-Type":"application/json"}});

@@ -27,7 +27,7 @@ Deno.serve(async(req)=>{
     if(action==="overview"){
       const [users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets]=await Promise.all([
         admin.from("profiles").select("id,display_name,telegram_username,email,is_admin,created_at,last_login_provider").order("created_at",{ascending:false}).limit(200),
-        admin.from("wallet_transactions").select("id,user_id,type,direction,amount,status,reference,created_at").order("created_at",{ascending:false}).limit(200),
+        admin.from("wallet_transactions").select("id,user_id,type,direction,amount,status,reference,tx_hash,metadata,created_at,completed_at").order("created_at",{ascending:false}).limit(200),
         admin.from("trades").select("id,user_id,asset,direction,stake,status,result_amount,opened_at,settled_at").order("opened_at",{ascending:false}).limit(200),
         admin.from("ai_opportunities").select("id,symbol,direction,signal_score,status,outcome,model_version,entry_window_start,created_at").order("created_at",{ascending:false}).limit(200),
         admin.from("opportunity_evaluation_dataset").select("id,symbol,direction,outcome,signal_score,price_change_pct,evaluated_at").order("evaluated_at",{ascending:false}).limit(200),
@@ -43,6 +43,39 @@ Deno.serve(async(req)=>{
       return json({users:users.data||[],transactions:transactions.data||[],trades:trades.data||[],opportunities:opportunities.data||[],learning:learning.data||[],markets:markets.data||[],plans:plans.data||[],subscriptions:subs.data||[],rewards:rewards.data||[],referrals:referrals.data||[],settings:settings.data||[],adaptive:jobs.data||[],wallets:wallets.data||[],errors:[users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets].filter(x=>x.error).map(x=>x.error.message)});
     }
 
+    if(action==="review_withdrawal"){
+      const {transaction_id,review_action,reason,tx_hash}=body;
+      if(!transaction_id||!["approve","reject","complete"].includes(review_action)||typeof reason!=="string")
+        return json({error:"A withdrawal, valid review action and reason are required."},400);
+      const {data:review,error}=await admin.schema("private").rpc("admin_review_withdrawal",{
+        p_admin_user_id:user.id,
+        p_transaction_id:transaction_id,
+        p_action:review_action,
+        p_reason:reason,
+        p_tx_hash:tx_hash||null
+      });
+      if(error)return json({error:error.message},400);
+      return json({ok:true,review});
+    }
+    if(action==="adjust_wallet"){
+      const {user_id,asset="USDT",network="TRC-20",amount,direction,reason,request_id}=body;
+      const numericAmount=Number(amount);
+      const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if(!user_id||!Number.isFinite(numericAmount)||numericAmount<=0||!["credit","debit"].includes(direction)||typeof reason!=="string"||!uuidPattern.test(String(request_id||"")))
+        return json({error:"A target user, positive amount, credit/debit direction, reason and valid request ID are required."},400);
+      const {data:adjustment,error}=await admin.schema("private").rpc("admin_adjust_wallet",{
+        p_admin_user_id:user.id,
+        p_user_id:user_id,
+        p_asset:asset,
+        p_network:network,
+        p_amount:numericAmount,
+        p_direction:direction,
+        p_reason:reason,
+        p_request_id:request_id
+      });
+      if(error)return json({error:error.message},400);
+      return json({ok:true,adjustment});
+    }
     if(action==="update_setting"){
       const {key,value}=body; if(!key) return json({error:"key required"},400);
       const {error}=await admin.from("app_settings").upsert({key,value,updated_at:new Date().toISOString()},{onConflict:"key"});
