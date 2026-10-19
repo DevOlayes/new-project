@@ -62,7 +62,7 @@ The admin UI labels the engine `opportunity-v2`, while the live opportunity engi
 ## Remediation started on branch
 
 The draft PR now includes:
-- a database RPC for atomic, bounded, audited, idempotent admin USDT/TRC-20 balance adjustments;
+- a database RPC for atomic, bounded, audited, idempotent admin USDT/TRC-20 balance adjustments; the admin Edge Function now validates the adjustment request UUID before calling the RPC;
 - admin UI/API wiring for that adjustment;
 - an explicit manual withdrawal review flow: pending → processing after approval, pending → failed with a refund on rejection, and processing → completed only after an operator records an external payout transaction hash;
 - a draft withdrawal-review interface in the admin transactions panel;
