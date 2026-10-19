@@ -2517,3 +2517,13 @@ body{background:var(--bg)}
   .wallet-action-modal .wallet-stepper>span{font-size:7px}
   .wallet-action-modal .wallet-stepper>span b{width:18px;height:18px}
 }
+
+/* Swap selector stability: render outside the animated wallet modal. */
+.asset-selector{position:relative;z-index:1}
+.asset-selector-menu{position:fixed!important;z-index:2147483000!important;box-sizing:border-box;display:block;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-gutter:stable;max-width:calc(100vw - 24px);background:#07100b;isolation:isolate}
+.asset-selector-menu::-webkit-scrollbar{width:7px}
+.asset-selector-menu::-webkit-scrollbar-track{background:rgba(255,255,255,.045);border-radius:10px}
+.asset-selector-menu::-webkit-scrollbar-thumb{background:rgba(3,252,125,.52);border:1px solid #07100b;border-radius:10px}
+.asset-selector-menu{scrollbar-width:thin;scrollbar-color:rgba(3,252,125,.55) rgba(255,255,255,.04)}
+.asset-selector-scroll-hint{position:sticky;top:-6px;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:12px;margin:-6px -6px 5px;padding:9px 10px 8px;border-bottom:1px solid rgba(3,252,125,.14);background:#07100b;color:#03fc7d;font-size:8px;font-weight:800;letter-spacing:.09em;pointer-events:none}
+.asset-selector-option{min-height:48px;touch-action:manipulation}
