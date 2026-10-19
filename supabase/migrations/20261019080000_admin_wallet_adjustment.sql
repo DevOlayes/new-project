@@ -1,6 +1,11 @@
 -- Adds an atomic, auditable admin wallet adjustment with request-level idempotency.
 -- The service-role-only RPC re-checks admin status inside the database and never permits negative balances.
 
+-- Enforce uniqueness for adjustment request IDs and serialize concurrent retries.
+create unique index if not exists wallet_transactions_admin_adjustment_request_key
+  on public.wallet_transactions (reference)
+  where pg_catalog.left(reference, 24) = 'admin_wallet_adjustment_';
+
 create or replace function private.admin_adjust_wallet(
   p_admin_user_id uuid,
   p_user_id uuid,
@@ -54,6 +59,11 @@ begin
   end if;
 
   v_reference := 'admin_wallet_adjustment_' || p_request_id::text;
+
+  -- Same request ID cannot apply two balance changes concurrently.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(v_reference, 0)
+  );
 
   select * into v_existing
   from public.wallet_transactions wt
