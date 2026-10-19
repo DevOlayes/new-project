@@ -93,6 +93,19 @@ begin
         updated_at = pg_catalog.now()
     where id = v_wallet.id;
 
+    if exists (
+      select 1 from public.wallet_transactions wt
+      where wt.reference = 'withdrawal_refund_' || v_tx.id::text
+    ) then
+      raise exception 'Withdrawal refund ledger entry already exists; manual reconciliation is required';
+    end if;
+
+    update public.wallets
+    set locked_balance = locked_balance - v_tx.amount,
+        available_balance = available_balance + v_tx.amount,
+        updated_at = pg_catalog.now()
+    where id = v_wallet.id;
+
     update public.wallet_transactions
     set status = 'cancelled',
         metadata = coalesce(metadata, '{}'::jsonb) || pg_catalog.jsonb_build_object(
@@ -103,6 +116,31 @@ begin
           'refund_status', 'returned_to_available_balance'
         )
     where id = v_tx.id;
+
+    -- Record the refund as its own ledger credit so history and reconciliation
+    -- can show the reserved funds returning to the user's available balance.
+    insert into public.wallet_transactions(
+      user_id, wallet_id, type, direction, amount, status, reference,
+      metadata, completed_at
+    ) values (
+      v_tx.user_id,
+      v_tx.wallet_id,
+      'withdrawal_refund',
+      'credit',
+      v_tx.amount,
+      'completed',
+      'withdrawal_refund_' || v_tx.id::text,
+      pg_catalog.jsonb_build_object(
+        'withdrawal_transaction_id', v_tx.id,
+        'asset', coalesce(v_tx.metadata->>'asset', 'USDT'),
+        'network', v_tx.metadata->>'network',
+        'reviewed_by', p_admin_user_id,
+        'review_reason', v_reason,
+        'refund_status', 'returned_to_available_balance',
+        'refunded_at', pg_catalog.now()
+      ),
+      pg_catalog.now()
+    );
 
   else
     if v_tx.status <> 'processing' then
