@@ -1050,7 +1050,7 @@ function AssetSelector({ assets, value, onChange, label }) {
     if (!rect) return;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const width = Math.min(280, Math.max(220, viewportWidth - 24));
+    const width = Math.max(1, Math.min(280, viewportWidth - 24));
     const left = Math.max(12, Math.min(rect.right - width, viewportWidth - width - 12));
     const below = Math.max(0, viewportHeight - rect.bottom - 16);
     const above = Math.max(0, rect.top - 16);
