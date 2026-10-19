@@ -1241,7 +1241,7 @@ function AdminDashboard({ onExit }) {
     </>}
 
     {tab==="users"&&editingUser&&<AdminUserEditor user={editingUser} onClose={()=>setEditingUser(null)} onSave={async patch=>{const ok=await act("update_user",{user_id:editingUser.id,patch});if(ok)setEditingUser(null);return ok;}}/>}
-    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>!allUsers.some(u=>u.id===item.user_id&&u.is_admin)&&matches(item.user_id,item.asset,item.network,userName(item.user_id),userEmail(item.user_id)))} users={users} onAction={act} search={search} lookupUsers={lookupUsers}/>}
+    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>!allUsers.some(u=>u.id===item.user_id&&u.is_admin)&&matches(item.user_id,item.asset,item.network,userName(item.user_id),userEmail(item.user_id)))} users={users} onAction={act} search={search} lookupUsers={lookupUsers} busy={busy}/>}
 
     {tab==="deposits"&&<>
       <div className="admin-kpis"><Kpi label="Deposit requests" value={deposits.length}/><Kpi label="Awaiting review" value={pendingDeposits}/><Kpi label="Incomplete after 24 hours" value={deposits.filter(item=>item.status==="incomplete").length}/><Kpi label="Approved" value={deposits.filter(item=>item.status==="approved").length}/></div>
@@ -1421,7 +1421,7 @@ function AdminWithdrawals({transactions,onAction,userName=(id)=>String(id||"").s
       </div>;
     })}{withdrawals.length===0&&<div className="empty-state">No withdrawal requests found.</div>}</AdminTable></>;
 }
-function AdminWallets({wallets,users,onAction,search="",lookupUsers}){
+function AdminWallets({wallets,users,onAction,search="",lookupUsers,busy=false}){
  const [userId,setUserId]=useState(users[0]?.id||""),[amount,setAmount]=useState(""),[direction,setDirection]=useState("credit"),[reason,setReason]=useState("Admin wallet adjustment"),[requestId,setRequestId]=useState(""),[userSearch,setUserSearch]=useState(""),[remoteAccounts,setRemoteAccounts]=useState({query:"",users:[],wallets:[]});
  useEffect(()=>{const query=userSearch.trim();if(query.length<2){setRemoteAccounts({query:"",users:[],wallets:[]});return;}let cancelled=false;const timer=window.setTimeout(async()=>{try{const result=await lookupUsers(query);if(!cancelled)setRemoteAccounts({query,users:result.users||[],wallets:result.wallets||[]});}catch{if(!cancelled)setRemoteAccounts({query,users:[],wallets:[]});}},250);return()=>{cancelled=true;window.clearTimeout(timer);};},[userSearch,lookupUsers]);
  const remoteAccountMatches=userSearch.trim().length>=2&&remoteAccounts.query===userSearch.trim();
