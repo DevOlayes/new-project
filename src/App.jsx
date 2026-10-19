@@ -451,7 +451,7 @@ export default function App() {
       try {
         const profileResult = await withTimeout(
           supabase.from("profiles")
-            .select("id,display_name,username,email,last_login_provider,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,ai_preference,ai_credits,ai_credits_used,ai_trading_enabled,ai_trade_mode,ai_autopilot_stake")
+            .select("id,display_name,username,email,last_login_provider,telegram_username,avatar_url,referral_code,is_admin,onboarding_completed,onboarding_step,country_code,trading_experience,onboarding_goals,trading_style,risk_profile,ai_preference,ai_credits,ai_credits_used,ai_trading_enabled,ai_trade_mode,ai_autopilot_stake")
             .eq("id", user.id)
             .maybeSingle(),
           10000,
@@ -468,7 +468,7 @@ export default function App() {
       setAiEngineActive(Boolean(profileData?.ai_trading_enabled));
       setOnboardingState(profileData ? {
         completed: Boolean(profileData.onboarding_completed),
-        step: Math.min(3, Math.max(0, Number(profileData.onboarding_step || 0))),
+        step: Math.min(4, Math.max(0, Number(profileData.onboarding_step || 0))),
         countryCode: profileData.country_code || "",
         experience: profileData.trading_experience || "",
         goals: Array.isArray(profileData.onboarding_goals) ? profileData.onboarding_goals : [],
@@ -792,7 +792,7 @@ function Landing({ market, showAuth, setShowAuth, installPrompt, installFLEXAR }
 function AuthModal({onClose}){const [mode,setMode]=useState("signup"),[error,setError]=useState(""),[notice,setNotice]=useState("");return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={e=>e.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="FLEXAR AI"/><div className="eyebrow">WELCOME TO FLEXAR AI</div><h2>{mode==="signup"?"Create your account.":"Welcome back."}</h2><p>{mode==="signup"?"Register with your name, username, email and password, or continue with Google.":"Sign in with email and password, or continue with Google."}</p><AuthOptions mode={mode} setAuthError={setError} authError={error} notice={notice} setNotice={setNotice}/><button className="auth-mode-toggle" type="button" onClick={()=>{setMode(mode==="signup"?"login":"signup");setError("");setNotice("");}}>{mode==="signup"?"Already have an account? Sign in":"New to FLEXAR AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use FLEXAR AI responsibly and follow applicable terms.</small></div></div>;}
 function AuthOptions({mode,setAuthError,authError,notice,setNotice}){const [busy,setBusy]=useState(""),[fullName,setFullName]=useState(""),[username,setUsername]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState("");async function submit(e){e.preventDefault();if(!supabase){setAuthError("Supabase is not configured.");return;}const em=email.trim().toLowerCase(),un=username.trim().replace(/^@/,""),name=fullName.trim();if(mode==="signup"&&(!name||name.length>100)){setAuthError("Enter your name (up to 100 characters).");return;}if(mode==="signup"&&!/^[A-Za-z0-9_]{3,24}$/.test(un)){setAuthError("Username must be 3–24 letters, numbers or underscores.");return;}if(password.length<8){setAuthError("Password must be at least 8 characters.");return;}setBusy("email");setAuthError("");setNotice("");try{if(mode==="signup"){const {data,error}=await supabase.auth.signUp({email:em,password,options:{data:{username:un,full_name:name}}});if(error)throw error;setNotice(data.session?"Account created and signed in.":"Check your email to confirm your account, then sign in.");}else{const {error}=await supabase.auth.signInWithPassword({email:em,password});if(error)throw error;}}catch(err){setAuthError(err?.message||"Authentication failed.");}finally{setBusy("");}}async function google(){if(!supabase){setAuthError("Supabase is not configured.");return;}setBusy("google");setAuthError("");const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:`${FLEXAR_APP_URL}/`}});if(error){setBusy("");setAuthError(error.message||"Google sign-in could not start.");}}return <div className="auth-options"><form className="auth-email-form" onSubmit={submit}>{mode==="signup"&&<label>Full name<input autoComplete="name" value={fullName} onChange={e=>setFullName(e.target.value)} maxLength={100} placeholder="Your name" required/></label>}{mode==="signup"&&<label>Username<input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} minLength={3} maxLength={24} placeholder="e.g. dike_w" required/></label>}<label>Email address<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required/></label><label>Password<input type="password" autoComplete={mode==="signup"?"new-password":"current-password"} value={password} onChange={e=>setPassword(e.target.value)} minLength={8} placeholder="At least 8 characters" required/></label><button className="auth-provider auth-email-submit" type="submit" disabled={!!busy}>{busy==="email"?"Please wait…":mode==="signup"?"Create account":"Sign in"}<b>→</b></button></form><div className="auth-divider"><span>OR</span></div><button type="button" className="auth-provider google" onClick={google} disabled={!!busy}><span className="provider-mark google-mark">G</span><span>{busy==="google"?"Connecting Google…":"Continue with Google"}</span><b>→</b></button>{notice&&<div className="auth-success" role="status">{notice}</div>}{authError&&<div className="error-banner" role="alert">{authError}</div>}</div>;}
 function Onboarding({ profile, initialState, onComplete }) {
-  const [step, setStep] = useState(Math.min(3, Math.max(0, Number(initialState?.step || 0))));
+  const [step, setStep] = useState(Math.min(4, Math.max(0, Number(initialState?.step || 0))));
   const [countryCode, setCountryCode] = useState(initialState?.countryCode || "");
   const [experience, setExperience] = useState(initialState?.experience || "");
   const [goals, setGoals] = useState(Array.isArray(initialState?.goals) ? initialState.goals : []);
@@ -807,7 +807,7 @@ function Onboarding({ profile, initialState, onComplete }) {
     !countrySearch.trim() || item.name.toLowerCase().includes(countrySearch.trim().toLowerCase()) || item.code.toLowerCase().includes(countrySearch.trim().toLowerCase())
   );
 
-  const progress = Math.min(100, Math.max(0, ((step + 1) / 4) * 100));
+  const progress = Math.min(100, Math.max(0, ((step + 1) / 5) * 100));
   const displayName = profile?.display_name?.split(" ")[0] || "there";
 
   async function save(patch, nextStep) {
@@ -823,15 +823,16 @@ function Onboarding({ profile, initialState, onComplete }) {
     if (step === 0 && !countryCode) { setError("Select your country to continue."); return; }
     if (step === 1 && !experience) { setError("Choose the option that best describes your experience."); return; }
     if (step === 2 && !goals.length) { setError("Choose at least one goal."); return; }
-    if (step === 3 && (!style || !aiPreference)) { setError("Choose your trading style and AI preference."); return; }
-
+    if (step === 3 && !style) { setError("Choose the risk style that best fits you."); return; }
+    if (step === 4 && !aiPreference) { setError("Choose how much control you want over AI trades."); return; }
     const patch = step === 0 ? { country_code: countryCode }
       : step === 1 ? { trading_experience: experience }
       : step === 2 ? { onboarding_goals: goals }
-      : { trading_style: style, ai_preference: aiPreference, onboarding_completed: true };
+      : step === 3 ? { trading_style: style, risk_profile: style }
+      : { ai_preference: aiPreference, onboarding_completed: true };
     const nextStep = step + 1;
     if (!await save(patch, nextStep)) return;
-    if (step === 3) onComplete({ countryCode, experience, goals, style, aiPreference });
+    if (step === 4) onComplete({ countryCode, experience, goals, style, aiPreference });
     else setStep(nextStep);
   }
 
@@ -842,23 +843,25 @@ function Onboarding({ profile, initialState, onComplete }) {
     { label: "COUNTRY", title: "Where are you based?", text: "Choose your country so FLEXAR can tailor your account experience." },
     { label: "EXPERIENCE", title: "How familiar are you with trading?", text: "This helps FLEXAR keep the experience at the right level for you." },
     { label: "YOUR GOAL", title: "What do you want FLEXAR to help you do?", text: "Pick everything that matches what you want from the platform." },
-    { label: "PREFERENCES", title: "Almost ready. How should FLEXAR work for you?", text: "Set your preferred risk style and how much control you want over AI trades." },
+    { label: "RISK PROFILE", title: "How do you prefer to manage risk?", text: "This is a preference for personalization, not a guarantee of returns." },
+    { label: "AI CONTROL", title: "How much control do you want over AI trades?", text: "Choose whether to review each setup or enable automated execution within your limits." },
   ][step];
 
   return <div className="onboarding-screen">
     <div className="onboarding-glow onboarding-glow-a" /><div className="onboarding-glow onboarding-glow-b" />
     <div className="onboarding-shell">
       <header className="onboarding-header"><img src="/flexar-public-logo.webp" alt="FLEXAR AI" /><span>ACCOUNT SETUP</span></header>
-      <div className="onboarding-progress-head"><small>STEP {String(Math.min(step + 1, 4)).padStart(2,"0")} / 04</small><strong>{stepCopy.label}</strong></div>
+      <div className="onboarding-progress-head"><small>STEP {String(Math.min(step + 1, 5)).padStart(2,"0")} / 05</small><strong>{stepCopy.label}</strong></div>
       <div className="onboarding-progress"><span style={{width:`${progress}%`}} /></div>
       <main className="onboarding-card">
         <div className="onboarding-intro"><span className="onboarding-kicker">WELCOME, {displayName.toUpperCase()}</span><h1>{stepCopy.title}</h1><p>{stepCopy.text}</p></div>
         {step === 0 && <div className="onboarding-country"><div className="onboarding-selected-country">{selectedCountry ? <><span className="country-flag">{selectedCountry.flag}</span><div><strong>{selectedCountry.name}</strong><small>Selected country</small></div></> : <><span className="country-placeholder">◎</span><div><strong>Select your country</strong><small>Your country will be saved to your FLEXAR profile.</small></div></>}</div><div className="country-search-wrap"><span>⌕</span><input value={countrySearch} onChange={(e) => setCountrySearch(e.target.value)} placeholder="Search countries" aria-label="Search countries" /></div><div className="country-list">{filteredCountries.slice(0, 80).map((country) => <button type="button" key={country.code} className={country.code === countryCode ? "country-option selected" : "country-option"} onClick={() => { setCountryCode(country.code); setCountrySearch(""); setError(""); }}><span>{country.flag}</span><strong>{country.name}</strong><small>{country.code}</small>{country.code === countryCode && <b>✓</b>}</button>)}</div>{filteredCountries.length > 80 && <small className="country-list-note">Keep typing to narrow the list.</small>}</div>}
         {step === 1 && <div className="onboarding-choice-grid">{[["new","I’m completely new","Keep things simple and guided."],["basics","I understand the basics","I know the core ideas and want a smoother workflow."],["experienced","I’m experienced","I’m comfortable reading markets and managing trades."],["professional","Professional","I trade actively and want a focused experience."]].map(([value,title,text]) => <button type="button" key={value} className={experience===value?"onboarding-choice selected":"onboarding-choice"} onClick={() => {setExperience(value);setError("");}}><span>{value===experience?"✓":""}</span><strong>{title}</strong><small>{text}</small></button>)}</div>}
         {step === 2 && <div className="onboarding-choice-grid goals">{[["ai","Let AI find opportunities"],["growth","Grow my trading balance"],["learn","Learn while I trade"],["efficient","Trade more efficiently"],["explore","Explore AI-powered trading"]].map(([value,title]) => <button type="button" key={value} className={goals.includes(value)?"onboarding-choice selected":"onboarding-choice"} onClick={() => {toggleGoal(value);setError("");}}><span>{goals.includes(value)?"✓":""}</span><strong>{title}</strong><small>Save this preference to personalize your FLEXAR journey.</small></button>)}</div>}
-        {step === 3 && <div className="onboarding-preferences"><div><small>TRADING STYLE</small><div className="preference-row">{[["conservative","Conservative","Prioritize controlled exposure."],["balanced","Balanced","A middle-ground approach."],["growth","Growth","Accept more movement for upside." ]].map(([value,title,text]) => <button type="button" key={value} className={style===value?"preference-card selected":"preference-card"} onClick={() => {setStyle(value);setError("");}}><b>{title}</b><span>{text}</span></button>)}</div></div><div><small>AI CONTROL</small><div className="preference-row two">{[["manual","Review every trade","FLEXAR prepares the setup; you confirm it."],["autopilot","Let FLEXAR execute automatically","FLEXAR can execute qualifying setups within your limits."]].map(([value,title,text]) => <button type="button" key={value} className={aiPreference===value?"preference-card selected":"preference-card"} onClick={() => {setAiPreference(value);setError("");}}><b>{title}</b><span>{text}</span></button>)}</div><small className="onboarding-footnote">You can change these preferences later.</small></div></div>}
+        {step === 3 && <div className="onboarding-preferences"><div><small>TRADING RISK STYLE</small><div className="preference-row">{[["conservative","Conservative","Prefer lower exposure and a more cautious approach."],["balanced","Balanced","Prefer a middle-ground approach to risk."],["growth","Growth","Comfortable with larger market swings and higher risk."]].map(([value,title,text]) => <button type="button" key={value} className={style===value?"preference-card selected":"preference-card"} onClick={() => {setStyle(value);setError("");}}><b>{title}</b><span>{text}</span></button>)}</div><small className="onboarding-footnote">This personalizes guidance; it does not guarantee results.</small></div></div>}
+        {step === 4 && <div className="onboarding-preferences"><div><small>AI CONTROL</small><div className="preference-row two">{[["manual","Review every trade","FLEXAR prepares the setup; you confirm it."],["autopilot","Let FLEXAR execute automatically","FLEXAR can execute qualifying setups within your limits."]].map(([value,title,text]) => <button type="button" key={value} className={aiPreference===value?"preference-card selected":"preference-card"} onClick={() => {setAiPreference(value);setError("");}}><b>{title}</b><span>{text}</span></button>)}</div><small className="onboarding-footnote">You can change these preferences later.</small></div></div>}
         {error && <div className="error-banner onboarding-error">{error}</div>}
-        <div className="onboarding-actions">{step>0 ? <button type="button" className="onboarding-back" onClick={back} disabled={busy}>← Back</button> : <span />}{step<3 ? <button type="button" className="onboarding-next" onClick={next} disabled={busy}>{busy?"Saving…":"Continue →"}</button> : <button type="button" className="onboarding-next" onClick={next} disabled={busy}>{busy?"Finishing…":"Enter FLEXAR AI →"}</button>}</div>
+        <div className="onboarding-actions">{step>0 ? <button type="button" className="onboarding-back" onClick={back} disabled={busy}>← Back</button> : <span />}{step<4 ? <button type="button" className="onboarding-next" onClick={next} disabled={busy}>{busy?"Saving…":"Continue →"}</button> : <button type="button" className="onboarding-next" onClick={next} disabled={busy}>{busy?"Finishing…":"Enter FLEXAR AI →"}</button>}</div>
       </main>
     </div>
   </div>;
@@ -942,9 +945,58 @@ function RewardBanner({ reward, onClaim, busy }) {
 function Profile({ user, profile, signOut }) {
   const name=profile?.display_name||profile?.username||profile?.telegram_username||"FLEXAR AI user",initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
   const [notifications,setNotifications]=useState(()=>{try{return localStorage.getItem("flexar_pref_notifications")!=="off"}catch{return true}}),[marketAlerts,setMarketAlerts]=useState(()=>{try{return localStorage.getItem("flexar_pref_market_alerts")!=="off"}catch{return true}});
+  const [verification,setVerification]=useState(null),[verificationLoading,setVerificationLoading]=useState(true),[showVerification,setShowVerification]=useState(false);
+  const [legalName,setLegalName]=useState(profile?.display_name||""),[countryCode,setCountryCode]=useState(profile?.country_code||"NG"),[idType,setIdType]=useState("national_id"),[idNumber,setIdNumber]=useState("");
+  const [idFile,setIdFile]=useState(null),[faceFile,setFaceFile]=useState(null),[consent,setConsent]=useState(false),[verificationBusy,setVerificationBusy]=useState(false),[verificationNotice,setVerificationNotice]=useState(""),[verificationError,setVerificationError]=useState("");
   const setPref=(key,value,setter)=>{setter(value);try{localStorage.setItem(key,value?"on":"off")}catch{}};
-  return <div className="profile-page"><section className="profile-hero-card"><div className="avatar-orb profile-avatar" aria-label={`${name} avatar`}><span>{initials}</span><i/></div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username?"@"+profile.telegram_username:user?.email||"Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section>
-    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.last_login_provider==="google"?"Google connected":"Email and password"}</strong></div><div className="profile-row"><span>Email</span><strong>{user?.email||"Not provided"}</strong></div><div className="profile-row"><span>Trading</span><strong>AI trading enabled</strong></div></section>
+  useEffect(()=>{let active=true;(async()=>{if(!supabase||!user?.id){if(active)setVerificationLoading(false);return;}try{const {data,error}=await supabase.functions.invoke("identity-verification",{body:{action:"status"}});if(active){if(!error&&!data?.error)setVerification(data?.verification||null);else setVerificationError(data?.error||error?.message||"Could not load verification status.");}}catch(e){if(active)setVerificationError(e?.message||"Could not load verification status.");}finally{if(active)setVerificationLoading(false);}})();return()=>{active=false};},[user?.id]);
+  const verificationStatus=verification?.status||"not_started";
+  const statusLabel=verificationStatus==="approved"?"Identity verified":verificationStatus==="pending"?"Awaiting admin review":verificationStatus==="rejected"?"Submission declined":verificationStatus==="resubmission_required"?"More information required":"Not verified";
+  async function submitIdentity(e){
+    e.preventDefault();setVerificationError("");setVerificationNotice("");
+    if(!user?.id||!supabase)return setVerificationError("Identity verification is unavailable right now.");
+    if(!legalName.trim()||!idNumber.trim()||!idFile||!faceFile)return setVerificationError("Complete every field and provide both your government ID and face scan.");
+    if(!faceFile.type.startsWith("image/"))return setVerificationError("Your face scan must be an image captured with the camera.");
+    for(const file of [idFile,faceFile])if(file.size>10*1024*1024)return setVerificationError("Each file must be 10 MB or smaller.");
+    if(!consent)return setVerificationError("Confirm consent before submitting your identity documents.");
+    setVerificationBusy(true);const uploaded=[];
+    try{
+      const extension=file=>file.type==="application/pdf"?"pdf":file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
+      const upload=async(file,label)=>{const path=user.id+"/"+crypto.randomUUID()+"-"+label+"."+extension(file);const {error}=await supabase.storage.from("identity-documents").upload(path,file,{contentType:file.type,upsert:false});if(error)throw new Error(error.message||"Could not upload identity file.");uploaded.push(path);return path;};
+      const idPath=await upload(idFile,"government-id");const facePath=await upload(faceFile,"face-scan");
+      const {data,error}=await supabase.functions.invoke("identity-verification",{body:{action:"submit",legal_name:legalName,country_code:countryCode,id_type:idType,id_number:idNumber,id_document_path:idPath,face_scan_path:facePath,consent:true}});
+      if(error||data?.error)throw new Error(data?.error||error?.message||"Could not submit identity verification.");
+      setVerification(data.verification||{status:"pending",submitted_at:new Date().toISOString()});setVerificationNotice(data.message||"Your identity documents have been submitted for admin review.");
+      setShowVerification(false);setIdNumber("");setIdFile(null);setFaceFile(null);setConsent(false);
+    }catch(e){if(uploaded.length)try{await supabase.storage.from("identity-documents").remove(uploaded)}catch{}setVerificationError(e?.message||"Could not submit identity verification.");}
+    finally{setVerificationBusy(false);}
+  }
+  const countryName=code=>ONBOARDING_COUNTRIES.find(item=>item.code===code)?.name||code||"Not set";
+  return <div className="profile-page">
+    <section className="profile-hero-card"><div className="avatar-orb profile-avatar" aria-label={name+" avatar"}><span>{initials}</span><i/></div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username?"@"+profile.telegram_username:user?.email||"Connected account"}</span></div><span className="verified-pill" style={{whiteSpace:"nowrap"}}>{verificationStatus==="approved"?"● IDENTITY VERIFIED":verificationStatus==="pending"?"● UNDER REVIEW":"● IDENTITY UNVERIFIED"}</span></section>
+    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.last_login_provider==="google"?"Google connected":"Email and password"}</strong></div><div className="profile-row"><span>Email</span><strong>{user?.email||"Not provided"}</strong></div><div className="profile-row"><span>Country</span><strong>{countryName(profile?.country_code)}</strong></div><div className="profile-row"><span>Risk profile</span><strong>{profile?.risk_profile||profile?.trading_style||"Not set"}</strong></div><div className="profile-row"><span>Trading</span><strong>AI trading enabled</strong></div></section>
+    <section className="profile-section">
+      <div className="profile-section-head"><div><small>WITHDRAWAL SECURITY</small><h2>Identity verification</h2></div><span className={verificationStatus==="approved"?"verified-pill":"home-section-note"}>{verificationLoading?"Loading…":statusLabel}</span></div>
+      <p style={{color:"var(--muted,#9aa3b2)",lineHeight:1.6}}>To protect your account and prevent duplicate accounts, Flexar requires a government ID and a separate camera face scan. An administrator reviews both before withdrawals are enabled. Face images are reviewed manually; Flexar does not run automated facial recognition.</p>
+      {verificationStatus==="approved"&&<div className="auth-success" role="status">Your identity verification is approved. You can initiate withdrawals.</div>}
+      {verificationStatus==="pending"&&<div className="notice" role="status">Your details have been received. Withdrawals stay locked until the admin review is complete.{verification?.duplicate_flag?" Your request has been flagged for additional duplicate-account review.":""}</div>}
+      {verificationStatus==="rejected"&&<div className="error-banner" role="status">Your previous submission was declined. Review the administrator's note and submit corrected information.</div>}
+      {verificationStatus==="resubmission_required"&&<div className="notice" role="status">The administrator needs clearer or additional information before approval.</div>}
+      {verification?.review_notes&&<div className="profile-row"><span>Review note</span><strong>{verification.review_notes}</strong></div>}
+      {verificationNotice&&<div className="auth-success" role="status">{verificationNotice}</div>}
+      {verificationError&&<div className="error-banner" role="alert">{verificationError}</div>}
+      {verificationStatus!=="approved"&&<button type="button" className="mini-action" onClick={()=>{setVerificationError("");setVerificationNotice("");setLegalName(verification?.legal_name||profile?.display_name||"");setCountryCode(verification?.country_code||profile?.country_code||"NG");setShowVerification(v=>!v);}}>{showVerification?"Close verification form":verificationStatus==="pending"?"View submission details":verificationStatus==="not_started"?"Start identity verification":"Update identity submission"}</button>}
+      {showVerification&&verificationStatus!=="pending"&&<form className="auth-email-form" onSubmit={submitIdentity} style={{marginTop:18}}>
+        <label>Full legal name<input value={legalName} onChange={e=>setLegalName(e.target.value)} autoComplete="name" maxLength={160} required placeholder="Exactly as printed on your government ID"/></label>
+        <label>Country of residence<select value={countryCode} onChange={e=>setCountryCode(e.target.value)} required>{ONBOARDING_COUNTRIES.map(c=><option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}</select></label>
+        <label>Government ID type<select value={idType} onChange={e=>setIdType(e.target.value)} required><option value="national_id">National identity card</option><option value="passport">Passport</option><option value="drivers_license">Driver's licence</option><option value="voters_card">Voter's card</option><option value="residence_permit">Residence permit</option></select></label>
+        <label>Government ID number<input value={idNumber} onChange={e=>setIdNumber(e.target.value)} autoComplete="off" maxLength={80} required placeholder="ID number (stored only as a one-way hash)"/></label>
+        <label>Government ID image or PDF<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>setIdFile(e.target.files?.[0]||null)} required/><small>{idFile?idFile.name:"Upload a clear image of your ID. Max 10 MB."}</small></label>
+        <label>Face scan — use your camera<input type="file" accept="image/*" capture="user" onChange={e=>setFaceFile(e.target.files?.[0]||null)} required/><small>{faceFile?faceFile.name:"On a phone, this opens the front camera. Use a clear, well-lit photo. Max 10 MB."}</small></label>
+        <label style={{display:"flex",alignItems:"flex-start",gap:10}}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required style={{width:18,marginTop:4}}/><span>I consent to Flexar securely storing these files for manual identity and duplicate-account review. I understand that withdrawals remain unavailable until an administrator approves my submission.</span></label>
+        <div className="admin-modal-actions"><button type="button" className="secondary" onClick={()=>setShowVerification(false)} disabled={verificationBusy}>Cancel</button><button type="submit" className="mini-action" disabled={verificationBusy}>{verificationBusy?"Uploading securely…":"Submit for admin review"}</button></div>
+      </form>}
+    </section>
     <section className="profile-section settings-card"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><button className="setting-row" onClick={()=>setPref("flexar_pref_notifications",!notifications,setNotifications)}><span><strong>Notifications</strong><small>Account and trade updates</small></span><b className={notifications?"toggle on":"toggle"}><i/></b></button><button className="setting-row" onClick={()=>setPref("flexar_pref_market_alerts",!marketAlerts,setMarketAlerts)}><span><strong>Market alerts</strong><small>AI opportunity notifications</small></span><b className={marketAlerts?"toggle on":"toggle"}><i/></b></button><div className="setting-row static"><span><strong>Sign-in security</strong><small>Managed by Supabase Auth</small></span><b>Protected</b></div></section>
     <section className="profile-section profile-support"><div className="profile-section-head"><div><small>ACCOUNT SUPPORT</small><h2>Need help?</h2></div></div><p>Use the support channel connected to your FLEXAR account for account, funding or trading questions.</p></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button>
   </div>;
