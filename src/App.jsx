@@ -33,7 +33,8 @@ const withTimeout = (promise, ms, message = "Request timed out") =>
 
 export default function App() {
   const [inMiniApp, setInMiniApp] = useState(false);
-  const [page, setPage] = useState("home");
+  const [page, setPage] = useState(() => window.location.pathname.split("/").filter(Boolean).join("/") === "admin" ? "admin" : "home");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [onboardingState, setOnboardingState] = useState(null);
@@ -58,6 +59,19 @@ export default function App() {
   const [tradeSuccess, setTradeSuccess] = useState(null);
   const notificationSeenRef = useRef(null);
   const tradeNotificationStateRef = useRef(null);
+
+  useEffect(() => {
+    const syncAdminRoute = () => setPage(window.location.pathname.split("/").filter(Boolean).join("/") === "admin" ? "admin" : "home");
+    window.addEventListener("popstate", syncAdminRoute);
+    return () => window.removeEventListener("popstate", syncAdminRoute);
+  }, []);
+
+  useEffect(() => {
+    if (profile && !profile.is_admin && page === "admin") {
+      window.history.replaceState({}, "", "/");
+      setPage("home");
+    }
+  }, [profile, page]);
 
   const refreshAccount = useCallback(async ({ silent = false } = {}) => {
     if (!supabase || !user) return;
@@ -661,7 +675,7 @@ export default function App() {
     setAiEngineActive(false);
   }
 
-  if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => setPage("home")} />;
+  if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => { window.history.pushState({}, "", "/"); setPage("home"); }} />;
   if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
   if (user && loading) {
     return <div className="flexar-loading-screen" role="status" aria-live="polite">
@@ -678,8 +692,8 @@ export default function App() {
   const notifications = account.notifications || [];
   const unreadNotifications = notifications.filter((item) => !item.is_read).length;
 
-  return <div className="app-shell">
-    <header className="topbar"><img className="app-wordmark" src="/flexar-public-logo.webp" alt="FLEXAR AI" /></header>
+  return <div className={sidebarOpen ? "app-shell sidebar-open" : "app-shell"}>
+    <header className="topbar"><button type="button" className="sidebar-toggle" aria-label={sidebarOpen ? "Close side menu" : "Open side menu"} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}><span aria-hidden="true">{sidebarOpen ? "×" : "☰"}</span></button><img className="app-wordmark" src="/flexar-public-logo.webp" alt="FLEXAR AI" /></header>
     <main className="content">
       {authError && <div className="error-banner">{authError}</div>}
       <AppErrorBoundary page={page}>
@@ -695,7 +709,7 @@ export default function App() {
         </div>
       </AppErrorBoundary>
     </main>
-    <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={(page === id || (id === "activity" && page.startsWith("activity-"))) ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}{profile?.is_admin&&<button type="button" className={page==="admin"?"nav active":"nav"} onClick={()=>setPage("admin")}><span>◆</span><small>Admin</small></button>}</nav>
+    <nav className="bottom-nav" aria-label="Primary navigation">{nav.map(([id, icon, label]) => <button type="button" key={id} className={(page === id || (id === "activity" && page.startsWith("activity-"))) ? "nav active" : "nav"} onClick={() => setPage(id)}><span>{icon}</span><small>{label}</small></button>)}</nav>
     {notificationPrompt && !aiActivationOpen && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
     {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
