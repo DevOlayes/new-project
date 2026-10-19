@@ -3101,3 +3101,8 @@ body{background:var(--bg)}
 
 .deposit-new-request-button{display:block;width:100%;margin:8px 0;padding:10px 12px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.025);color:#c7d0ca;font-size:9px;font-weight:800;line-height:1.45}
 .deposit-new-request-button:hover{border-color:rgba(3,252,125,.24);color:#f0f7f2}
+
+.deposit-payment-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:10px}
+.deposit-payment-actions .deposit-copy-button{width:100%;min-width:0;margin-top:0;padding:10px 8px;text-align:center}
+.deposit-payment-actions .deposit-copy-button.secondary{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.025);color:#d3ddd6}
+@media(max-width:360px){.deposit-payment-actions{grid-template-columns:1fr}.deposit-payment-actions .deposit-copy-button{padding:10px}}
