@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
   }
   if (username) {
     const { data: existingUsername, error: usernameError } = await admin
-      .from("profiles").select("id").ilike("username", username).neq("id", user.id).maybeSingle();
+      .from("profiles").select("id").eq("username", username).neq("id", user.id).maybeSingle();
     if (usernameError) return Response.json({ error: "Could not validate username availability." }, { status: 500, headers: corsHeaders });
     if (existingUsername) return Response.json({ error: "That username is already in use. Please choose another." }, { status: 409, headers: corsHeaders });
   }
@@ -80,7 +80,12 @@ Deno.serve(async (req: Request) => {
     profilePatch,
     { onConflict: "id" },
   );
-  if (profileError) return Response.json({ error: "Could not initialize your profile." }, { status: 500, headers: corsHeaders });
+  if (profileError) {
+    if (profileError.code === "23505" && String(profileError.message || "").includes("profiles_username_lower_unique_idx")) {
+      return Response.json({ error: "That username is already in use. Please choose another." }, { status: 409, headers: corsHeaders });
+    }
+    return Response.json({ error: "Could not initialize your profile." }, { status: 500, headers: corsHeaders });
+  }
 
   // USDT on TRC-20 is the only default ledger wallet. A TON wallet is
   // created only through an explicit connect/provision flow, never silently.
