@@ -66,6 +66,24 @@ Deno.serve(async(req)=>{
         errors:all.filter(x=>x.error).map(x=>x.error.message)
       });
     }
+    if(action==="search_users"){
+      const rawQuery=String(body.query||"").trim();
+      if(rawQuery.length<2)return json({users:[],wallets:[]});
+      const safeQuery=rawQuery.replace(/[,%()]/g," ").replace(/\s+/g," ").trim().slice(0,120);
+      if(safeQuery.length<2)return json({users:[],wallets:[]});
+      const like=`%${safeQuery}%`;
+      let userQuery=admin.from("profiles").select("id,username,display_name,telegram_username,email,is_admin,is_deleted,created_at,last_login_provider").eq("is_deleted",false).or(`display_name.ilike.${like},email.ilike.${like},username.ilike.${like},telegram_username.ilike.${like}`).order("created_at",{ascending:false}).limit(100);
+      if(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(safeQuery)){
+        userQuery=admin.from("profiles").select("id,username,display_name,telegram_username,email,is_admin,is_deleted,created_at,last_login_provider").eq("is_deleted",false).or(`display_name.ilike.${like},email.ilike.${like},username.ilike.${like},telegram_username.ilike.${like},id.eq.${safeQuery}`).order("created_at",{ascending:false}).limit(100);
+      }
+      const {data:foundUsers,error:userError}=await userQuery;
+      if(userError)return json({error:userError.message},400);
+      const found=foundUsers||[],ids=found.map(item=>item.id);
+      if(!ids.length)return json({users:[],wallets:[]});
+      const {data:foundWallets,error:walletError}=await admin.from("wallets").select("id,user_id,asset,network,available_balance,locked_balance,updated_at").in("user_id",ids).order("updated_at",{ascending:false});
+      if(walletError)return json({error:walletError.message},400);
+      return json({users:found,wallets:foundWallets||[]});
+    }
     if(action==="review_withdrawal"){
       const {transaction_id,review_action,reason,tx_hash}=body;
       if(!transaction_id||!["approve","reject","complete"].includes(review_action)||typeof reason!=="string")
