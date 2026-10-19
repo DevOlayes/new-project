@@ -1099,10 +1099,18 @@ function AdminWallets({wallets,users,onAction}){
   const [amount,setAmount]=useState("");
   const [direction,setDirection]=useState("credit");
   const [reason,setReason]=useState("Admin wallet adjustment");
-  const selected=(wallets||[]).filter(w=>w.user_id===userId);
-  async function submit(e){e.preventDefault();const value=Number(amount);if(!userId||!Number.isFinite(value)||value<=0)return;const ok=await onAction("adjust_wallet",{user_id:userId,asset:"USDT",network:"TRC-20",amount:value,direction,reason});if(ok)setAmount("");}
+  const [requestId,setRequestId]=useState("");
+  async function submit(e){
+    e.preventDefault();
+    const value=Number(amount);
+    if(!userId||!Number.isFinite(value)||value<=0)return;
+    const requestIdForSubmit=requestId||crypto.randomUUID();
+    setRequestId(requestIdForSubmit);
+    const ok=await onAction("adjust_wallet",{user_id:userId,asset:"USDT",network:"TRC-20",amount:value,direction,reason,request_id:requestIdForSubmit});
+    if(ok){setAmount("");setRequestId("");}
+  }
   return <><section className="admin-card"><div className="admin-section-title"><div><h2>Wallet controls</h2><p className="helper">Server-side wallet adjustments are recorded in the ledger. Admin/test accounts cannot withdraw.</p></div></div>
-    <form className="admin-setting" onSubmit={submit}><label>User</label><select value={userId} onChange={e=>setUserId(e.target.value)}>{users.map(u=><option key={u.id} value={u.id}>{u.display_name||u.email||u.id.slice(0,8)}{u.is_admin?" · ADMIN":""}</option>)}</select><label>Amount USDT</label><input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="5000"/><label>Action</label><select value={direction} onChange={e=>setDirection(e.target.value)}><option value="credit">Credit available balance</option><option value="debit">Debit available balance</option></select><label>Reason</label><input value={reason} onChange={e=>setReason(e.target.value)}/><button className="mini-action" type="submit">Apply adjustment</button></form></section>
+    <form className="admin-setting" onSubmit={submit}><label>User</label><select value={userId} onChange={e=>{setUserId(e.target.value);setRequestId("");}}>{users.map(u=><option key={u.id} value={u.id}>{u.display_name||u.email||u.id.slice(0,8)}{u.is_admin?" · ADMIN":""}</option>)}</select><label>Amount USDT</label><input inputMode="decimal" value={amount} onChange={e=>{setAmount(e.target.value);setRequestId("");}} placeholder="5000"/><label>Action</label><select value={direction} onChange={e=>{setDirection(e.target.value);setRequestId("");}}><option value="credit">Credit available balance</option><option value="debit">Debit available balance</option></select><label>Reason</label><input value={reason} onChange={e=>{setReason(e.target.value);setRequestId("");}}/><button className="mini-action" type="submit">Apply adjustment</button></form></section>
     <AdminTable title="Wallet balances" columns={["User","Asset","Network","Available","Locked"]}>{wallets.map(w=><div className="admin-row" key={w.id}><span>{users.find(u=>u.id===w.user_id)?.display_name||w.user_id.slice(0,8)+"…"}</span><span>{w.asset}</span><span>{w.network}</span><span>{Number(w.available_balance).toFixed(4)}</span><span>{Number(w.locked_balance).toFixed(4)}</span></div>)}</AdminTable></>;
 }
 function AdminSettings({settings,onSave}){const [values,setValues]=useState(Object.fromEntries((settings||[]).map(x=>[x.key,JSON.stringify(x.value)])));return <AdminPanel title="Application controls"><p className="helper">Central product settings can be changed here without rebuilding the frontend.</p>{Object.entries(values).map(([key,value])=><div className="admin-setting" key={key}><label>{key}</label><input value={value} onChange={e=>setValues({...values,[key]:e.target.value})}/><button className="mini-action" onClick={()=>{try{onSave("update_setting",{key,value:JSON.parse(value)})}catch{}}}>Save</button></div>)}</AdminPanel>}
