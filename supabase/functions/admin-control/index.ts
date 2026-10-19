@@ -60,8 +60,9 @@ Deno.serve(async(req)=>{
     if(action==="adjust_wallet"){
       const {user_id,asset="USDT",network="TRC-20",amount,direction,reason,request_id}=body;
       const numericAmount=Number(amount);
-      if(!user_id||!Number.isFinite(numericAmount)||numericAmount<=0||!["credit","debit"].includes(direction)||typeof reason!=="string"||!request_id)
-        return json({error:"A target user, positive amount, credit/debit direction, reason and request ID are required."},400);
+      const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if(!user_id||!Number.isFinite(numericAmount)||numericAmount<=0||!["credit","debit"].includes(direction)||typeof reason!=="string"||!uuidPattern.test(String(request_id||"")))
+        return json({error:"A target user, positive amount, credit/debit direction, reason and valid request ID are required."},400);
       const {data:adjustment,error}=await admin.schema("private").rpc("admin_adjust_wallet",{
         p_admin_user_id:user.id,
         p_user_id:user_id,
