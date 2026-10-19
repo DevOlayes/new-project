@@ -1363,7 +1363,7 @@ function AdminDashboard({ onExit }) {
     </>}
 
     {tab==="aiPurchases"&&<>
-      <div className="admin-kpis"><Kpi label="AI credit orders" value={data.counts?.aiCreditOrders??aiCreditOrders.length}/><Kpi label="Paid orders" value={aiPaidOrders.length}/><Kpi label="Awaiting payment" value={pendingAiCreditOrders}/><Kpi label="Incomplete after 24 hours" value={aiCreditOrders.filter(item=>item.status==="incomplete").length}/><Kpi label="Verified package revenue" value={money(aiCreditRevenue)+" USDT"}/></div>
+      <div className="admin-kpis"><Kpi label="AI credit orders" value={data.counts?.aiCreditOrders??aiCreditOrders.length}/><Kpi label="Paid orders" value={aiPaidOrders.length}/><Kpi label="Awaiting payment" value={pendingAiCreditOrders}/><Kpi label="Incomplete after 30 minutes" value={aiCreditOrders.filter(item=>item.status==="incomplete").length}/><Kpi label="Verified package revenue" value={money(aiCreditRevenue)+" USDT"}/></div>
       <AdminPanel title="Payment identity and verification"><p>Every order is tied to the signed-in FLEXAR account and its unique expected amount. Verified records include the sender wallet, recipient, USDT contract, transfer amount, transaction hash and confirmed block receipt. The sender address identifies the wallet used, not the real-world owner. Orders without a transfer after 24 hours leave the pending queue and remain in incomplete history for later investigation.</p></AdminPanel>
       <AdminTable title="Pending AI credit purchases" columns={["Buyer / account","Package","Payment","Verification","Order / expiry"]} emptyMessage="There are no pending AI credit purchases.">
         {aiCreditOrders.filter(item=>item.status==="pending"&&matches(item.id,item.user_id,userName(item.user_id),userEmail(item.user_id),item.payment_amount,item.credits,item.tx_hash)).map(item=><div className="admin-row" key={item.id}><span><strong>{userName(item.user_id)}</strong><small>{userEmail(item.user_id)}</small><small>{item.user_id}</small></span><span>{item.credits||"—"} credits<small>Package {money(item.base_amount)} USDT</small></span><span>{money(item.payment_amount,2)} USDT<small className="admin-status status-pending">Pending</small></span><span><small>{item.verification_status||"pending"}</small><small>{item.tx_hash?"Transaction reference recorded":"Awaiting transfer"}</small></span><span><small>{item.id}</small><small>Created {item.created_at?new Date(item.created_at).toLocaleString():"—"}</small><small>{item.expires_at?"Expires "+new Date(item.expires_at).toLocaleString():"—"}</small></span></div>)}
@@ -1638,9 +1638,10 @@ function PairIcon({ symbol, cryptoIcons = {} }) {
 const AI_CREDIT_PLANS = [{credits:20,price:10,bonus:0},{credits:45,price:15,bonus:0},{credits:80,price:25,bonus:0},{credits:140,price:40,bonus:0},{credits:230,price:60,bonus:0},{credits:320,price:80,bonus:0},{credits:420,price:100,bonus:0},{credits:550,price:125,bonus:0},{credits:700,price:150,bonus:0}];
 
 function AICreditsPage({ profile, onBack, refreshAccount }) {
-  const [busyPlan,setBusyPlan]=useState(0),[notice,setNotice]=useState(""),[paymentOrder,setPaymentOrder]=useState(null),[paymentAddress,setPaymentAddress]=useState(""),[paymentOpen,setPaymentOpen]=useState(false);
+  const [busyPlan,setBusyPlan]=useState(0),[notice,setNotice]=useState(""),[paymentOrder,setPaymentOrder]=useState(null),[paymentAddress,setPaymentAddress]=useState(""),[paymentOpen,setPaymentOpen]=useState(false),[paymentHash,setPaymentHash]=useState(""),[paymentChecking,setPaymentChecking]=useState(false),[paymentMatchIssue,setPaymentMatchIssue]=useState(""),[paymentClockNow,setPaymentClockNow]=useState(Date.now());
+  const paymentCheckLock=useRef(false);
   const balance=Number(profile?.ai_credits||0);
-  useEffect(()=>{let cancelled=false;async function restorePendingPayment(){if(!supabase)return;try{const [{data:history,error:historyError},{data:walletData,error:walletError}]=await Promise.all([supabase.functions.invoke("deposit-requests",{body:{action:"list"}}),supabase.functions.invoke("wallet-info")]);if(cancelled||historyError||walletError)return;const pending=(history?.requests||[]).find(item=>item.purpose==="ai_credits"&&item.status==="pending");if(pending){setPaymentAddress(walletData?.deposit_addresses?.USDT?.address||"");setPaymentOrder({...pending,order_id:pending.id});setPaymentOpen(true);}}catch{}}restorePendingPayment();return()=>{cancelled=true}},[]);
+  useEffect(()=>{let cancelled=false;async function restorePendingPayment(){if(!supabase)return;try{const [{data:history,error:historyError},{data:walletData,error:walletError}]=await Promise.all([supabase.functions.invoke("deposit-requests",{body:{action:"list"}}),supabase.functions.invoke("wallet-info")]);if(cancelled||historyError||walletError)return;const pending=(history?.requests||[]).find(item=>item.purpose==="ai_credits"&&["pending","incomplete"].includes(item.status));if(pending){setPaymentAddress(walletData?.deposit_addresses?.USDT?.address||"");setPaymentOrder({...pending,order_id:pending.id});setPaymentOpen(true);}}catch{}}restorePendingPayment();return()=>{cancelled=true}},[]);
   async function buy(plan){
     if(!supabase||busyPlan)return;
     setBusyPlan(plan.credits);setNotice("");
@@ -1651,25 +1652,33 @@ function AICreditsPage({ profile, onBack, refreshAccount }) {
       if(!address)throw new Error("The USDT payment wallet is temporarily unavailable.");
       const {data,error}=await supabase.functions.invoke("deposit-requests",{body:{action:"create",purpose:"ai_credits",credits:plan.credits}});
       if(error||data?.error)throw new Error(data?.error||error?.message||"Could not create your payment request.");
-      setPaymentAddress(address);setPaymentOrder(data);setPaymentOpen(true);
+      setPaymentAddress(address);setPaymentOrder(data);setPaymentHash("");setPaymentMatchIssue("");setPaymentClockNow(Date.now());setPaymentOpen(true);
     }catch(error){setNotice(error.message||"Could not create your payment request.");}
     finally{setBusyPlan(0);}
   }
-  async function confirmPayment(){
-    if(!paymentOrder?.order_id||busyPlan)return;
-    setBusyPlan(paymentOrder.credits||-1);setNotice("");
+  const checkPayment=useCallback(async({silent=false,txHash=""}={})=>{
+    const order=paymentOrder;if(!order?.order_id||paymentCheckLock.current)return null;
+    paymentCheckLock.current=true;setPaymentChecking(true);if(!silent)setNotice("");
     try{
-      const {data,error}=await supabase.functions.invoke("deposit-requests",{body:{action:"confirm",order_id:paymentOrder.order_id}});
-      if(error)throw new Error(data?.error||error.message||"Could not check this payment.");
-      if(data?.error)throw new Error(data.error);
-      if(!data?.ok){setNotice(data?.message||"Payment has not been detected yet. Please try again shortly.");return;}
-      setPaymentOrder(null);setPaymentOpen(false);
-      setNotice(`${Number(data.credits||paymentOrder.credits)} AI credits added successfully. Your purchase is complete.`);
-      window.dispatchEvent(new CustomEvent("flexar-ai-credits-updated"));
-      await refreshAccount();
-    }catch(error){setNotice(error.message||"Could not confirm payment.");}
-    finally{setBusyPlan(0);}
-  }
+      const {data,error}=await supabase.functions.invoke("deposit-requests",{body:{action:txHash?"submit_hash":"confirm",order_id:order.order_id,...(txHash?{tx_hash:txHash}:{})}});
+      if(data?.ok){
+        setPaymentOrder(null);setPaymentOpen(false);setPaymentHash("");setPaymentMatchIssue("");
+        setNotice(String(Number(data.credits||order.credits))+" AI credits added successfully. Your purchase is complete.");
+        window.dispatchEvent(new CustomEvent("flexar-ai-credits-updated"));await refreshAccount();return data;
+      }
+      if(data?.needs_review){setPaymentMatchIssue("needs_review");if(!silent)setNotice(data.message||"Your transfer needs review. No credits have been added.");return data;}
+      if(data?.needs_hash||data?.status==="ambiguous"){setPaymentMatchIssue("ambiguous");if(!silent)setNotice(data.message||"More than one transfer may match. Submit your transaction hash after the payment window.");return data;}
+      if(!silent)setNotice(data?.message||data?.error||error?.message||"Payment has not been detected yet. Flexar will keep checking automatically.");return data;
+    }catch(error){if(!silent)setNotice(error.message||"Could not confirm payment.");return null;}
+    finally{paymentCheckLock.current=false;setPaymentChecking(false);}
+  },[paymentOrder,refreshAccount]);
+  async function confirmPayment(){return checkPayment({silent:false});}
+  async function submitPaymentHash(e){e.preventDefault();const hash=paymentHash.trim().replace(/^0x/i,"");if(!/^[a-fA-F0-9]{64}$/.test(hash)){setNotice("Enter the transaction hash from your wallet or exchange.");return;}await checkPayment({silent:false,txHash:hash});}
+  useEffect(()=>{if(!paymentOrder?.order_id)return;setPaymentClockNow(Date.now());const timer=window.setInterval(()=>{setPaymentClockNow(Date.now());if(!paymentCheckLock.current)void checkPayment({silent:true});},15000);return()=>window.clearInterval(timer)},[paymentOrder?.order_id,paymentOrder?.status,checkPayment]);
+  const paymentExpiryMs=paymentOrder?.expires_at?new Date(paymentOrder.expires_at).getTime():new Date(paymentOrder?.created_at||Date.now()).getTime()+30*60*1000;
+  const paymentWindowExpired=Boolean(paymentOrder)&&paymentClockNow>=paymentExpiryMs;
+  const paymentSecondsRemaining=Math.max(0,Math.floor((paymentExpiryMs-paymentClockNow)/1000));
+  const paymentCountdown=String(Math.floor(paymentSecondsRemaining/60)).padStart(2,"0")+":"+String(paymentSecondsRemaining%60).padStart(2,"0");
   async function copyText(value){try{await navigator.clipboard?.writeText(value);setNotice("Copied to clipboard.");}catch{setNotice("Copy is unavailable in this browser. Press and hold the address to copy it.");}}
   return <div className="ai-credits-page">
     <button type="button" className="ai-credits-back" onClick={onBack}>← Back to AI Trading</button>
@@ -1685,9 +1694,12 @@ function AICreditsPage({ profile, onBack, refreshAccount }) {
         <div className="deposit-qr-card">{paymentAddress?<img className="deposit-qr-code" src={"https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data="+encodeURIComponent(paymentAddress)} alt="QR code for FLEXAR USDT TRC-20 payment address"/>:<div className="deposit-qr-placeholder">Payment address unavailable</div>}<small>USDT · TRON · TRC-20</small></div>
         <div className="deposit-payment-amount"><small>SEND EXACTLY</small><strong>{Number(paymentOrder.payment_amount).toFixed(2)} <span>USDT</span></strong><p>Send the exact amount to match this order. Your credit package is added only after on-chain verification.</p></div>
         <div className="ai-credit-address-block"><small>FLEXAR PAYMENT ADDRESS</small><code>{paymentAddress||"Loading payment address…"}</code><button type="button" className="deposit-copy-button" disabled={!paymentAddress} onClick={()=>copyText(paymentAddress)}>Copy address</button></div>
-        <p className="deposit-safety-note">Send USDT only on TRC-20. The system checks the token contract, amount, recipient, sender in the transfer receipt, transaction finality, and duplicate use before crediting your account.</p>
+        <div className="deposit-auto-status" role="status"><span className={"deposit-auto-indicator "+(paymentMatchIssue==="needs_review"?"review":"")}></span><div><strong>{paymentMatchIssue==="needs_review"?"Payment needs review":paymentChecking?"Checking the TRON blockchain…":"Automatic verification is active"}</strong><small>{paymentWindowExpired?"30-minute payment window ended. If you paid, submit your transaction hash below.":"Payment window · "+paymentCountdown+" remaining. Flexar checks automatically every 15 seconds."}</small></div><span className="deposit-auto-live">{paymentMatchIssue==="needs_review"?"REVIEW":paymentChecking?"CHECKING":"LIVE"}</span></div>
+        <button type="button" className="withdrawal-submit" disabled={paymentChecking||busyPlan!==0} onClick={confirmPayment}>{paymentChecking?"Checking blockchain…":"Check payment now →"}</button>
+        {paymentWindowExpired&&<form className="deposit-hash-form" onSubmit={submitPaymentHash}><div><strong>Payment not matched yet?</strong><p>Paste the transaction hash from your wallet or exchange. Flexar checks it against confirmed TRON data.</p></div><label>Transaction hash<input value={paymentHash} onChange={e=>setPaymentHash(e.target.value)} placeholder="Paste the transaction ID (hash)" autoComplete="off" spellCheck={false} maxLength={66} required/></label><button type="submit" disabled={paymentChecking||busyPlan!==0||!paymentHash.trim()}>{paymentChecking?"Verifying transaction…":"Submit transaction hash →"}</button></form>}
+        {paymentMatchIssue==="needs_review"&&<div className="notice" role="status">Your transfer needs manual review. Your AI credits have not been added. Keep the transaction hash available for support.</div>}
         {notice&&<div className="notice" role="status">{notice}</div>}
-        <button type="button" className="withdrawal-submit" disabled={busyPlan!==0} onClick={confirmPayment}>{busyPlan!==0?"Checking blockchain…":"I have sent the payment · Verify →"}</button>
+        <p className="deposit-safety-note">Send USDT only on TRC-20. Flexar verifies the token, amount, recipient, confirmed transaction receipt and duplicate use before adding credits.</p>
         <button type="button" className="ai-credit-modal-close" onClick={()=>setPaymentOpen(false)}>I’ll finish this later</button>
       </section>
     </div>}
