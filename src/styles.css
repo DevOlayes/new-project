@@ -3099,3 +3099,5 @@ body{background:var(--bg)}
   .deposit-auto-status small{font-size:8px}
 }
 
+.deposit-new-request-button{display:block;width:100%;margin:8px 0;padding:10px 12px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.025);color:#c7d0ca;font-size:9px;font-weight:800;line-height:1.45}
+.deposit-new-request-button:hover{border-color:rgba(3,252,125,.24);color:#f0f7f2}
