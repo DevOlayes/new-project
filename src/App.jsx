@@ -15,6 +15,49 @@ const ONBOARDING_COUNTRIES = ONBOARDING_COUNTRY_CODES.map((code) => ({
 })).sort((a, b) => a.name.localeCompare(b.name));
 
 
+
+const ID_DOCUMENT_TYPES = {
+  NG:[["national_id","National Identity Number (NIN) Card"],["passport","International Passport"],["drivers_license","Driver's Licence"],["voters_card","Voter's Card"],["residence_permit","Residence Permit"]],
+  US:[["national_id","State-issued Photo ID"],["passport","U.S. Passport"],["drivers_license","Driver's License"],["residence_permit","Permanent Resident Card"]],
+  GB:[["national_id","National Identity Document"],["passport","UK Passport"],["drivers_license","Photocard Driving Licence"],["residence_permit","Biometric Residence Permit / eVisa"]],
+  CA:[["national_id","Provincial or Territorial Photo ID"],["passport","Canadian Passport"],["drivers_license","Provincial or Territorial Driver's Licence"],["residence_permit","Permanent Resident Card"]],
+  IN:[["national_id","Aadhaar Card"],["passport","Indian Passport"],["drivers_license","Driving Licence"],["voters_card","Voter ID Card"]],
+  GH:[["national_id","Ghana Card"],["passport","Ghanaian Passport"],["drivers_license","Driver's Licence"],["voters_card","Voter ID Card"]],
+  KE:[["national_id","Kenyan National ID"],["passport","Kenyan Passport"],["drivers_license","Driving Licence"],["residence_permit","Alien Card / Residence Permit"]],
+  ZA:[["national_id","South African Identity Document"],["passport","South African Passport"],["drivers_license","Driving Licence"],["residence_permit","Permanent Residence Permit"]],
+  AU:[["national_id","State or Territory Photo ID"],["passport","Australian Passport"],["drivers_license","Driver Licence"],["residence_permit","Permanent Visa / Residence Document"]],
+  NZ:[["national_id","Kiwi Access Card / Photo ID"],["passport","New Zealand Passport"],["drivers_license","Driver Licence"],["residence_permit","Residence Visa"]],
+  PH:[["national_id","Philippine National ID (PhilSys)"],["passport","Philippine Passport"],["drivers_license","Driver's Licence"],["voters_card","Voter's ID"]],
+  PK:[["national_id","CNIC / NICOP"],["passport","Pakistani Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Permit"]],
+  BD:[["national_id","National Identity Card (NID)"],["passport","Bangladeshi Passport"],["drivers_license","Driving Licence"],["voters_card","Voter ID Card"]],
+  BR:[["national_id","National Identity Card (CIN / RG)"],["passport","Brazilian Passport"],["drivers_license","CNH Driver's Licence"],["residence_permit","Residence Permit"]],
+  MX:[["national_id","INE Voter Credential"],["passport","Mexican Passport"],["drivers_license","Driver's Licence"],["residence_permit","Residence Card"]],
+  DE:[["national_id","Personalausweis (National ID)"],["passport","German Passport"],["drivers_license","EU Driving Licence"],["residence_permit","Aufenthaltstitel (Residence Permit)"]],
+  FR:[["national_id","Carte nationale d'identité"],["passport","French Passport"],["drivers_license","Permis de conduire"],["residence_permit","Titre de séjour"]],
+  ES:[["national_id","DNI (National Identity Document)"],["passport","Spanish Passport"],["drivers_license","Permiso de conducir"],["residence_permit","TIE (Residence Card)"]],
+  IT:[["national_id","Carta d'identità"],["passport","Italian Passport"],["drivers_license","Patente di guida"],["residence_permit","Permesso di soggiorno"]],
+  NL:[["national_id","Nederlandse identiteitskaart"],["passport","Dutch Passport"],["drivers_license","Rijbewijs"],["residence_permit","Verblijfsdocument"]],
+  IE:[["national_id","Public Services Card / National ID"],["passport","Irish Passport"],["drivers_license","Driving Licence"],["residence_permit","Irish Residence Permit"]],
+  JP:[["national_id","My Number Card"],["passport","Japanese Passport"],["drivers_license","Driver's Licence"],["residence_permit","Residence Card"]],
+  KR:[["national_id","Resident Registration Card"],["passport","South Korean Passport"],["drivers_license","Driver's Licence"],["residence_permit","Residence Card"]],
+  SG:[["national_id","NRIC / FIN"],["passport","Singapore Passport"],["drivers_license","Driving Licence"],["residence_permit","Long-Term Pass"]],
+  AE:[["national_id","Emirates ID"],["passport","UAE Passport"],["drivers_license","UAE Driving Licence"],["residence_permit","UAE Residence Visa"]],
+  SA:[["national_id","National ID (Hawiya)"],["passport","Saudi Passport"],["drivers_license","Saudi Driving Licence"],["residence_permit","Iqama (Residence ID)"]],
+  EG:[["national_id","Egyptian National ID"],["passport","Egyptian Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Permit"]],
+  TZ:[["national_id","NIDA National ID"],["passport","Tanzanian Passport"],["drivers_license","Driving Licence"],["voters_card","Voter ID"]],
+  UG:[["national_id","National Identification Card"],["passport","Ugandan Passport"],["drivers_license","Driving Permit"],["voters_card","Voter's Card"]],
+  RW:[["national_id","Rwandan National ID"],["passport","Rwandan Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Permit"]],
+  CM:[["national_id","National Identity Card"],["passport","Cameroonian Passport"],["drivers_license","Driving Licence"],["voters_card","Voter's Card"]],
+  ID:[["national_id","KTP (National Identity Card)"],["passport","Indonesian Passport"],["drivers_license","SIM (Driving Licence)"],["residence_permit","Stay Permit"]],
+  MY:[["national_id","MyKad"],["passport","Malaysian Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Pass"]],
+  TH:[["national_id","Thai National ID Card"],["passport","Thai Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Certificate"]],
+  TR:[["national_id","Turkish Identity Card"],["passport","Turkish Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Permit"]],
+  CH:[["national_id","Swiss Identity Card"],["passport","Swiss Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Permit"]],
+  RU:[["national_id","Internal Passport / National ID"],["passport","International Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Permit"]],
+  UA:[["national_id","Ukrainian Identity Card"],["passport","Ukrainian Passport"],["drivers_license","Driving Licence"],["residence_permit","Residence Permit"]]
+};
+const DEFAULT_ID_DOCUMENT_TYPES = [["national_id","National identity card"],["passport","Passport"],["drivers_license","Driver's licence"],["voters_card","Voter's card"],["residence_permit","Residence permit"]];
+
 const FLEXAR_APP_URL = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "");
 
 const withTimeout = (promise, ms, message = "Request timed out") =>
@@ -34,7 +77,7 @@ const withTimeout = (promise, ms, message = "Request timed out") =>
 
 export default function App() {
   
-  const [page, setPage] = useState(() => window.location.pathname.split("/").filter(Boolean).join("/") === "admin" ? "admin" : "home");
+  const [page, setPage] = useState(() => { const route=window.location.pathname.split("/").filter(Boolean).join("/"); return route==="admin"?"admin":route==="identity-verification"?"identity-verification":route==="profile"?"profile":"home"; });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Close the desktop navigation drawer whenever a destination changes.
@@ -68,7 +111,7 @@ export default function App() {
   const tradeNotificationStateRef = useRef(null);
 
   useEffect(() => {
-    const syncAdminRoute = () => setPage(window.location.pathname.split("/").filter(Boolean).join("/") === "admin" ? "admin" : "home");
+    const syncAdminRoute = () => { const route=window.location.pathname.split("/").filter(Boolean).join("/"); setPage(route==="admin"?"admin":route==="identity-verification"?"identity-verification":route==="profile"?"profile":"home"); };
     window.addEventListener("popstate", syncAdminRoute);
     return () => window.removeEventListener("popstate", syncAdminRoute);
   }, []);
@@ -647,6 +690,7 @@ export default function App() {
   }
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => { window.history.pushState({}, "", "/"); setPage("home"); }} />;
+  const navigateToIdentityVerification = () => { window.history.pushState({}, "", "/identity-verification"); setPage("identity-verification"); };
   if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
   if (!user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
   if (user && loading) {
@@ -681,7 +725,8 @@ export default function App() {
           {page === "activity-trades" && <ActivityDetailPage account={account} type="trades" onBack={() => setPage("activity")} />}
           {page === "activity-transactions" && <ActivityDetailPage account={account} type="transactions" onBack={() => setPage("activity")} />}
           {page === "referral" && <Referral account={account} profile={profile} />}
-          {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} />}
+          {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} onVerifyIdentity={navigateToIdentityVerification} />}
+          {page === "identity-verification" && <IdentityVerificationPage user={user} profile={profile} onBack={() => { window.history.pushState({}, "", "/profile"); setPage("profile"); }} onOpenCredits={() => setPage("ai-credits")} onSubmitted={(data) => { setProfile(current => current ? {...current, ai_credits:data?.credits_remaining ?? Math.max(0,Number(current.ai_credits||0)-5)} : current); window.dispatchEvent(new Event("flexar-ai-credits-updated")); }} />}
         </div>
       </AppErrorBoundary>
     </main>
@@ -694,7 +739,7 @@ export default function App() {
     }}><div className="sidebar-menu-head"><span>FLEXAR AI</span><button type="button" className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close side menu">×</button></div>{nav.map(([id, icon, label]) => <button type="button" key={id} className={(page === id || (id === "activity" && page.startsWith("activity-"))) ? "nav active" : "nav"} onClick={() => { setPage(id); if (window.matchMedia("(min-width: 760px)").matches) setSidebarOpen(false); }}><span>{icon}</span><small>{label}</small></button>)}</nav>
     {notificationPrompt && !aiActivationOpen && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
-    {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} onVerification={() => { setWalletAction(""); setPage("profile"); }} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
+    {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} onVerification={() => { setWalletAction(""); navigateToIdentityVerification(); }} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
     {globalNotice && !aiActivationOpen && <div className="global-notice" role="status" onClick={() => setGlobalNotice("")}>{globalNotice}</div>}
     {tradeSuccess && <TradeSuccessModal trade={tradeSuccess} onClose={() => setTradeSuccess(null)} onViewActive={() => { setTradeSuccess(null); setPage("activity"); }} />}
   </div>;
@@ -942,64 +987,98 @@ function RewardBanner({ reward, onClaim, busy }) {
   const withdrawable = Number(reward.profit_withdrawable || 0);
   return <section className="reward-banner"><div className="reward-glow" /><div className="reward-copy"><small>{claimed ? "REWARD CREDIT ACTIVE" : "WELCOME REWARD"}</small><strong>${Number(reward.reward_amount || 50).toFixed(0)} <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : claimed ? "$"+remaining.toFixed(2)+" credit remaining · $"+withdrawable.toFixed(2)+" eligible profit." : "Use within "+daysLeft+" days. The reward itself is non-withdrawable; eligible profit can be withdrawn before expiry."}</p></div>{claimed ? <div className="reward-state"><b>ACTIVE</b><span>{daysLeft}d left</span></div> : <button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim reward →"}</button>}</section>;
 }
-function Profile({ user, profile, signOut }) {
+function Profile({ user, profile, signOut, onVerifyIdentity }) {
   const name=profile?.display_name||profile?.username||profile?.telegram_username||"FLEXAR AI user",initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
   const [notifications,setNotifications]=useState(()=>{try{return localStorage.getItem("flexar_pref_notifications")!=="off"}catch{return true}}),[marketAlerts,setMarketAlerts]=useState(()=>{try{return localStorage.getItem("flexar_pref_market_alerts")!=="off"}catch{return true}});
-  const [verification,setVerification]=useState(null),[verificationLoading,setVerificationLoading]=useState(true),[showVerification,setShowVerification]=useState(false);
-  const [legalName,setLegalName]=useState(profile?.display_name||""),[countryCode,setCountryCode]=useState(profile?.country_code||"NG"),[idType,setIdType]=useState("national_id"),[idNumber,setIdNumber]=useState("");
-  const [idFile,setIdFile]=useState(null),[faceFile,setFaceFile]=useState(null),[consent,setConsent]=useState(false),[verificationBusy,setVerificationBusy]=useState(false),[verificationNotice,setVerificationNotice]=useState(""),[verificationError,setVerificationError]=useState("");
+  const [verification,setVerification]=useState(null),[verificationLoading,setVerificationLoading]=useState(true),[verificationError,setVerificationError]=useState("");
   const setPref=(key,value,setter)=>{setter(value);try{localStorage.setItem(key,value?"on":"off")}catch{}};
   useEffect(()=>{let active=true;(async()=>{if(!supabase||!user?.id){if(active)setVerificationLoading(false);return;}try{const {data,error}=await supabase.functions.invoke("identity-verification",{body:{action:"status"}});if(active){if(!error&&!data?.error)setVerification(data?.verification||null);else setVerificationError(data?.error||error?.message||"Could not load verification status.");}}catch(e){if(active)setVerificationError(e?.message||"Could not load verification status.");}finally{if(active)setVerificationLoading(false);}})();return()=>{active=false};},[user?.id]);
   const rawVerificationStatus=verification?.status;
   const verificationStatus=rawVerificationStatus==="approved"?"approved":rawVerificationStatus==="pending"?"pending":rawVerificationStatus==="rejected"?"rejected":rawVerificationStatus==="resubmission_required"?"resubmission_required":"not_started";
-  const statusLabel=verificationLoading?"Checking status…":verificationStatus==="approved"?"Identity verified":verificationStatus==="pending"?"Awaiting admin review":verificationStatus==="rejected"?"Submission declined":verificationStatus==="resubmission_required"?"More information required":"Identity not verified";
-  async function submitIdentity(e){
-    e.preventDefault();setVerificationError("");setVerificationNotice("");
+  const statusLabel=verificationLoading?"Checking status…":verificationStatus==="approved"?"Identity verified":verificationStatus==="pending"?"Pending review":verificationStatus==="rejected"?"Submission declined":verificationStatus==="resubmission_required"?"More information required":"Identity not verified";
+  const countryName=code=>ONBOARDING_COUNTRIES.find(item=>item.code===code)?.name||code||"Not set";
+  return <div className="profile-page">
+    <section className="profile-hero-card"><div className="avatar-orb profile-avatar" aria-label={name+" avatar"}><span>{initials}</span><i/></div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username?"@"+profile.telegram_username:user?.email||"Connected account"}</span></div><span className={"identity-status-pill "+(verificationLoading?"checking":verificationStatus==="approved"?"approved":verificationStatus==="pending"?"pending":"unverified")}>{verificationLoading?"● CHECKING STATUS":verificationStatus==="approved"?"● IDENTITY VERIFIED":verificationStatus==="pending"?"● PENDING REVIEW":"● IDENTITY NOT VERIFIED"}</span>{verificationStatus!=="approved"&&<button type="button" className="profile-verify-cta" onClick={onVerifyIdentity}>{verificationStatus==="pending"?"View verification status":"Verify identity →"}</button>}</section>
+    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.last_login_provider==="google"?"Google connected":"Email and password"}</strong></div><div className="profile-row"><span>Email</span><strong>{user?.email||"Not provided"}</strong></div><div className="profile-row"><span>Country</span><strong>{countryName(profile?.country_code)}</strong></div><div className="profile-row"><span>Risk profile</span><strong>{profile?.risk_profile||profile?.trading_style||"Not set"}</strong></div><div className="profile-row"><span>Trading</span><strong>AI trading enabled</strong></div></section>
+    <section className="profile-section profile-identity-summary"><div className="profile-section-head"><div><small>WITHDRAWAL SECURITY</small><h2>Identity verification</h2></div><span className={"identity-status-pill "+(verificationLoading?"checking":verificationStatus==="approved"?"approved":verificationStatus==="pending"?"pending":"unverified")}>{statusLabel}</span></div>
+      <p>Verify your identity with a government-issued ID and a camera face scan. Make sure your details are accurate; your submission is subject to manual review before withdrawals are available.</p>
+      {verificationStatus==="approved"&&<div className="auth-success" role="status">Your identity verification is complete. You can initiate withdrawals.</div>}
+      {verificationStatus==="pending"&&<div className="notice" role="status">Your submission has been received and is pending review. You can check its status here. Withdrawals remain unavailable while the review is in progress.{verification?.duplicate_flag?" Your submission may require additional checks.":""}</div>}
+      {verificationStatus==="rejected"&&<div className="error-banner" role="status">Your previous submission was declined. Review the note and submit corrected information.</div>}
+      {verificationStatus==="resubmission_required"&&<div className="notice" role="status">More information is needed. Open identity verification to submit clearer or corrected details.</div>}
+      {verification?.review_notes&&<div className="profile-row"><span>Review note</span><strong>{verification.review_notes}</strong></div>}
+      {verificationError&&<div className="error-banner" role="alert">{verificationError}</div>}
+      {verificationStatus!=="approved"&&<button type="button" className="mini-action" onClick={onVerifyIdentity}>{verificationStatus==="pending"?"View verification status":"Open identity verification →"}</button>}
+    </section>
+    <section className="profile-section settings-card"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><button className="setting-row" onClick={()=>setPref("flexar_pref_notifications",!notifications,setNotifications)}><span><strong>Notifications</strong><small>Account and trade updates</small></span><b className={notifications?"toggle on":"toggle"}><i/></b></button><button className="setting-row" onClick={()=>setPref("flexar_pref_market_alerts",!marketAlerts,setMarketAlerts)}><span><strong>Market alerts</strong><small>AI opportunity notifications</small></span><b className={marketAlerts?"toggle on":"toggle"}><i/></b></button><div className="setting-row static"><span><strong>Sign-in security</strong><small>Managed by Supabase Auth</small></span><b>Protected</b></div></section>
+    <section className="profile-section profile-support"><div className="profile-section-head"><div><small>ACCOUNT SUPPORT</small><h2>Need help?</h2></div></div><p>Use the support channel connected to your FLEXAR account for account, funding or trading questions.</p></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button>
+  </div>;
+}
+
+function IdentityVerificationPage({ user, profile, onBack, onOpenCredits, onSubmitted }) {
+  const [verification,setVerification]=useState(null),[verificationLoading,setVerificationLoading]=useState(true);
+  const [legalName,setLegalName]=useState(""),[countryCode,setCountryCode]=useState(profile?.country_code||"NG"),[idType,setIdType]=useState("national_id"),[idNumber,setIdNumber]=useState("");
+  const [idFile,setIdFile]=useState(null),[faceFile,setFaceFile]=useState(null),[consent,setConsent]=useState(false),[verificationBusy,setVerificationBusy]=useState(false),[verificationError,setVerificationError]=useState(""),[feeModalOpen,setFeeModalOpen]=useState(false);
+  const idOptions=ID_DOCUMENT_TYPES[countryCode]||DEFAULT_ID_DOCUMENT_TYPES;
+  useEffect(()=>{setIdType(idOptions[0]?.[0]||"national_id");},[countryCode]);
+  useEffect(()=>{let active=true;(async()=>{if(!supabase||!user?.id){if(active)setVerificationLoading(false);return;}try{const {data,error}=await supabase.functions.invoke("identity-verification",{body:{action:"status"}});if(active&&!error&&!data?.error){setVerification(data?.verification||null);if(data?.verification?.legal_name)setLegalName(data.verification.legal_name);if(data?.verification?.country_code){setCountryCode(data.verification.country_code);setIdType(data.verification.id_type||"national_id");}}else if(active)setVerificationError(data?.error||error?.message||"Could not load verification status.");}catch(e){if(active)setVerificationError(e?.message||"Could not load verification status.");}finally{if(active)setVerificationLoading(false);}})();return()=>{active=false};},[user?.id]);
+  const rawStatus=verification?.status;
+  const status=rawStatus==="approved"?"approved":rawStatus==="pending"?"pending":rawStatus==="rejected"?"rejected":rawStatus==="resubmission_required"?"resubmission_required":"not_started";
+  const statusLabel=verificationLoading?"Checking status…":status==="approved"?"Identity verified":status==="pending"?"Pending review":status==="rejected"?"Submission declined":status==="resubmission_required"?"More information required":"Ready to verify";
+  async function handleFormSubmit(e){
+    e.preventDefault();setVerificationError("");
     if(!user?.id||!supabase)return setVerificationError("Identity verification is unavailable right now.");
     if(!legalName.trim()||!idNumber.trim()||!idFile||!faceFile)return setVerificationError("Complete every field and provide both your government ID and face scan.");
     if(!faceFile.type.startsWith("image/"))return setVerificationError("Your face scan must be an image captured with the camera.");
     for(const file of [idFile,faceFile])if(file.size>10*1024*1024)return setVerificationError("Each file must be 10 MB or smaller.");
     if(!consent)return setVerificationError("Confirm consent before submitting your identity documents.");
-    setVerificationBusy(true);const uploaded=[];
+    if(!idOptions.some(([value])=>value===idType))return setVerificationError("Select a valid identity document type for your country.");
+    setFeeModalOpen(true);
+  }
+  async function confirmSubmit(){
+    setVerificationError("");setVerificationBusy(true);const uploaded=[];const requestId=crypto.randomUUID();
     try{
       const extension=file=>file.type==="application/pdf"?"pdf":file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
       const upload=async(file,label)=>{const path=user.id+"/"+crypto.randomUUID()+"-"+label+"."+extension(file);const {error}=await supabase.storage.from("identity-documents").upload(path,file,{contentType:file.type,upsert:false});if(error)throw new Error(error.message||"Could not upload identity file.");uploaded.push(path);return path;};
       const idPath=await upload(idFile,"government-id");const facePath=await upload(faceFile,"face-scan");
-      const {data,error}=await supabase.functions.invoke("identity-verification",{body:{action:"submit",legal_name:legalName,country_code:countryCode,id_type:idType,id_number:idNumber,id_document_path:idPath,face_scan_path:facePath,consent:true}});
-      if(error||data?.error)throw new Error(data?.error||error?.message||"Could not submit identity verification.");
-      setVerification(data.verification||{status:"pending",submitted_at:new Date().toISOString()});setVerificationNotice(data.message||"Your identity documents have been submitted for admin review.");
-      setShowVerification(false);setIdNumber("");setIdFile(null);setFaceFile(null);setConsent(false);
-    }catch(e){if(uploaded.length)try{await supabase.storage.from("identity-documents").remove(uploaded)}catch{}setVerificationError(e?.message||"Could not submit identity verification.");}
-    finally{setVerificationBusy(false);}
+      const {data,error}=await supabase.functions.invoke("identity-verification",{body:{action:"submit",legal_name:legalName,country_code:countryCode,id_type:idType,id_number:idNumber,id_document_path:idPath,face_scan_path:facePath,consent:true,credits_confirmed:true,request_id:requestId}});
+      if(error||data?.error){const err=new Error(data?.error||error?.message||"Could not submit identity verification.");err.code=data?.code||data?.reason;err.credits=data?.credits;throw err;}
+      setVerification(data.verification||{status:"pending",submitted_at:new Date().toISOString()});setIdNumber("");setIdFile(null);setFaceFile(null);setConsent(false);setFeeModalOpen(false);onSubmitted?.(data);window.dispatchEvent(new Event("flexar-ai-credits-updated"));
+    }catch(e){
+      if(uploaded.length)try{await supabase.storage.from("identity-documents").remove(uploaded)}catch{}
+      if(e?.code==="insufficient_credits"||/5 AI credits|insufficient.*credit/i.test(e?.message||"")){setFeeModalOpen(false);setVerificationError(e?.message||"You need 5 AI credits to process identity verification. Please get more AI credits and try again.");}
+      else setVerificationError(e?.message||"Could not submit identity verification.");
+    }finally{setVerificationBusy(false);}
   }
-  const countryName=code=>ONBOARDING_COUNTRIES.find(item=>item.code===code)?.name||code||"Not set";
-  return <div className="profile-page">
-    <section className="profile-hero-card"><div className="avatar-orb profile-avatar" aria-label={name+" avatar"}><span>{initials}</span><i/></div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username?"@"+profile.telegram_username:user?.email||"Connected account"}</span></div><span className={"identity-status-pill "+(verificationLoading?"checking":verificationStatus==="approved"?"approved":verificationStatus==="pending"?"pending":"unverified")}>{verificationLoading?"● CHECKING STATUS":verificationStatus==="approved"?"● IDENTITY VERIFIED":verificationStatus==="pending"?"● UNDER REVIEW":"● IDENTITY NOT VERIFIED"}</span>{!verificationLoading&&verificationStatus!=="approved"&&verificationStatus!=="pending"&&<button type="button" className="profile-verify-cta" onClick={()=>{setShowVerification(true);document.getElementById("profile-identity-verification")?.scrollIntoView({behavior:"smooth",block:"start"});}}>Verify identity →</button>}</section>
-    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.last_login_provider==="google"?"Google connected":"Email and password"}</strong></div><div className="profile-row"><span>Email</span><strong>{user?.email||"Not provided"}</strong></div><div className="profile-row"><span>Country</span><strong>{countryName(profile?.country_code)}</strong></div><div className="profile-row"><span>Risk profile</span><strong>{profile?.risk_profile||profile?.trading_style||"Not set"}</strong></div><div className="profile-row"><span>Trading</span><strong>AI trading enabled</strong></div></section>
-    <section className="profile-section" id="profile-identity-verification">
-      <div className="profile-section-head"><div><small>WITHDRAWAL SECURITY</small><h2>Identity verification</h2></div><span className={"identity-status-pill "+(verificationLoading?"checking":verificationStatus==="approved"?"approved":verificationStatus==="pending"?"pending":"unverified")}>{statusLabel}</span></div>
-      <p style={{color:"var(--muted,#9aa3b2)",lineHeight:1.6}}>To protect your account and prevent duplicate accounts, Flexar requires a government ID and a separate camera face scan. An administrator reviews both before withdrawals are enabled. Face images are reviewed manually; Flexar does not run automated facial recognition.</p>
-      {verificationStatus==="approved"&&<div className="auth-success" role="status">Your identity verification is approved. You can initiate withdrawals.</div>}
-      {verificationStatus==="pending"&&<div className="notice" role="status">Your details have been received. Withdrawals stay locked until the admin review is complete.{verification?.duplicate_flag?" Your request has been flagged for additional duplicate-account review.":""}</div>}
-      {verificationStatus==="rejected"&&<div className="error-banner" role="status">Your previous submission was declined. Review the administrator's note and submit corrected information.</div>}
-      {verificationStatus==="resubmission_required"&&<div className="notice" role="status">The administrator needs clearer or additional information before approval.</div>}
-      {verification?.review_notes&&<div className="profile-row"><span>Review note</span><strong>{verification.review_notes}</strong></div>}
-      {verificationNotice&&<div className="auth-success" role="status">{verificationNotice}</div>}
-      {verificationError&&<div className="error-banner" role="alert">{verificationError}</div>}
-      {verificationStatus!=="approved"&&verificationStatus!=="pending"&&<button type="button" className="mini-action" onClick={()=>{setVerificationError("");setVerificationNotice("");setLegalName(verification?.legal_name||profile?.display_name||"");setCountryCode(verification?.country_code||profile?.country_code||"NG");setShowVerification(v=>!v);}}>{showVerification?"Close verification form":verificationStatus==="not_started"?"Start identity verification":"Update identity submission"}</button>}
-      {showVerification&&verificationStatus!=="pending"&&<form className="auth-email-form" onSubmit={submitIdentity} style={{marginTop:18}}>
-        <label>Full legal name<input value={legalName} onChange={e=>setLegalName(e.target.value)} autoComplete="name" maxLength={160} required placeholder="Exactly as printed on your government ID"/></label>
-        <label>Country of residence<select value={countryCode} onChange={e=>setCountryCode(e.target.value)} required>{ONBOARDING_COUNTRIES.map(c=><option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}</select></label>
-        <label>Government ID type<select value={idType} onChange={e=>setIdType(e.target.value)} required><option value="national_id">National identity card</option><option value="passport">Passport</option><option value="drivers_license">Driver's licence</option><option value="voters_card">Voter's card</option><option value="residence_permit">Residence permit</option></select></label>
-        <label>Government ID number<input value={idNumber} onChange={e=>setIdNumber(e.target.value)} autoComplete="off" maxLength={80} required placeholder="ID number (stored only as a one-way hash)"/></label>
-        <label>Government ID image or PDF<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>setIdFile(e.target.files?.[0]||null)} required/><small>{idFile?idFile.name:"Upload a clear image of your ID. Max 10 MB."}</small></label>
-        <label>Face scan — use your camera<input type="file" accept="image/*" capture="user" onChange={e=>setFaceFile(e.target.files?.[0]||null)} required/><small>{faceFile?faceFile.name:"On a phone, this opens the front camera. Use a clear, well-lit photo. Max 10 MB."}</small></label>
-        <label style={{display:"flex",alignItems:"flex-start",gap:10}}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required style={{width:18,marginTop:4}}/><span>I consent to Flexar securely storing these files for manual identity and duplicate-account review. I understand that withdrawals remain unavailable until an administrator approves my submission.</span></label>
-        <div className="admin-modal-actions"><button type="button" className="secondary" onClick={()=>setShowVerification(false)} disabled={verificationBusy}>Cancel</button><button type="submit" className="mini-action" disabled={verificationBusy}>{verificationBusy?"Uploading securely…":"Submit for admin review"}</button></div>
+  return <div className="identity-page">
+    <button type="button" className="identity-back-button" onClick={onBack}><span aria-hidden="true">←</span> Back to profile</button>
+    <section className="identity-page-hero"><div className="identity-hero-copy"><span className="identity-eyebrow"><i/> ACCOUNT PROTECTION</span><h1>Identity verification</h1><p>Confirm your identity to help protect your account and unlock withdrawals after manual review.</p><div className="identity-trust-points"><span><b>01</b> Government ID</span><span><b>02</b> Camera face scan</span><span><b>03</b> Manual review</span></div></div><div className="identity-hero-mark" aria-hidden="true"><div className="identity-shield"><span>✓</span></div><i className="identity-orbit orbit-one"/><i className="identity-orbit orbit-two"/></div></section>
+    <div className="identity-page-layout"><section className="identity-form-card">
+      <div className="identity-form-heading"><div><small>YOUR DETAILS</small><h2>Complete your identity profile</h2><p>Enter your information exactly as it appears on your official document.</p></div><span className={"identity-status-pill "+(status==="approved"?"approved":status==="pending"?"pending":"unverified")}>{statusLabel}</span></div>
+      {verificationLoading&&<div className="identity-loading-line">Checking your current verification status…</div>}
+      {status==="approved"&&<div className="identity-status-panel success"><span>✓</span><div><strong>Identity verified</strong><p>Your identity review is complete. You can initiate withdrawals.</p></div></div>}
+      {status==="pending"&&<div className="identity-status-panel pending"><span>◷</span><div><strong>Pending review</strong><p>Your submission has been received and is being reviewed manually. You can return to your profile; the status will remain pending until the review is complete.</p>{verification?.duplicate_flag&&<small>Additional identity checks may be required.</small>}</div></div>}
+      {status==="rejected"&&<div className="identity-status-panel warning"><span>!</span><div><strong>Submission declined</strong><p>Review the note below and submit accurate, corrected information.</p>{verification?.review_notes&&<small>{verification.review_notes}</small>}</div></div>}
+      {status==="resubmission_required"&&<div className="identity-status-panel warning"><span>!</span><div><strong>More information needed</strong><p>Please provide clearer or corrected details and documents.</p>{verification?.review_notes&&<small>{verification.review_notes}</small>}</div></div>}
+      {verificationError&&<div className="error-banner" role="alert">{verificationError}{/5 AI credits|insufficient.*credit/i.test(verificationError)&&<button type="button" className="identity-inline-link" onClick={onOpenCredits}>Get AI credits →</button>}</div>}
+      {status!=="approved"&&status!=="pending"&&<form className="identity-form" onSubmit={handleFormSubmit}>
+        <div className="identity-form-section-title"><span>01</span><div><strong>Personal information</strong><small>Use your legal details, not a nickname.</small></div></div>
+        <div className="identity-fields-grid">
+          <label className="identity-field identity-field-wide"><span>Full legal name <i>*</i></span><input value={legalName} onChange={e=>setLegalName(e.target.value)} autoComplete="name" maxLength={160} required placeholder="As printed on your government ID"/><small>Enter your first, middle (if applicable), and last name.</small></label>
+          <label className="identity-field"><span>Country of residence <i>*</i></span><div className="identity-select-wrap"><select value={countryCode} onChange={e=>setCountryCode(e.target.value)} required>{ONBOARDING_COUNTRIES.map(c=><option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}</select><span aria-hidden="true">⌄</span></div><small>Document options update for your selected country.</small></label>
+          <label className="identity-field"><span>Government ID type <i>*</i></span><div className="identity-select-wrap"><select value={idType} onChange={e=>setIdType(e.target.value)} required>{idOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><span aria-hidden="true">⌄</span></div><small>Select the document you will upload.</small></label>
+          <label className="identity-field identity-field-wide"><span>Government ID number <i>*</i></span><input value={idNumber} onChange={e=>setIdNumber(e.target.value)} autoComplete="off" maxLength={80} required placeholder="Enter the number shown on your document"/><small>Your ID number is stored as a one-way keyed hash for duplicate screening.</small></label>
+        </div>
+        <div className="identity-form-section-title identity-documents-title"><span>02</span><div><strong>Identity documents</strong><small>Upload clear, readable files. Each file must be 10 MB or less.</small></div></div>
+        <div className="identity-upload-grid">
+          <label className={"identity-upload-card "+(idFile?"has-file":"")}><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>setIdFile(e.target.files?.[0]||null)} required/><span className="identity-upload-icon">▧</span><span className="identity-upload-title">Government-issued ID <i>*</i></span><span className="identity-upload-description">{idFile?idFile.name:"Upload the front or main page of your ID"}</span><span className="identity-upload-action">{idFile?"Choose a different file":"Browse files"}</span><small>JPG, PNG, WEBP or PDF</small></label>
+          <label className={"identity-upload-card "+(faceFile?"has-file":"")}><input type="file" accept="image/*" capture="user" onChange={e=>setFaceFile(e.target.files?.[0]||null)} required/><span className="identity-upload-icon">◎</span><span className="identity-upload-title">Camera face scan <i>*</i></span><span className="identity-upload-description">{faceFile?faceFile.name:"Take a clear, well-lit photo of your face"}</span><span className="identity-upload-action">{faceFile?"Choose a different photo":"Open camera / upload"}</span><small>Image only · no filters</small></label>
+        </div>
+        <label className="identity-consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required/><span><strong>Consent to identity review</strong><small>I confirm these details and documents belong to me. I consent to secure storage and manual identity and duplicate-account review. I understand withdrawals remain unavailable while my submission is under review.</small></span></label>
+        <div className="identity-submit-row"><div><small>PROCESSING FEE</small><strong>5 AI credits</strong><span>Charged only when the submission is accepted.</span></div><button type="submit" className="identity-submit-button" disabled={verificationBusy||verificationLoading}>{verificationBusy?"Submitting securely…":"Submit identity verification"} <span>→</span></button></div>
       </form>}
-    </section>
-    <section className="profile-section settings-card"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><button className="setting-row" onClick={()=>setPref("flexar_pref_notifications",!notifications,setNotifications)}><span><strong>Notifications</strong><small>Account and trade updates</small></span><b className={notifications?"toggle on":"toggle"}><i/></b></button><button className="setting-row" onClick={()=>setPref("flexar_pref_market_alerts",!marketAlerts,setMarketAlerts)}><span><strong>Market alerts</strong><small>AI opportunity notifications</small></span><b className={marketAlerts?"toggle on":"toggle"}><i/></b></button><div className="setting-row static"><span><strong>Sign-in security</strong><small>Managed by Supabase Auth</small></span><b>Protected</b></div></section>
-    <section className="profile-section profile-support"><div className="profile-section-head"><div><small>ACCOUNT SUPPORT</small><h2>Need help?</h2></div></div><p>Use the support channel connected to your FLEXAR account for account, funding or trading questions.</p></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button>
+    </section><aside className="identity-sidebar"><section className="identity-side-card identity-fee-card"><span className="identity-side-icon">✦</span><small>VERIFICATION FEE</small><strong>5 <em>AI credits</em></strong><p>Identity verification processing costs 5 AI credits. You’ll confirm the fee before anything is submitted.</p><div className="identity-credit-balance"><span>Your current balance</span><strong>{Number(profile?.ai_credits||0).toLocaleString(undefined,{maximumFractionDigits:2})} credits</strong></div></section><section className="identity-side-card"><small>WHAT HAPPENS NEXT?</small><ol className="identity-process-list"><li><span>1</span><div><strong>Submit your details</strong><p>Complete the form and upload both documents.</p></div></li><li><span>2</span><div><strong>Manual review</strong><p>Our team checks the information and document clarity.</p></div></li><li><span>3</span><div><strong>Status update</strong><p>Your profile will show pending review until a decision is made.</p></div></li></ol></section><p className="identity-privacy-note">Your ID number is not stored in plain text. Face scans are reviewed manually; FLEXAR does not run automated facial recognition.</p></aside></div>
+    {feeModalOpen&&<div className="identity-fee-backdrop" onClick={()=>{if(!verificationBusy)setFeeModalOpen(false);}}><section className="identity-fee-modal" role="dialog" aria-modal="true" aria-labelledby="identity-fee-title" onClick={e=>e.stopPropagation()}><button type="button" className="identity-fee-close" onClick={()=>setFeeModalOpen(false)} disabled={verificationBusy} aria-label="Close">×</button><span className="identity-modal-emblem">✦</span><small>CONFIRM PROCESSING FEE</small><h2 id="identity-fee-title">Submit identity verification?</h2><p>Processing your identity verification costs <strong>5 AI credits</strong>. The credits will be deducted when your submission is accepted for review.</p><div className="identity-fee-breakdown"><span>Processing fee<strong>5 AI credits</strong></span><span>Current balance<strong>{Number(profile?.ai_credits||0).toLocaleString(undefined,{maximumFractionDigits:2})} credits</strong></span><span>Balance after submission<strong>{Math.max(0,Number(profile?.ai_credits||0)-5).toLocaleString(undefined,{maximumFractionDigits:2})} credits</strong></span></div>{Number(profile?.ai_credits||0)<5?<><div className="identity-insufficient-note">You need at least 5 AI credits to process this verification. Add credits to continue.</div><button type="button" className="identity-submit-button" onClick={onOpenCredits}>Get AI credits →</button></>:<div className="identity-modal-actions"><button type="button" className="identity-cancel-button" onClick={()=>setFeeModalOpen(false)} disabled={verificationBusy}>Go back</button><button type="button" className="identity-submit-button" onClick={confirmSubmit} disabled={verificationBusy}>{verificationBusy?"Submitting securely…":"Confirm & submit"} <span>→</span></button></div>}<small className="identity-modal-footnote">Your documents will be reviewed manually. A successful submission will appear as Pending review in your profile.</small></section></div>}
   </div>;
 }
 function WalletActions({ action, onClose, onVerification, account, refreshAccount, assetPrices = {} }) {
