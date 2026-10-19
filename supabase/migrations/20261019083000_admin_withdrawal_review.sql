@@ -19,7 +19,7 @@ declare
   v_wallet public.wallets%rowtype;
   v_action text := pg_catalog.lower(pg_catalog.btrim(coalesce(p_action, '')));
   v_reason text := pg_catalog.btrim(coalesce(p_reason, ''));
-  v_tx_hash text := pg_catalog.lower(pg_catalog.btrim(coalesce(p_tx_hash, '')));
+  v_tx_hash text := pg_catalog.btrim(coalesce(p_tx_hash, ''));
 begin
   if p_admin_user_id is null or p_transaction_id is null then
     raise exception 'Admin and withdrawal transaction are required';
@@ -110,7 +110,7 @@ begin
 
     if exists (
       select 1 from public.wallet_transactions wt
-      where pg_catalog.lower(coalesce(wt.tx_hash, '')) = v_tx_hash
+      where pg_catalog.lower(coalesce(wt.tx_hash, '')) = pg_catalog.lower(v_tx_hash)
         and wt.id <> v_tx.id
     ) then
       raise exception 'This payout transaction hash is already recorded';
@@ -118,10 +118,10 @@ begin
 
     if exists (
       select 1 from public.payment_orders po
-      where pg_catalog.lower(coalesce(po.tx_hash, '')) = v_tx_hash
+      where pg_catalog.lower(coalesce(po.tx_hash, '')) = pg_catalog.lower(v_tx_hash)
     ) or exists (
       select 1 from public.deposit_requests dr
-      where pg_catalog.lower(dr.tx_hash) = v_tx_hash
+      where pg_catalog.lower(dr.tx_hash) = pg_catalog.lower(v_tx_hash)
     ) then
       raise exception 'This transaction hash has already been used for a deposit';
     end if;
