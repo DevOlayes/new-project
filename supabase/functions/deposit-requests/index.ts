@@ -65,7 +65,7 @@ async function tronPost(path: string, body: Record<string, unknown>): Promise<{r
 }
 async function getOrder(orderId: string, userId: string) {
   return await admin.from("payment_orders")
-    .select("id,user_id,purpose,base_amount,payment_amount,credits,status,created_at,expires_at,tx_hash")
+    .select("id,user_id,purpose,base_amount,payment_amount,credits,status,created_at,expires_at,tx_hash,verification_details")
     .eq("id",orderId).eq("user_id",userId).maybeSingle();
 }
 async function createOrder(userId: string, body: Record<string,unknown>) {
@@ -95,8 +95,21 @@ async function createOrder(userId: string, body: Record<string,unknown>) {
   }
   return json({...data,deposit_address:DEPOSIT_ADDRESS,network:"TRC-20",token:"USDT"});
 }
-async function confirmOrder(orderId: string, userId: string) {
+async function recordPaymentReview(order:any, txHash:string, reason:string, evidence:Record<string,unknown> = {}) {
+  const details = {
+    ...(order.verification_details && typeof order.verification_details === "object" ? order.verification_details : {}),
+    manual_submission: { tx_hash:txHash || null, reason, recorded_at:new Date().toISOString(), ...evidence }
+  };
+  const {error} = await admin.from("payment_orders")
+    .update({verification_status:"needs_review",verification_details:details})
+    .eq("id",order.id).eq("user_id",order.user_id).neq("status","paid");
+  if(error) console.error("Could not record payment for manual review",error.message);
+}
+
+async function confirmOrder(orderId: string, userId: string, submittedHashValue = "") {
   if (!/^[0-9a-f-]{36}$/i.test(orderId)) return json({error:"Select a valid payment request."},400);
+  const submittedHash = String(submittedHashValue || "").trim().replace(/^0x/i,"").toLowerCase();
+  if (submittedHashValue && !/^[a-f0-9]{64}$/.test(submittedHash)) return json({error:"Enter a valid 64-character transaction hash."},400);
   const {data:order,error:orderError} = await getOrder(orderId,userId);
   if (orderError || !order) return json({error:"Payment request not found."},404);
   if (order.status === "paid") return json({error:"This payment has already been completed.",status:"paid"},409);
@@ -104,6 +117,7 @@ async function confirmOrder(orderId: string, userId: string) {
   if (expectedUnits === null) return json({error:"Payment request amount is invalid."},500);
 
   const createdMs = new Date(order.created_at).getTime();
+  const expiresMs = new Date(order.expires_at).getTime();
   const params = new URLSearchParams({
     only_confirmed:"true",
     limit:"200",
@@ -125,23 +139,51 @@ async function confirmOrder(orderId: string, userId: string) {
   }
 
   const transfers = Array.isArray(history?.data) ? history.data : [];
-  const candidates = transfers.filter((item:any) => {
+  const hashOf = (item:any) => String(item?.transaction_id || item?.txID || "").toLowerCase();
+  const validIncoming = transfers.filter((item:any) => {
     const contract = String(item?.token_info?.address || item?.contract_address || "");
     const to = String(item?.to || "");
     const value = String(item?.value || "");
     const timestamp = Number(item?.block_timestamp || 0);
     return normalizedContract(contract) === USDT_CONTRACT_HEX &&
-      to === DEPOSIT_ADDRESS && /^\d+$/.test(value) &&
-      BigInt(value) === expectedUnits && timestamp >= createdMs;
+      to === DEPOSIT_ADDRESS && /^\d+$/.test(value) && timestamp >= createdMs;
   });
-  if (candidates.length === 0) {
-    return json({ok:false,status:"pending",message:"Payment not detected yet. Make sure you sent the exact amount shown using USDT on the TRC-20 network, then try again."},202);
-  }
-  if (candidates.length > 1) {
-    return json({error:"More than one matching transfer was found. FLEXAR has not credited anything to avoid assigning a payment to the wrong account. Please contact support."},409);
-  }
 
-  const transfer = candidates[0];
+  let transfer:any = null;
+  if (submittedHash) {
+    transfer = validIncoming.find((item:any) => hashOf(item) === submittedHash) || null;
+    if (!transfer) {
+      return json({ok:false,status:"pending",message:"We cannot yet find that hash as a confirmed USDT TRC-20 transfer to the FLEXAR receiving address. Check the hash and try again shortly."},202);
+    }
+    const submittedValue = String(transfer?.value || "");
+    const submittedTimestamp = Number(transfer?.block_timestamp || 0);
+    if (!/^\d+$/.test(submittedValue) || BigInt(submittedValue) !== expectedUnits) {
+      await recordPaymentReview(order,submittedHash,"submitted_transaction_amount_does_not_match_order",{observed_amount_units:submittedValue,order_payment_amount:String(order.payment_amount)});
+      return json({ok:false,status:"needs_review",needs_review:true,message:"The transaction is real, but its amount does not match this payment request. FLEXAR has flagged it for review and has not credited your balance."},409);
+    }
+    if (submittedTimestamp > expiresMs) {
+      await recordPaymentReview(order,submittedHash,"submitted_transaction_after_order_expiry",{block_timestamp_ms:submittedTimestamp,order_expires_at:order.expires_at});
+      return json({ok:false,status:"needs_review",needs_review:true,message:"This transfer arrived after the payment window ended. FLEXAR has flagged it for review; your balance has not been changed."},409);
+    }
+  } else {
+    const amountMatches = validIncoming.filter((item:any) => {
+      const value = String(item?.value || "");
+      return /^\d+$/.test(value) && BigInt(value) === expectedUnits;
+    });
+    const timelyMatches = amountMatches.filter((item:any) => Number(item?.block_timestamp || 0) <= expiresMs);
+    if (timelyMatches.length === 0 && amountMatches.length > 0) {
+      const lateTransfer = amountMatches[0];
+      await recordPaymentReview(order,hashOf(lateTransfer),"matching_amount_transfer_after_order_expiry",{block_timestamp_ms:Number(lateTransfer?.block_timestamp||0),order_expires_at:order.expires_at});
+      return json({ok:false,status:"needs_review",needs_review:true,message:"A matching transfer was detected after this payment request expired. FLEXAR has flagged it for review and has not credited your balance."},409);
+    }
+    if (timelyMatches.length === 0) {
+      return json({ok:false,status:"pending",message:"Payment not detected yet. Make sure you sent the exact amount shown using USDT on the TRC-20 network. FLEXAR will keep checking automatically."},202);
+    }
+    if (timelyMatches.length > 1) {
+      return json({ok:false,status:"ambiguous",needs_hash:true,message:"More than one transfer matches this amount. FLEXAR has not credited anything; submit the transaction hash after the payment window if it remains unresolved."},409);
+    }
+    transfer = timelyMatches[0];
+  }
   const senderAddress = String(transfer?.from || "").trim();
   const recipientAddress = String(transfer?.to || "").trim();
   const tokenContract = String(transfer?.token_info?.address || transfer?.contract_address || "").trim();
@@ -235,5 +277,6 @@ Deno.serve(async(req:Request)=>{
   }
   if(body.action==="create") return await createOrder(user.id,body);
   if(body.action==="confirm") return await confirmOrder(String(body.order_id||""),user.id);
+  if(body.action==="submit_hash") return await confirmOrder(String(body.order_id||""),user.id,String(body.tx_hash||""));
   return json({error:"Unsupported payment action."},400);
 });
