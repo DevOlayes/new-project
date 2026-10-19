@@ -210,7 +210,7 @@ begin
     'ok', true,
     'transaction_id', v_tx.id,
     'action', v_action,
-    'status', case when v_action = 'approve' then 'processing' when v_action = 'reject' then 'cancelled' else 'completed' end,
+    'status', case when v_action = 'approve' then 'processing' when v_action = 'reject' then 'failed' else 'completed' end,
     'amount', v_tx.amount,
     'tx_hash', case when v_action = 'complete' then v_tx_hash else null end
   );
