@@ -2307,6 +2307,7 @@ body{background:var(--bg)}
 
 
 /* FLEXAR wallet UX polish: explicit desktop sidebar close control and branded asset picker. */
+.sidebar-menu-head{display:none}
 @media(min-width:760px){
   .bottom-nav{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:7px;padding:18px 14px!important;padding-top:14px!important;overflow-y:auto}
   .bottom-nav:before{display:none!important}
