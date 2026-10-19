@@ -26,6 +26,10 @@ Deno.serve(async(req)=>{
     const action=body.action||"overview";
 
     if(action==="overview"){
+      // Run expiry during admin refresh as well as the scheduled job so stale
+      // unpaid orders never linger in the pending queues when an admin opens them.
+      const expiryResult = await admin.rpc("expire_incomplete_payment_requests");
+      if (expiryResult.error) console.warn("Payment expiry check failed", expiryResult.error.message);
       const [users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets,depositRequests,paymentOrders,aiCreditOrders,diagnostics,creditTransactions,modelStats,audit,usersCount,transactionsCount,tradesCount,opportunitiesCount,aiCreditOrdersCount]=await Promise.all([
         admin.from("profiles").select("id,display_name,telegram_username,email,is_admin,created_at,last_login_provider").order("created_at",{ascending:false}).limit(500),
         admin.from("wallet_transactions").select("id,user_id,type,direction,amount,status,reference,tx_hash,metadata,created_at,completed_at").order("created_at",{ascending:false}).limit(500),
