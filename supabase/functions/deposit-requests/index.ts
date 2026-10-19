@@ -277,7 +277,7 @@ Deno.serve(async(req:Request)=>{
     const expiryResult = await admin.rpc("expire_incomplete_payment_requests");
     if (expiryResult.error) console.warn("Payment expiry check failed", expiryResult.error.message);
     const {data,error}=await admin.from("payment_orders")
-      .select("id,purpose,base_amount,payment_amount,credits,status,tx_hash,created_at,expires_at,paid_at,verification_status,verification_details")
+      .select("id,purpose,base_amount,payment_amount,credits,status,tx_hash,created_at,expires_at,paid_at,verification_status,verification_details,payment_attempted_at")
       .eq("user_id",user.id).order("created_at",{ascending:false}).limit(30);
     if(error) return json({error:"Could not load payment history."},500);
     return json({ok:true,requests:data||[]});
