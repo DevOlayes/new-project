@@ -162,8 +162,14 @@ Deno.serve(async(req)=>{
     if(action==="set_admin_access"){
       const {user_id,is_admin}=body;if(!user_id||typeof is_admin!=="boolean")return json({error:"invalid request"},400);
       if(user_id===user.id&&is_admin===false)return json({error:"You cannot remove your own admin access from this panel."},400);
-      const {error}=await admin.from("profiles").update({is_admin,updated_at:new Date().toISOString()}).eq("id",user_id);
-      if(error)return json({error:error.message},400);await recordAudit(user.id,"set_admin_access","profile",String(user_id),{is_admin});return json({ok:true});
+      const {data:target,error:targetError}=await admin.from("profiles").select("id,is_admin,is_deleted").eq("id",user_id).maybeSingle();
+      if(targetError)return json({error:targetError.message},400);
+      if(!target||target.is_deleted)return json({error:"The selected account is unavailable."},404);
+      const {data:updated,error}=await admin.from("profiles").update({is_admin,updated_at:new Date().toISOString()}).eq("id",user_id).eq("is_deleted",false).select("id,is_admin").maybeSingle();
+      if(error)return json({error:error.message},400);
+      if(!updated)return json({error:"No active account was updated."},404);
+      await recordAudit(user.id,"set_admin_access","profile",String(user_id),{previous_is_admin:target.is_admin,is_admin});
+      return json({ok:true});
     }
     return json({error:"Unknown action"},400);
   }catch(e){return json({error:e instanceof Error?e.message:"Request failed"},401);}
