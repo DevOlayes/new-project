@@ -29,7 +29,8 @@ Deno.serve(async(req:Request)=>{
   if(body.action==="status"){
     const {data,error}=await admin.from("identity_verifications").select("status,legal_name,country_code,id_type,duplicate_flag,review_notes,submitted_at,reviewed_at").eq("user_id",user.id).maybeSingle();
     if(error)return json({error:"Could not load identity verification status."},500);
-    return json({ok:true,verification:data||null});
+    const verification = data || {status:"not_started",submitted_at:null,reviewed_at:null,duplicate_flag:false,review_notes:null};
+    return json({ok:true,verified:verification.status==="approved",verification});
   }
   if(body.action!=="submit") return json({error:"Unsupported action"},400);
   const legalName=String(body.legal_name||"").trim().replace(/\s+/g," ");
