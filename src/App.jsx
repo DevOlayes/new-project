@@ -1,7 +1,7 @@
 import { Component, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./lib/supabase";
-import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
+import { getTelegramWebApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
 import { reportDiagnosticError } from "./lib/diagnostics";
 
@@ -33,7 +33,7 @@ const withTimeout = (promise, ms, message = "Request timed out") =>
   });
 
 export default function App() {
-  const [inMiniApp, setInMiniApp] = useState(false);
+  
   const [page, setPage] = useState(() => window.location.pathname.split("/").filter(Boolean).join("/") === "admin" ? "admin" : "home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -315,7 +315,6 @@ export default function App() {
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
 
     const miniApp = getTelegramWebApp();
-    setInMiniApp(isTelegramMiniApp());
     if (miniApp) {
       miniApp.ready();
       miniApp.expand();
@@ -370,41 +369,7 @@ export default function App() {
     // session. This is the single initial auth source; don't run getClaims in
     // the same effect because doing both creates duplicate state updates.
     const initialize = async () => {
-      if (false && miniApp?.initData) {
-        const { data, error } = await supabase.functions.invoke("telegram-auth", {
-          body: { initData: miniApp.initData },
-        });
-
-        if (!mounted) return;
-
-        if (error || data?.error) {
-          clearAuthFallback();
-          clearStaleConnectionWarning();
-          setAuthError(data?.error || error?.message || "Telegram authentication failed.");
-          setLoading(false);
-        } else if (data?.session?.access_token && data?.session?.refresh_token) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          });
-          if (sessionError) {
-            clearAuthFallback();
-            clearStaleConnectionWarning();
-            setAuthError(sessionError.message || "Could not establish your FLEXAR AI session.");
-            setLoading(false);
-          } else {
-            clearAuthFallback();
-            clearStaleConnectionWarning();
-            setAuthError("");
-          }
-        } else {
-          clearAuthFallback();
-          clearStaleConnectionWarning();
-          setAuthError("Telegram authentication did not return a valid session.");
-          setLoading(false);
-        }
-      } else {
-        const { data, error } = await withTimeout(
+      const { data, error } = await withTimeout(
           supabase.auth.getSession(),
           12000,
           "Session restore timed out. Please check your connection and try again."
