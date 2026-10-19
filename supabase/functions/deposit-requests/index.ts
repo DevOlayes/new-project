@@ -142,6 +142,13 @@ async function confirmOrder(orderId: string, userId: string) {
   }
 
   const transfer = candidates[0];
+  const senderAddress = String(transfer?.from || "").trim();
+  const recipientAddress = String(transfer?.to || "").trim();
+  const tokenContract = String(transfer?.token_info?.address || transfer?.contract_address || "").trim();
+  const blockTimestamp = Number(transfer?.block_timestamp || 0);
+  if (!senderAddress || !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(senderAddress) || recipientAddress !== DEPOSIT_ADDRESS || normalizedContract(tokenContract) !== USDT_CONTRACT_HEX || !Number.isSafeInteger(blockTimestamp) || blockTimestamp < createdMs) {
+    return json({error:"The transfer sender, destination, token contract, or timestamp could not be verified. No balance was changed."},409);
+  }
   const txHash = String(transfer?.transaction_id || transfer?.txID || "").toLowerCase();
   if (!/^[a-f0-9]{64}$/.test(txHash)) return json({error:"The matching transfer has an invalid transaction reference. Please retry shortly."},503);
   let transaction:any,receiptInfo:any;
@@ -167,15 +174,15 @@ async function confirmOrder(orderId: string, userId: string) {
     return json({error:"The transfer did not execute successfully on TRON. No balance was credited."},400);
   }
 
-  let recipientHex:string;
-  try { recipientHex=base58PayloadHex(DEPOSIT_ADDRESS).slice(2); }
+  let recipientHex:string, senderHex:string;
+  try { recipientHex=base58PayloadHex(DEPOSIT_ADDRESS).slice(2); senderHex=base58PayloadHex(senderAddress).slice(2); }
   catch { return json({error:"Deposit verification configuration error."},500); }
   const logs=Array.isArray(receiptInfo?.log)?receiptInfo.log:(Array.isArray(receiptInfo?.logs)?receiptInfo.logs:[]);
   let verifiedUnits=0n;
   for (const log of logs) {
     const topics=Array.isArray(log?.topics)?log.topics.map((x:unknown)=>String(x).toLowerCase().replace(/^0x/,"")):[];
     if (normalizedContract(log?.address)!==USDT_CONTRACT_HEX || topics[0]!==TRANSFER_TOPIC || topics.length<3) continue;
-    if (topics[2].slice(-40)!==recipientHex) continue;
+    if (topics[1].slice(-40)!==senderHex || topics[2].slice(-40)!==recipientHex) continue;
     const raw=String(log?.data||"").replace(/^0x/,"");
     if (!/^[a-f0-9]+$/i.test(raw)) continue;
     try { verifiedUnits += BigInt("0x"+raw); } catch {}
@@ -185,8 +192,16 @@ async function confirmOrder(orderId: string, userId: string) {
   }
 
   const verifiedAmount=Number(verifiedUnits)/1000000;
-  const {data:result,error:completeError}=await admin.rpc("complete_payment_order",{
-    p_order_id:order.id,p_tx_hash:txHash,p_block_number:blockNumber,p_verified_amount:verifiedAmount
+  const {data:result,error:completeError}=await admin.rpc("complete_payment_order_verified",{
+    p_order_id:order.id,
+    p_tx_hash:txHash,
+    p_block_number:blockNumber,
+    p_verified_amount:verifiedAmount,
+    p_sender_address:senderAddress,
+    p_recipient_address:recipientAddress,
+    p_token_contract:tokenContract,
+    p_block_timestamp_ms:blockTimestamp,
+    p_verification_details:{verification_method:"tron_solidified_receipt",order_id:order.id,tx_hash:txHash,block_number:blockNumber,block_timestamp_ms:blockTimestamp,amount_units:verifiedUnits.toString(),verified_amount:verifiedAmount,sender_address:senderAddress,recipient_address:recipientAddress,token_contract:tokenContract,network:"TRC-20"}
   });
   if (completeError) {
     const message=String(completeError.message||"");
