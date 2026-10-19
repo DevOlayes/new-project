@@ -1364,7 +1364,25 @@ function AdminGrantSubscription({users,plans,onAction}){
 
 function Kpi({label,value}){return <div className="admin-kpi"><small>{label}</small><strong>{value}</strong></div>}
 function AdminPanel({title,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div>{children}</section>}
-function AdminTable({title,columns,children,emptyMessage="No records to display."}){const hasRows=Array.isArray(children)?children.flat(Infinity).some(child=>child!==null&&child!==false&&child!==undefined):Boolean(children);return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div><div className="admin-table-scroll" style={{"--admin-columns":columns.length}}><div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>{hasRows?children:<div className="admin-empty-row">{emptyMessage}</div>}</div></section>}
+function AdminTable({title,columns,children,emptyMessage="No records to display."}){
+  const [page,setPage]=useState(0);
+  const rows=(Array.isArray(children)?children.flat(Infinity):[children]).filter(child=>child!==null&&child!==false&&child!==undefined);
+  const pageSize=20;
+  const pageCount=Math.max(1,Math.ceil(rows.length/pageSize));
+  const currentPage=Math.min(page,pageCount-1);
+  const visibleRows=rows.slice(currentPage*pageSize,(currentPage+1)*pageSize);
+  return <section className="admin-card">
+    <div className="admin-section-title"><h2>{title}</h2></div>
+    <div className="admin-table-scroll" style={{"--admin-columns":columns.length}}>
+      <div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>
+      {rows.length?visibleRows:<div className="admin-empty-row">{emptyMessage}</div>}
+    </div>
+    {rows.length>pageSize&&<div className="admin-table-pagination">
+      <span>Showing {currentPage*pageSize+1}–{Math.min((currentPage+1)*pageSize,rows.length)} of {rows.length} loaded records</span>
+      <div><button type="button" disabled={currentPage===0} onClick={()=>setPage(Math.max(0,currentPage-1))} aria-label="Previous page">← Previous</button><span>Page {currentPage+1} of {pageCount}</span><button type="button" disabled={currentPage>=pageCount-1} onClick={()=>setPage(Math.min(pageCount-1,currentPage+1))} aria-label="Next page">Next →</button></div>
+    </div>}
+  </section>;
+}
 function AdminWithdrawals({transactions,onAction,userName=(id)=>String(id||"").slice(0,8)+"…"}){
   const [notes,setNotes]=useState({});
   const [hashes,setHashes]=useState({});
