@@ -33,11 +33,11 @@ begin
     raise exception 'Forbidden: admin access required';
   end if;
 
-  if p_asset <> 'USDT' or p_network <> 'TRC-20' then
+  if p_asset is distinct from 'USDT' or p_network is distinct from 'TRC-20' then
     raise exception 'Only USDT on TRC-20 is supported for admin adjustments';
   end if;
 
-  if p_direction not in ('credit', 'debit') then
+  if p_direction is null or p_direction not in ('credit', 'debit') then
     raise exception 'Direction must be credit or debit';
   end if;
 
@@ -65,7 +65,9 @@ begin
        or v_existing.direction <> p_direction
        or v_existing.amount <> p_amount
        or coalesce(v_existing.metadata->>'admin_user_id', '') <> p_admin_user_id::text
-       or coalesce(v_existing.metadata->>'reason', '') <> v_reason then
+       or coalesce(v_existing.metadata->>'reason', '') <> v_reason
+       or coalesce(v_existing.metadata->>'asset', '') <> p_asset
+       or coalesce(v_existing.metadata->>'network', '') <> p_network then
       raise exception 'Request ID has already been used for a different adjustment';
     end if;
 
