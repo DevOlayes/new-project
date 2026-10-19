@@ -1215,7 +1215,7 @@ function AdminDashboard({ onExit }) {
   const counts=data.counts||{};
   const won=learning.filter(item=>item.outcome==="won").length, lost=learning.filter(item=>item.outcome==="lost").length;
   const pendingWithdrawals=tx.filter(item=>item.type==="withdrawal"&&["pending","processing"].includes(item.status)).length;
-  const pendingDeposits=deposits.filter(item=>item.status==="pending").length;
+  const pendingDeposits=walletDepositOrders.filter(item=>item.status==="pending").length+deposits.filter(item=>item.status==="pending").length;
   const aiPaidOrders=aiCreditOrders.filter(item=>item.status==="paid");
   const aiCreditRevenue=aiPaidOrders.reduce((sum,item)=>sum+Number(item.base_amount||0),0);
   const pendingAiCreditOrders=aiCreditOrders.filter(item=>item.status==="pending").length;
