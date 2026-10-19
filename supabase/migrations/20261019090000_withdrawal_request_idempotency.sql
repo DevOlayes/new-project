@@ -160,3 +160,33 @@ revoke all on function private.request_withdrawal(uuid, text, text, numeric, tex
   from public, anon, authenticated;
 grant execute on function private.request_withdrawal(uuid, text, text, numeric, text, uuid)
   to service_role;
+
+
+-- Backward-compatible overload: existing deployed Edge Functions keep working
+-- during the rollout. New clients use the six-argument idempotent RPC above.
+create or replace function private.request_withdrawal(
+  p_user_id uuid,
+  p_asset text,
+  p_network text,
+  p_amount numeric,
+  p_address text
+)
+returns jsonb
+language sql
+security definer
+set search_path = ''
+as $function$
+  select private.request_withdrawal(
+    p_user_id,
+    p_asset,
+    p_network,
+    p_amount,
+    p_address,
+    pg_catalog.gen_random_uuid()
+  );
+$function$;
+
+revoke all on function private.request_withdrawal(uuid, text, text, numeric, text)
+  from public, anon, authenticated;
+grant execute on function private.request_withdrawal(uuid, text, text, numeric, text)
+  to service_role;
