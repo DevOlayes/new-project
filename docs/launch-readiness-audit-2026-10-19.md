@@ -12,7 +12,7 @@ Branch created for remediation work: `launch-readiness-2026-10-19`.
 - Backend: Supabase Auth, PostgreSQL, Row Level Security, Edge Functions, and scheduled jobs.
 - Integrations: Telegram auth/notifications, USDT deposit flows, market data, and an MT5 gateway integration.
 - GitHub build verification workflow runs `bun install` and `bun run build`; it does not currently run automated functional or security tests.
-- Last reviewed successful build workflow: https://github.com/DevOlayes/new-project/actions/runs/38881677486
+- Latest successful frontend build on the remediation branch: commit `7af2ca12915e694e4990e988009c30e40020f3be`, run #72: https://github.com/DevOlayes/new-project/actions/runs/39220735253. This confirms the Vite build only; it does not execute SQL migrations or financial-flow tests.
 - Production Worker: https://new-project.mails4olayes.workers.dev/
 
 ## Findings requiring remediation
@@ -68,7 +68,7 @@ The draft PR now includes:
 - a draft withdrawal-review interface in the admin transactions panel;
 - request-level withdrawal idempotency: the client retains a UUID when retrying the same submission, the Edge Function validates and forwards it, and a new database migration serializes requests by UUID and replays matching prior results instead of reserving funds again.
 
-These changes are on `launch-readiness-2026-10-19` only. They have not been merged, the SQL migrations have not been applied to Supabase, and production behavior has not been tested. The withdrawal completion action records an operator-attested external payout; it does not send funds or verify the chain transaction itself. Controlled integration testing and an operational payout procedure are still required.
+These changes are on `launch-readiness-2026-10-19` only. They have not been merged, and the SQL migrations have not been applied to Supabase. A Supabase development-branch test was attempted but the project plan blocked branch creation; no isolated database was created. The latest branch commit passes the frontend build, but SQL migration execution and financial-flow behavior remain untested. The withdrawal completion action records an operator-attested external payout; it does not send funds or verify the chain transaction itself. An operational payout procedure and database-level validation are still required.
 
 ## Central wallet and ledger architecture direction
 
@@ -96,7 +96,7 @@ Additional high-priority gap: the currently deployed `private.request_withdrawal
 - Withdrawal history now exposes the saved administrator review reason, destination, and transaction hash in the expandable transaction details.
 - A rejected withdrawal is stored with the supported `failed` status and shown to users as **Transaction failed**; the saved failure reason and refund entry remain available in history. The failed status uses the existing theme's red status treatment, while the existing amount styling is preserved.
 - The rejection migration now creates a separate `withdrawal_refund` credit ledger entry in the same database transaction as the balance refund, so the refund is explicitly visible for reconciliation.
-- The Wrangler `previews` configuration was added after the Cloudflare preview build failed because the config did not contain the required block. GitHub frontend build verification passed on commit `6cac2d7686f214bdeee4a40df985bd0123e3142b`: https://github.com/DevOlayes/new-project/actions/runs/39218518467. The withdrawal-review RPC response was also corrected to return `failed` after rejection, matching the stored database status. This build validates the frontend compile only, not the SQL migration or financial workflows.
+- The Wrangler `previews` configuration was added after the Cloudflare preview build failed because the config did not contain the required block. GitHub frontend build verification passed on commit `6cac2d7686f214bdeee4a40df985bd0123e3142b`: https://github.com/DevOlayes/new-project/actions/runs/39218518467. The withdrawal-review RPC response was also corrected to return `failed` after rejection, matching the stored database status. A subsequent fix serializes concurrent retries of admin wallet adjustments using a request-scoped advisory lock and a unique index. Latest build verification for that fix passed in run #72: https://github.com/DevOlayes/new-project/actions/runs/39220735253. This validates the frontend compile only, not the SQL migration or financial workflows.
 
 These additions remain on the draft branch. No migration has been applied to production, and none of the new database functions has been validated against a non-production database yet.
 
