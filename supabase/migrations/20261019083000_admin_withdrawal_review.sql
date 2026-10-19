@@ -2,6 +2,11 @@
 -- "Complete" only records a payout after an operator has sent and verified it externally.
 -- This function does not send cryptocurrency or call a payout provider.
 
+-- Enforce one recorded transaction hash per wallet-ledger entry, including concurrent admin completions.
+create unique index if not exists wallet_transactions_tx_hash_lower_key
+  on public.wallet_transactions (pg_catalog.lower(tx_hash))
+  where tx_hash is not null and pg_catalog.btrim(tx_hash) <> '';
+
 create or replace function private.admin_review_withdrawal(
   p_admin_user_id uuid,
   p_transaction_id uuid,
