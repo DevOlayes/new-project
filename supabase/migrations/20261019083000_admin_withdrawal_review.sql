@@ -87,12 +87,6 @@ begin
       raise exception 'Wallet locked balance is inconsistent; manual reconciliation is required';
     end if;
 
-    update public.wallets
-    set locked_balance = locked_balance - v_tx.amount,
-        available_balance = available_balance + v_tx.amount,
-        updated_at = pg_catalog.now()
-    where id = v_wallet.id;
-
     if exists (
       select 1 from public.wallet_transactions wt
       where wt.reference = 'withdrawal_refund_' || v_tx.id::text
