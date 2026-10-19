@@ -1174,7 +1174,9 @@ function signedMoney(value) {
   return `${n>=0?"+":"−"}$${money(Math.abs(n))}`;
 }
 function transactionLabel(type) {
-  return String(type||"transaction").replace(/_/g," ").replace(/\\b\\w/g,(m)=>m.toUpperCase());
+  const normalized=String(type||"transaction");
+  if(normalized==="withdrawal_refund") return "Withdrawal refund";
+  return normalized.replace(/_/g," ").replace(/\\b\\w/g,(m)=>m.toUpperCase());
 }
 function ActivityRows({ account, limit=8 }) {
   const items=[...(account.transactions||[])].slice(0,limit), trades=account.trades||[];
