@@ -1,7 +1,7 @@
 import { Component, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./lib/supabase";
-import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
+import { getTelegramWebApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
 import { reportDiagnosticError } from "./lib/diagnostics";
 
@@ -33,7 +33,7 @@ const withTimeout = (promise, ms, message = "Request timed out") =>
   });
 
 export default function App() {
-  const [inMiniApp, setInMiniApp] = useState(false);
+  
   const [page, setPage] = useState(() => window.location.pathname.split("/").filter(Boolean).join("/") === "admin" ? "admin" : "home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -315,7 +315,6 @@ export default function App() {
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
 
     const miniApp = getTelegramWebApp();
-    setInMiniApp(isTelegramMiniApp());
     if (miniApp) {
       miniApp.ready();
       miniApp.expand();
@@ -370,41 +369,7 @@ export default function App() {
     // session. This is the single initial auth source; don't run getClaims in
     // the same effect because doing both creates duplicate state updates.
     const initialize = async () => {
-      if (miniApp?.initData) {
-        const { data, error } = await supabase.functions.invoke("telegram-auth", {
-          body: { initData: miniApp.initData },
-        });
-
-        if (!mounted) return;
-
-        if (error || data?.error) {
-          clearAuthFallback();
-          clearStaleConnectionWarning();
-          setAuthError(data?.error || error?.message || "Telegram authentication failed.");
-          setLoading(false);
-        } else if (data?.session?.access_token && data?.session?.refresh_token) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          });
-          if (sessionError) {
-            clearAuthFallback();
-            clearStaleConnectionWarning();
-            setAuthError(sessionError.message || "Could not establish your FLEXAR AI session.");
-            setLoading(false);
-          } else {
-            clearAuthFallback();
-            clearStaleConnectionWarning();
-            setAuthError("");
-          }
-        } else {
-          clearAuthFallback();
-          clearStaleConnectionWarning();
-          setAuthError("Telegram authentication did not return a valid session.");
-          setLoading(false);
-        }
-      } else {
-        const { data, error } = await withTimeout(
+      const { data, error } = await withTimeout(
           supabase.auth.getSession(),
           12000,
           "Session restore timed out. Please check your connection and try again."
@@ -416,7 +381,6 @@ export default function App() {
           setAuthError(error.message || "Could not restore your FLEXAR AI session.");
         }
         if (!data?.session) setLoading(false);
-      }
     };
 
     initialize().catch((error) => {
@@ -683,7 +647,8 @@ export default function App() {
   }
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => { window.history.pushState({}, "", "/"); setPage("home"); }} />;
-  if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
+  if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
+  if (!user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
   if (user && loading) {
     return <div className="flexar-loading-screen" role="status" aria-live="polite">
       <div className="flexar-loading-mark"><img src="/flexa-symbol.webp" alt="FLEXAR AI" /><span className="flexar-loading-ring"/></div>
@@ -693,7 +658,6 @@ export default function App() {
     </div>;
   }
   if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
-  if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open FLEXAR AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
   if (user && profile && onboardingState && !onboardingState.completed) return <Onboarding profile={profile} initialState={onboardingState} onComplete={(next) => { setOnboardingState({...next, completed:true}); setProfile((current) => ({...(current || {}), onboarding_completed:true, onboarding_step:4, country_code:next.countryCode, trading_experience:next.experience, onboarding_goals:next.goals, trading_style:next.style, ai_preference:next.aiPreference})); setPage("home"); }} />;
 
   const notifications = account.notifications || [];
@@ -818,65 +782,15 @@ function Landing({ market, showAuth, setShowAuth, installPrompt, installFLEXAR }
   return <div className="landing"><div className="landing-orb orb-one" /><div className="landing-orb orb-two" />
     <header className="landing-topbar"><img className="landing-wordmark" src="/flexar-public-logo.webp" alt="FLEXAR AI" /></header>
     <main className="landing-content">
-      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>FLEXAR AI continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta" onClick={() => setShowAuth(true)}>Get started <b>→</b></button>{installPrompt && <button className="install-cta" onClick={installFLEXAR}>Install FLEXAR AI</button>}<div className="landing-trust">Free account · Google or Telegram · No FLEXAR AI password</div><span className="hero-status"><i /> Market data connected</span></div></section>
+      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>FLEXAR AI continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta" onClick={() => setShowAuth(true)}>Get started <b>→</b></button>{installPrompt && <button className="install-cta" onClick={installFLEXAR}>Install FLEXAR AI</button>}<div className="landing-trust">Free account · Email or Google · Your account, your control</div><span className="hero-status"><i /> Market data connected</span></div></section>
       <section className="landing-terminal"><div className="terminal-top"><div><small>LIVE MARKET</small><strong>BTC / USDT</strong></div><span className={change >= 0 ? "green" : "red"}>{change == null ? "—" : (change >= 0 ? "+" : "") + change.toFixed(2) + "%"}</span></div><Chart /><div className="terminal-bottom"><strong>{price == null ? "Loading…" : "$" + price.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>PUBLIC MARKET DATA</span></div><div className="floating-card float-card-a">AI OPPORTUNITY <b>SCANNING</b></div><div className="floating-card float-card-b">AI WINDOW <b>QUALIFYING SETUP</b></div></section>
       <section className="welcome-campaign"><div><span className="eyebrow">NEW USER CAMPAIGN</span><h2>Claim your <b>$50</b> welcome reward.</h2><p>Use the reward to trade. The reward itself cannot be withdrawn; only eligible profit generated from it can be withdrawn before the 12-day deadline.</p></div><span className="campaign-badge">12 DAYS</span></section><section className="opportunity-preview"><div><div className="eyebrow">AI OPPORTUNITY FEED</div><h2>Users do not hunt for trades. FLEXAR AI finds them.</h2></div><div className="opportunity-demo"><div><span>BTC / USDT</span><strong>AI opportunity detected</strong></div><b>UP ↗</b><small>RISK MANAGED · REVIEW READY</small></div></section>
       <section className="landing-section"><div className="eyebrow">HOW FLEXAR WORKS</div><h2>Simple on the surface. Intelligent underneath.</h2><div className="landing-steps"><LandingStep n="01" title="Scan" text="Market data is continuously collected and analyzed across supported markets."/><LandingStep n="02" title="Select" text="The engine filters signals and turns stronger setups into user-friendly opportunities."/><LandingStep n="03" title="Trade" text="You review the opportunity, choose your stake and confirm when ready." /></div></section>
       <section className="landing-section"><div className="feature-row"><LandingFeature title="AI-first trading" text="The system does the heavy market analysis before presenting an opportunity."/><LandingFeature title="Real market data" text="Charts and future signals are designed around real market pricing, not invented demo prices."/><LandingFeature title="Transparent activity" text="Trades, balances and wallet events remain connected to your account ledger." /></div></section>
     </main>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</div>;
 }
-function AuthModal({ onClose }) {
-  const [mode, setMode] = useState("signup");
-  const [error, setError] = useState("");
-  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="FLEXAR AI" /><div className="eyebrow">WELCOME TO FLEXAR AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your FLEXAR AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to FLEXAR AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use FLEXAR AI responsibly and follow applicable terms.</small></div></div>;
-}
-
-function AuthOptions({ setAuthError, authError }) {
-  const [busy, setBusy] = useState("");
-
-  async function continueWithGoogle() {
-    if (!supabase) { setAuthError("Supabase is not configured in this build."); return; }
-    setBusy("google"); setAuthError("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${FLEXAR_APP_URL}/` }
-    });
-    if (error) { setBusy(""); setAuthError(error.message || "Google sign-in could not start."); }
-  }
-
-  function continueWithTelegram() {
-    const botUsername = "flexarxbot";
-    setBusy("telegram");
-    setAuthError("");
-    const miniAppLink = `https://t.me/${botUsername}?startapp=login&mode=fullscreen`;
-    window.location.href = miniAppLink;
-  }
-
-  return <div className="auth-options">
-    <button type="button" className="auth-provider google" onClick={continueWithGoogle} disabled={!!busy}>
-      <span className="provider-mark google-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" role="img" aria-label="Google">
-          <path fill="#4285F4" d="M21.35 12.27c0-.72-.06-1.42-.18-2.09H12v3.95h5.24a4.48 4.48 0 0 1-1.94 2.94v2.44h3.14c1.84-1.69 2.91-4.18 2.91-7.24Z"/>
-          <path fill="#34A853" d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.44c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.52A9.75 9.75 0 0 0 12 21.7Z"/>
-          <path fill="#FBBC05" d="M6.54 13.79a5.87 5.87 0 0 1 0-3.58V7.69H3.3a9.75 9.75 0 0 0 0 8.62l3.24-2.52Z"/>
-          <path fill="#EA4335" d="M12 6.18c1.43 0 2.72.49 3.73 1.46l2.8-2.8C16.84 3.2 14.63 2.3 12 2.3a9.75 9.75 0 0 0-8.7 5.39l3.24 2.52C7.31 7.9 9.46 6.18 12 6.18Z"/>
-        </svg>
-      </span>
-      <span>{busy === "google" ? "Connecting Google…" : "Continue with Google"}</span><b>→</b>
-    </button>
-
-    <button className="auth-provider telegram" type="button" onClick={continueWithTelegram} disabled={!!busy}>
-      <span className="provider-mark telegram-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" role="img" aria-label="Telegram">
-          <path fill="currentColor" d="M21.5 3.5 18.3 20c-.24 1.17-.88 1.46-1.78.91l-4.92-3.63-2.37 2.28c-.26.26-.48.48-.98.48l.35-5.02 9.14-8.26c.4-.35-.09-.55-.62-.2L5.81 13.9.98 12.38c-1.05-.33-1.07-1.05.22-1.56L20.1 3.03c.88-.33 1.65.2 1.4.47Z"/>
-        </svg>
-      </span>
-      <span>{busy === "telegram" ? "Connecting Telegram…" : "Continue with Telegram"}</span><b>→</b>
-    </button>
-
-    {authError && <div className="error-banner">{authError}</div>}
-  </div>;
-}
+function AuthModal({onClose}){const [mode,setMode]=useState("signup"),[error,setError]=useState(""),[notice,setNotice]=useState("");return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={e=>e.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="FLEXAR AI"/><div className="eyebrow">WELCOME TO FLEXAR AI</div><h2>{mode==="signup"?"Create your account.":"Welcome back."}</h2><p>{mode==="signup"?"Register with username, email and password, or continue with Google.":"Sign in with email and password, or continue with Google."}</p><AuthOptions mode={mode} setAuthError={setError} authError={error} notice={notice} setNotice={setNotice}/><button className="auth-mode-toggle" type="button" onClick={()=>{setMode(mode==="signup"?"login":"signup");setError("");setNotice("");}}>{mode==="signup"?"Already have an account? Sign in":"New to FLEXAR AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use FLEXAR AI responsibly and follow applicable terms.</small></div></div>;}
+function AuthOptions({mode,setAuthError,authError,notice,setNotice}){const [busy,setBusy]=useState(""),[username,setUsername]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState("");async function submit(e){e.preventDefault();if(!supabase){setAuthError("Supabase is not configured.");return;}const em=email.trim().toLowerCase(),un=username.trim().replace(/^@/,"");if(mode==="signup"&&!/^[A-Za-z0-9_]{3,24}$/.test(un)){setAuthError("Username must be 3–24 letters, numbers or underscores.");return;}if(password.length<8){setAuthError("Password must be at least 8 characters.");return;}setBusy("email");setAuthError("");setNotice("");try{if(mode==="signup"){const {data,error}=await supabase.auth.signUp({email:em,password,options:{data:{username:un,full_name:un}}});if(error)throw error;setNotice(data.session?"Account created and signed in.":"Check your email to confirm your account, then sign in.");}else{const {error}=await supabase.auth.signInWithPassword({email:em,password});if(error)throw error;}}catch(err){setAuthError(err?.message||"Authentication failed.");}finally{setBusy("");}}async function google(){if(!supabase){setAuthError("Supabase is not configured.");return;}setBusy("google");setAuthError("");const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:`${FLEXAR_APP_URL}/`}});if(error){setBusy("");setAuthError(error.message||"Google sign-in could not start.");}}return <div className="auth-options"><form className="auth-email-form" onSubmit={submit}>{mode==="signup"&&<label>Username<input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} minLength={3} maxLength={24} placeholder="e.g. dike_w" required/></label>}<label>Email address<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required/></label><label>Password<input type="password" autoComplete={mode==="signup"?"new-password":"current-password"} value={password} onChange={e=>setPassword(e.target.value)} minLength={8} placeholder="At least 8 characters" required/></label><button className="auth-provider auth-email-submit" type="submit" disabled={!!busy}>{busy==="email"?"Please wait…":mode==="signup"?"Create account":"Sign in"}<b>→</b></button></form><div className="auth-divider"><span>OR</span></div><button type="button" className="auth-provider google" onClick={google} disabled={!!busy}><span className="provider-mark google-mark">G</span><span>{busy==="google"?"Connecting Google…":"Continue with Google"}</span><b>→</b></button>{notice&&<div className="auth-success" role="status">{notice}</div>}{authError&&<div className="error-banner" role="alert">{authError}</div>}</div>;}
 function Onboarding({ profile, initialState, onComplete }) {
   const [step, setStep] = useState(Math.min(3, Math.max(0, Number(initialState?.step || 0))));
   const [countryCode, setCountryCode] = useState(initialState?.countryCode || "");
@@ -983,7 +897,7 @@ function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBu
   const active=account.trades.filter(t=>t.status==="active"), opportunities=account.opportunities||[], unread=account.notifications.filter(i=>!i.is_read).length;
   const usdtBalance=Number(account.wallets.find(i=>i.asset==="USDT")?.available_balance||0), reward=account.rewards?.find(r=>["available","active"].includes(r.status)&&Number(r.remaining_reward||0)>0);
   const displayName=profile?.display_name||profile?.telegram_username||"Your account", initials=displayName.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"F";
-  const assets=[["BTC","Bitcoin","https://cdn.simpleicons.org/bitcoin"],["USDT","Tether USD","https://cdn.simpleicons.org/tether"],["TON","Gram","https://cdn.simpleicons.org/ton"],["SOL","Solana","https://cdn.simpleicons.org/solana"],["BNB","BNB","https://cdn.simpleicons.org/binance"]].map(([asset,label,icon])=>({asset,label,icon,wallet:account.wallets.find(w=>w.asset===asset)}));
+  const assets=[["BTC","Bitcoin","https://cdn.simpleicons.org/bitcoin"],["USDT","Tether USD","https://cdn.simpleicons.org/tether"],["TON","Gram","https://cdn.simpleicons.org/ton"],["SOL","Solana","https://cdn.simpleicons.org/solana"],["BNB","BNB","https://cdn.simpleicons.org/binance"]].map(([asset,label,icon])=>({asset,label,icon,wallet:account.wallets.find(w=>w.asset===asset)})).filter(item=>item.asset==="USDT"||Number(item.wallet?.available_balance||0)!==0||Number(item.wallet?.locked_balance||0)!==0);
   const activeTrade=active[0], activePnl=active.reduce((sum,trade)=>sum+Number(trade.unrealized_pnl||0),0),activeCapital=active.reduce((sum,trade)=>sum+Number(trade.stake||0),0),portfolioValue=usdtBalance+activeCapital+activePnl,activeReturn=activeCapital>0?(activePnl/activeCapital)*100:0,activeMarket=activeTrade?.metadata?.market_symbol||activeTrade?.asset||"—", activeDirection=String(activeTrade?.direction||"").toUpperCase();
   return <div className="flexar-home minimal-home">
     <section className="home-account">
@@ -1011,7 +925,7 @@ function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBu
     <section className="home-ai-cta"><div><small>FLEXAR AI</small><h2>{aiEngineActive?"AI is watching the markets.":opportunities.length?"Your AI opportunity is ready.":"Find your next trade with AI."}</h2><p>{aiScanning?"Scanning supported markets for a qualifying setup.":aiEngineActive?"FLEXAR will surface a qualifying setup when its signal rules are met.":"Let FLEXAR analyze the market first, then choose how FLEXAR should trade for you."}</p></div><button type="button" onClick={()=>setPage("trade")} disabled={aiScanning}>{aiScanning?"Scanning…":aiEngineActive||opportunities.length?"Trade with AI →":"Start FLEXAR AI →"}</button></section>
     <section className="home-funding-actions" aria-label="Funding actions"><button type="button" onClick={()=>onWalletAction("deposit")}><span>↓</span><strong>Deposit</strong></button><button type="button" onClick={()=>onWalletAction("withdraw")}><span>↗</span><strong>Withdraw</strong></button><button type="button" onClick={()=>onWalletAction("swap")}><span>⇄</span><strong>Swap</strong></button></section>
     {reward&&<section className="home-reward-row"><div><small>{reward.status==="active"?"WELCOME CREDIT ACTIVE":"WELCOME CREDIT"}</small><strong>{"$"+Number(reward.remaining_reward||0).toFixed(2)} <span>remaining</span></strong><RewardCountdown reward={reward}/></div><button type="button" onClick={reward.status==="active"?()=>setPage("trade"):claimReward} disabled={rewardBusy}>{reward.status==="active"?"Use credit":rewardBusy?"Claiming…":"Claim"}</button></section>}
-    <section className="home-section portfolio-preview"><div className="home-section-title"><div><small>PORTFOLIO</small><h2>My assets</h2></div><span className="home-section-note">5 assets</span></div><div className="home-asset-list">{assets.map(item=><div className="home-asset-row" key={item.asset}><span className={"home-asset-icon asset-"+item.asset.toLowerCase()}><img src={item.icon} alt="" loading="lazy"/></span><div><strong>{item.label}</strong><small>{item.asset==="TON"?"GRAM":item.asset}</small></div><b>{Number(item.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {item.asset==="TON"?"GRAM":item.asset}</b></div>)}</div></section>
+    <section className="home-section portfolio-preview"><div className="home-section-title"><div><small>PORTFOLIO</small><h2>My assets</h2></div><span className="home-section-note">{assets.length} asset{assets.length===1?"":"s"}</span></div><div className="home-asset-list">{assets.map(item=><div className="home-asset-row" key={item.asset}><span className={"home-asset-icon asset-"+item.asset.toLowerCase()}><img src={item.icon} alt="" loading="lazy"/></span><div><strong>{item.label}</strong><small>{item.asset==="TON"?"GRAM":item.asset}</small></div><b>{Number(item.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {item.asset==="TON"?"GRAM":item.asset}</b></div>)}</div></section>
     <section className="home-section home-ai-card"><div className="home-section-title"><div><small>AI SIGNAL</small><h2>{opportunities.length?"Signal ready":"Waiting for a setup"}</h2></div><span className={aiEngineActive?"home-live":""}><i/> {aiEngineActive?"LIVE":"READY"}</span></div>{opportunities.length?<div className="home-signal-row"><div><strong>{opportunities[0].symbol}</strong><small>{opportunities[0].direction==="down"?"↘ DOWN":"↗ UP"} · {Math.round(Number(opportunities[0].signal_score||0)*100)}% confidence</small></div><button type="button" onClick={()=>setPage("trade")}>Review →</button></div>:<div className="home-ai-empty"><p>{aiScanning?"Scanning supported markets…":"No setup is being presented yet. Start the AI engine when you are ready."}</p><button type="button" onClick={()=>setPage("trade")}>Open AI Trade</button></div>}</section>
     {activeTrade&&<section className="home-active-row"><div><small>ACTIVE TRADE</small><strong>{activeMarket}</strong><span className={activeDirection==="UP"?"green":"red"}>{activeDirection}</span></div><button type="button" onClick={()=>setPage("activity")}>Monitor →</button></section>}
     <section className="home-section home-activity"><div className="home-section-title"><div><small>ACTIVITY</small><h2>Recent activity</h2></div><button type="button" onClick={()=>setPage("activity")}>View all</button></div><ActivityRows account={account}/></section>
@@ -1026,11 +940,11 @@ function RewardBanner({ reward, onClaim, busy }) {
   return <section className="reward-banner"><div className="reward-glow" /><div className="reward-copy"><small>{claimed ? "REWARD CREDIT ACTIVE" : "WELCOME REWARD"}</small><strong>${Number(reward.reward_amount || 50).toFixed(0)} <span>TRADE CREDIT</span></strong><p>{expired ? "This welcome reward has expired." : claimed ? "$"+remaining.toFixed(2)+" credit remaining · $"+withdrawable.toFixed(2)+" eligible profit." : "Use within "+daysLeft+" days. The reward itself is non-withdrawable; eligible profit can be withdrawn before expiry."}</p></div>{claimed ? <div className="reward-state"><b>ACTIVE</b><span>{daysLeft}d left</span></div> : <button onClick={onClaim} disabled={busy || expired}>{expired ? "Expired" : busy ? "Claiming…" : "Claim reward →"}</button>}</section>;
 }
 function Profile({ user, profile, signOut }) {
-  const name=profile?.display_name||profile?.telegram_username||"FLEXAR AI user",initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+  const name=profile?.display_name||profile?.username||profile?.telegram_username||"FLEXAR AI user",initials=name.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
   const [notifications,setNotifications]=useState(()=>{try{return localStorage.getItem("flexar_pref_notifications")!=="off"}catch{return true}}),[marketAlerts,setMarketAlerts]=useState(()=>{try{return localStorage.getItem("flexar_pref_market_alerts")!=="off"}catch{return true}});
   const setPref=(key,value,setter)=>{setter(value);try{localStorage.setItem(key,value?"on":"off")}catch{}};
   return <div className="profile-page"><section className="profile-hero-card"><div className="avatar-orb profile-avatar" aria-label={`${name} avatar`}><span>{initials}</span><i/></div><div className="profile-identity"><small>FLEXAR AI ACCOUNT</small><h1>{name}</h1><span>{profile?.telegram_username?"@"+profile.telegram_username:user?.email||"Connected account"}</span></div><span className="verified-pill">● VERIFIED</span></section>
-    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.telegram_username?"Telegram connected":"Google connected"}</strong></div><div className="profile-row"><span>Email</span><strong>{user?.email||"Not provided"}</strong></div><div className="profile-row"><span>Trading</span><strong>AI trading enabled</strong></div></section>
+    <section className="profile-section"><div className="profile-section-head"><div><small>ACCOUNT</small><h2>Account details</h2></div></div><div className="profile-row"><span>Identity</span><strong>{profile?.last_login_provider==="google"?"Google connected":"Email and password"}</strong></div><div className="profile-row"><span>Email</span><strong>{user?.email||"Not provided"}</strong></div><div className="profile-row"><span>Trading</span><strong>AI trading enabled</strong></div></section>
     <section className="profile-section settings-card"><div className="profile-section-head"><div><small>PREFERENCES</small><h2>Settings</h2></div></div><button className="setting-row" onClick={()=>setPref("flexar_pref_notifications",!notifications,setNotifications)}><span><strong>Notifications</strong><small>Account and trade updates</small></span><b className={notifications?"toggle on":"toggle"}><i/></b></button><button className="setting-row" onClick={()=>setPref("flexar_pref_market_alerts",!marketAlerts,setMarketAlerts)}><span><strong>Market alerts</strong><small>AI opportunity notifications</small></span><b className={marketAlerts?"toggle on":"toggle"}><i/></b></button><div className="setting-row static"><span><strong>Sign-in security</strong><small>Managed by Supabase Auth</small></span><b>Protected</b></div></section>
     <section className="profile-section profile-support"><div className="profile-section-head"><div><small>ACCOUNT SUPPORT</small><h2>Need help?</h2></div></div><p>Use the support channel connected to your FLEXAR account for account, funding or trading questions.</p></section><button className="signout-button" onClick={signOut}>Sign out of FLEXAR AI</button>
   </div>;
@@ -1176,6 +1090,7 @@ function AdminDashboard({ onExit }) {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
 
   const load = useCallback(async () => {
     if (!supabase) { setError("Admin data service is not configured."); return; }
@@ -1208,14 +1123,14 @@ function AdminDashboard({ onExit }) {
     <div className="admin-card admin-loading-card">{busy ? "Loading platform data…" : "Platform data is not available."}<button className="mini-action" type="button" onClick={() => void load()}>Retry</button></div>
   </div>;
 
-  const users=data.users||[], tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[];
+  const allUsers=data.users||[], users=allUsers.filter(item=>!item.is_admin&&!item.is_deleted), administrators=allUsers.filter(item=>item.is_admin&&!item.is_deleted), tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[];
   const markets=data.markets||[], plans=data.plans||[], subs=data.subscriptions||[], learning=data.learning||[];
   const adaptive=data.adaptive||[], wallets=data.wallets||[], deposits=data.depositRequests||[];
   const paymentOrders=data.paymentOrders||[], walletDepositOrders=paymentOrders.filter(item=>item.purpose==="wallet_deposit"), aiCreditOrders=data.aiCreditOrders||[], diagnostics=data.diagnostics||[], credits=data.creditTransactions||[];
   const rewards=data.rewards||[], referrals=data.referrals||[], modelStats=data.modelStats||[], audit=data.audit||[];
   const q=search.trim().toLowerCase();
   const matches=(...values)=>!q||values.some(value=>String(value??"").toLowerCase().includes(q));
-  const userName=(id)=>{const u=users.find(item=>item.id===id);return u?.display_name||u?.telegram_username||u?.email||(id?String(id).slice(0,8)+"…":"Unknown user");};
+  const userName=(id)=>{const u=allUsers.find(item=>item.id===id);return u?.display_name||u?.username||u?.telegram_username||u?.email||(id?String(id).slice(0,8)+"…":"Unknown user");};
   const userEmail=(id)=>users.find(item=>item.id===id)?.email||"Email not available";
   const money=(value,digits=2)=>Number(value||0).toLocaleString(undefined,{minimumFractionDigits:digits,maximumFractionDigits:digits});
   const counts=data.counts||{};
@@ -1225,13 +1140,13 @@ function AdminDashboard({ onExit }) {
   const aiPaidOrders=aiCreditOrders.filter(item=>item.status==="paid");
   const aiCreditRevenue=aiPaidOrders.reduce((sum,item)=>sum+Number(item.base_amount||0),0);
   const pendingAiCreditOrders=aiCreditOrders.filter(item=>item.status==="pending").length;
-  const availableTotal=wallets.reduce((sum,item)=>sum+Number(item.available_balance||0),0);
-  const lockedTotal=wallets.reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
-  const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"]]}];
+  const availableTotal=wallets.filter(item=>item.asset==="USDT").reduce((sum,item)=>sum+Number(item.available_balance||0),0);
+  const lockedTotal=wallets.filter(item=>item.asset==="USDT").reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
+  const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"],["administrators","Administrators","♙"]]}];
   const activeNavItem=navGroups.flatMap(group=>group.items).find(([id])=>id===tab);
   const sectionDescriptions={
     overview:"A live snapshot of platform activity, financial queues, and system health.",
-    users:"Manage FLEXAR accounts, identity details, and administrator access.",
+    users:"Search, edit and manage customer accounts. Administrator access is managed separately.",
     wallets:"Review wallet balances and make audited balance adjustments.",
     aiPurchases:"Track AI credit orders, payment evidence, sender wallets, and credit delivery.",
     deposits:"Review wallet deposit payments and submitted deposit claims separately from purchases.",
@@ -1245,7 +1160,7 @@ function AdminDashboard({ onExit }) {
     rewards:"Review reward allocations and referral activity.",
     health:"Investigate diagnostics, client errors, and platform warnings.",
     audit:"Review administrator actions and their recorded context.",
-    settings:"Manage platform-level settings and operational preferences."
+    settings:"Manage platform-level settings and operational preferences.", administrators:"Manage administrator accounts separately from customers."
   };
 
   return <div className="admin-shell"><div className="admin-layout" data-admin-section={tab}>
@@ -1260,7 +1175,7 @@ function AdminDashboard({ onExit }) {
 
     {tab==="overview"&&<>
       <div className="admin-kpis">
-        <Kpi label="Registered users" value={counts.users??users.length}/>
+        <Kpi label="Active customers" value={users.length}/>
         <Kpi label="Wallet transactions" value={counts.transactions??tx.length}/>
         <Kpi label="Trading records" value={counts.trades??trades.length}/>
         <Kpi label="Pending withdrawals" value={pendingWithdrawals}/>
@@ -1300,13 +1215,14 @@ function AdminDashboard({ onExit }) {
     </>}
 
     {tab==="users"&&<>
-      <AdminTable title={"Users · "+(counts.users??users.length)+" total (latest records loaded)"} columns={["User","Email / Telegram","Provider","Joined","Access"]} emptyMessage="No users match your search.">
-        {users.filter(item=>matches(item.id,item.display_name,item.telegram_username,item.email,item.last_login_provider)).map(item=><div className="admin-row" key={item.id}><span><strong>{item.display_name||item.telegram_username||"User"}</strong><small>{item.id}</small></span><span>{item.email||item.telegram_username||"—"}</span><span>{item.last_login_provider||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span><span><b>{item.is_admin?"Admin":"User"}</b><button type="button" className="mini-action" disabled={busy||item.id===data.currentAdminId} onClick={()=>{const action=item.is_admin?"remove admin access from":"grant admin access to";if(window.confirm("Are you sure you want to "+action+" "+(item.display_name||item.email||item.id)+"?"))void act("set_user_admin",{user_id:item.id,is_admin:!item.is_admin});}}>{item.is_admin?"Remove admin":"Make admin"}</button></span></div>)}
+      <AdminTable title={"Customers · "+users.length+" active (latest records loaded)"} columns={["User","Email / Telegram","Provider","Joined","Access"]} emptyMessage="No users match your search.">
+        {users.filter(item=>matches(item.id,item.display_name,item.username,item.email,item.last_login_provider)).map(item=><div className="admin-row" key={item.id}><span><strong>{item.display_name||item.telegram_username||"User"}</strong><small>{item.id}</small></span><span>{item.email||"—"}<small>{item.username?"@"+item.username:"Username not set"}</small></span><span>{item.last_login_provider||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span><span><b>{"Customer"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>setEditingUser(item)}>Edit user</button> <button type="button" className="mini-action danger-action" disabled={busy} onClick={()=>{if(window.confirm("Remove this user from the active customer list? Sign-in will be blocked, and wallet, payment, referral and trading history will be preserved for audit integrity."))void act("delete_user",{user_id:item.id});}}>Delete user</button></span></div>)}
       </AdminTable>
-      <p className="admin-note">Role changes require confirmation. The current administrator cannot remove their own access. User rows show the latest records loaded.</p>
+      <p className="admin-note">Customer accounts can be edited or deactivated here. Deactivation preserves wallet, payment and trading history. Administrator privileges are managed only in the Administrators section.</p>
     </>}
 
-    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network))} users={users} onAction={act}/>}
+    {tab==="users"&&editingUser&&<AdminUserEditor user={editingUser} onClose={()=>setEditingUser(null)} onSave={async patch=>{const ok=await act("update_user",{user_id:editingUser.id,patch});if(ok)setEditingUser(null);return ok;}}/>}
+    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network,userName(item.user_id),userEmail(item.user_id)))} users={users} onAction={act} search={search}/>}
 
     {tab==="deposits"&&<>
       <div className="admin-kpis"><Kpi label="Deposit requests" value={deposits.length}/><Kpi label="Awaiting review" value={pendingDeposits}/><Kpi label="Incomplete after 24 hours" value={deposits.filter(item=>item.status==="incomplete").length}/><Kpi label="Approved" value={deposits.filter(item=>item.status==="approved").length}/></div>
@@ -1335,10 +1251,7 @@ function AdminDashboard({ onExit }) {
       {tx.filter(item=>matches(item.id,item.user_id,item.type,item.direction,item.status,item.tx_hash,item.reference,item.amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.type||"—"}<small>{item.reference||""}</small></span><span>{item.direction||"—"}</span><span>{money(item.amount,6)} USDT</span><span>{item.status||"—"}<small>{item.tx_hash?"TX "+item.tx_hash.slice(0,12)+"…":""}</small></span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span></div>)}
     </AdminTable>}
 
-    {tab==="trading"&&<AdminTable title="Trading activity · latest records" columns={["User","Asset","Direction","Stake","Status / result","Opened / settled"]} emptyMessage="No trades match your search.">
-      {trades.filter(item=>matches(item.id,item.user_id,item.asset,item.direction,item.status,item.stake,item.result_amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.asset||"—"}</span><span>{item.direction||"—"}</span><span>{money(item.stake)} USDT</span><span>{item.status||"—"}<small>{item.result_amount==null?"Result pending":money(item.result_amount)+" USDT"}</small></span><span>{item.opened_at?new Date(item.opened_at).toLocaleString():"—"}<small>{item.settled_at?"Settled "+new Date(item.settled_at).toLocaleString():"—"}</small></span></div>)}
-    </AdminTable>}
-
+    {tab==="trading"&&<AdminPanel title="Trading activity by customer"><p>Summaries keep the overview readable. Expand a customer to inspect their most recent trades; the full underlying trade history remains available in the database.</p>{(()=>{const filtered=trades.filter(item=>matches(item.id,item.user_id,item.asset,item.direction,item.status,item.stake,item.result_amount,userName(item.user_id)));const groups=Object.values(filtered.reduce((acc,item)=>{(acc[item.user_id]||(acc[item.user_id]={user_id:item.user_id,items:[]})).items.push(item);return acc;},{})).sort((x,y)=>y.items.length-x.items.length);return groups.length?groups.map(group=>{const active=group.items.filter(t=>t.status==="active").length,wins=group.items.filter(t=>t.status==="won").length,losses=group.items.filter(t=>t.status==="lost").length,volume=group.items.reduce((sum,t)=>sum+Number(t.stake||0),0);return <details className="admin-referral-tree" key={group.user_id}><summary><span><strong>{userName(group.user_id)}</strong><small>{group.items.length} trades · {active} active · {wins} wins / {losses} losses</small></span><span><strong>{money(volume)} USDT volume</strong><small>Most recent: {group.items[0]?.opened_at?new Date(group.items[0].opened_at).toLocaleString():"—"}</small></span></summary><div className="admin-record-details"><div className="admin-table-head" style={{"--admin-columns":6}}>{["Asset","Direction","Stake","Status","Result","Opened"].map(x=><span key={x}>{x}</span>)}</div>{group.items.slice(0,10).map(t=><div className="admin-row" key={t.id}><span>{t.asset||"—"}<small>{t.id}</small></span><span>{t.direction||"—"}</span><span>{money(t.stake)} USDT</span><span>{t.status||"—"}</span><span>{t.result_amount==null?"Pending":money(t.result_amount)+" USDT"}</span><span>{t.opened_at?new Date(t.opened_at).toLocaleString():"—"}</span></div>)}{group.items.length>10&&<small>Showing 10 most recent of {group.items.length} loaded trades for this customer.</small>}</div></details>;}):<div className="admin-empty-row">No trades match your search.</div>;})()}</AdminPanel>}
     {tab==="markets"&&<AdminTable title="Market controls" columns={["Market","Type / source","Status","Trading access"]} emptyMessage="No markets match your search.">
       {markets.filter(item=>matches(item.symbol,item.display_symbol,item.market_type,item.source)).map(item=><div className="admin-row" key={item.symbol}><span><strong>{item.display_symbol||item.symbol}</strong><small>{item.symbol}</small></span><span>{item.market_type||"—"}<small>{item.source||"—"}</small></span><span><b>{item.active?"Enabled":"Disabled"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>void act("update_market",{symbol:item.symbol,active:!item.active})}>{item.active?"Disable market":"Enable market"}</button></span><span><b>{item.tradable?"Tradable":"Locked"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>void act("update_market",{symbol:item.symbol,tradable:!item.tradable})}>{item.tradable?"Lock trading":"Allow trading"}</button></span></div>)}
     </AdminTable>}
@@ -1369,10 +1282,7 @@ function AdminDashboard({ onExit }) {
         {aiCreditOrders.filter(item=>!["pending","incomplete"].includes(item.status)&&matches(item.id,item.user_id,userName(item.user_id),userEmail(item.user_id),item.status,item.payment_amount,item.credits,item.tx_hash,item.sender_address,item.verification_status)).map(item=><div className="admin-row" key={item.id}><span><strong>{userName(item.user_id)}</strong><small>{userEmail(item.user_id)}</small><small>{item.user_id}</small></span><span>{item.credits||"—"} credits<small>Package {money(item.base_amount)} USDT</small></span><span>{money(item.payment_amount,2)} USDT<small className={"admin-status status-"+(item.status||"unknown")}>{item.status||"unknown"}</small></span><span><b className={"admin-status "+(item.verification_status==="verified"?"status-completed":item.verification_status==="legacy_unattributed"?"status-expired":"status-pending")}>{(item.verification_status||"pending").replace(/_/g," ")}</b><small>{item.block_number?"Block "+item.block_number:"No verified block recorded"}</small><small>{item.block_timestamp?new Date(item.block_timestamp).toLocaleString():""}</small></span><span>{item.sender_address?<code className="admin-wallet-address">{item.sender_address}</code>:<small>Sender not recorded</small>}{item.tx_hash?<a href={"https://tronscan.org/#/transaction/"+encodeURIComponent(item.tx_hash)} target="_blank" rel="noreferrer">View transaction ↗<small>{item.tx_hash}</small></a>:<small>Awaiting transaction</small>}</span><span><small>{item.id}</small><small>Created {item.created_at?new Date(item.created_at).toLocaleString():"—"}</small><small>{item.paid_at?"Paid "+new Date(item.paid_at).toLocaleString():"—"}</small></span></div>)}
       </AdminTable>
     </>}
-    {tab==="credits"&&<AdminTable title="AI credit ledger · latest records" columns={["User","Type","Credits","Amount","Reference / time"]} emptyMessage="No AI credit transactions match your search.">
-      {credits.filter(item=>matches(item.id,item.user_id,item.type,item.reference,item.credits,item.amount_usd)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.type||"—"}</span><span>{money(item.credits,2)}</span><span>{item.amount_usd==null?"—":"$"+money(item.amount_usd)}</span><span>{item.reference||"—"}<small>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</small></span></div>)}
-    </AdminTable>}
-
+    {tab==="credits"&&<AdminPanel title="AI credit ledger by customer"><p>Credits are grouped by account to keep the dashboard compact. Expand a customer to review the latest individual ledger entries.</p>{(()=>{const filtered=credits.filter(item=>matches(item.id,item.user_id,item.type,item.reference,item.credits,item.amount_usd,userName(item.user_id)));const groups=Object.values(filtered.reduce((acc,item)=>{(acc[item.user_id]||(acc[item.user_id]={user_id:item.user_id,items:[]})).items.push(item);return acc;},{})).sort((x,y)=>y.items.length-x.items.length);return groups.length?groups.map(group=>{const creditTotal=group.items.reduce((sum,x)=>sum+Number(x.credits||0),0),paidTotal=group.items.reduce((sum,x)=>sum+Number(x.amount_usd||0),0);return <details className="admin-referral-tree" key={group.user_id}><summary><span><strong>{userName(group.user_id)}</strong><small>{group.items.length.toLocaleString()} ledger entries · latest {group.items[0]?.created_at?new Date(group.items[0].created_at).toLocaleString():"—"}</small></span><span><strong>{money(creditTotal,2)} credits</strong><small>{money(paidTotal)} USD recorded</small></span></summary><div className="admin-record-details"><div className="admin-table-head" style={{"--admin-columns":5}}>{["Type","Credits","Amount","Reference","Time"].map(x=><span key={x}>{x}</span>)}</div>{group.items.slice(0,20).map(item=><div className="admin-row" key={item.id}><span>{item.type||"—"}<small>{item.id}</small></span><span>{money(item.credits,2)}</span><span>{item.amount_usd==null?"—":"$"+money(item.amount_usd)}</span><span>{item.reference||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span></div>)}{group.items.length>20&&<small>Showing 20 most recent of {group.items.length} loaded entries for this customer.</small>}</div></details>;}):<div className="admin-empty-row">No AI credit transactions match your search.</div>;})()}</AdminPanel>}
     {tab==="subscriptions"&&<>
       <AdminGrantSubscription users={users} plans={plans} onAction={act}/>
       <div className="admin-kpis"><Kpi label="Plans" value={plans.length}/><Kpi label="Active subscriptions" value={subs.filter(item=>item.status==="active").length}/><Kpi label="Trials" value={subs.filter(item=>item.status==="trialing").length}/></div>
@@ -1385,16 +1295,14 @@ function AdminDashboard({ onExit }) {
     </>}
 
     {tab==="rewards"&&<>
-      <div className="admin-kpis"><Kpi label="Reward records" value={rewards.length}/><Kpi label="Referral records" value={referrals.length}/><Kpi label="Reward value issued" value={money(rewards.reduce((sum,item)=>sum+Number(item.reward_amount||0),0))+" USDT"}/></div>
+      <div className="admin-kpis"><Kpi label="Reward records" value={rewards.length}/><Kpi label="Referral records" value={referrals.length}/><Kpi label="Referrer accounts" value={new Set(referrals.map(x=>x.referrer_id)).size}/><Kpi label="Reward value issued" value={money(rewards.reduce((sum,item)=>sum+Number(item.reward_amount||0),0))+" USDT"}/></div>
       <AdminTable title="User rewards" columns={["User","Reward","Profit","Withdrawable","Status / expiry"]} emptyMessage="No rewards match your search.">
-        {rewards.filter(item=>matches(item.user_id,item.status,item.reward_amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{money(item.reward_amount)} USDT</span><span>{money(item.profit_earned)} USDT</span><span>{money(item.profit_withdrawable)} USDT</span><span>{item.status||"—"}<small>{item.expires_at?new Date(item.expires_at).toLocaleString():"No expiry recorded"}</small></span></div>)}
+        {rewards.filter(item=>matches(item.user_id,item.status,item.reward_amount,userName(item.user_id))).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{money(item.reward_amount)} USDT</span><span>{money(item.profit_earned)} USDT</span><span>{money(item.profit_withdrawable)} USDT</span><span>{item.status||"—"}<small>{item.expires_at?new Date(item.expires_at).toLocaleString():"No expiry recorded"}</small></span></div>)}
       </AdminTable>
-      <AdminTable title="Referral activity" columns={["Referrer","Referred user","Reward","Status","Created / rewarded"]} emptyMessage="No referrals match your search.">
-        {referrals.filter(item=>matches(item.id,item.referrer_id,item.referred_user_id,item.status,item.reward_amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.referrer_id)}<small>{item.referrer_id}</small></span><span>{userName(item.referred_user_id)}<small>{item.referred_user_id}</small></span><span>{money(item.reward_amount)} USDT</span><span>{item.status||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}<small>{item.rewarded_at?"Rewarded "+new Date(item.rewarded_at).toLocaleString():"Not rewarded"}</small></span></div>)}
-      </AdminTable>
-    </>}
-
-    {tab==="health"&&<>
+      <AdminPanel title="Referral network tree"><p>Each referrer is a parent node. Expand a person to see the users attributed to their referral link, reward status and network contribution.</p>
+        {(()=>{const filtered=referrals.filter(item=>matches(item.id,item.referrer_id,item.referred_user_id,item.status,item.reward_amount,userName(item.referrer_id),userName(item.referred_user_id)));const groups=Object.values(filtered.reduce((acc,item)=>{(acc[item.referrer_id]||(acc[item.referrer_id]={referrer_id:item.referrer_id,children:[]})).children.push(item);return acc;},{})).sort((x,y)=>y.children.length-x.children.length);return groups.length?groups.map(group=>{const total=group.children.reduce((sum,x)=>sum+Number(x.reward_amount||0),0),paid=group.children.filter(x=>x.status==="paid"||x.status==="rewarded").length;return <details className="admin-referral-tree" key={group.referrer_id}><summary><span><strong>↳ {userName(group.referrer_id)}</strong><small>{group.children.length} referred users · {paid} rewarded</small></span><span><strong>{money(total)} USDT</strong><small>Referral rewards</small></span></summary><div className="admin-referral-children">{group.children.map(item=><div className="admin-referral-child" key={item.id}><span><strong>{userName(item.referred_user_id)}</strong><small>{item.referred_user_id}</small></span><span>{item.status||"Pending"}<small>{item.created_at?new Date(item.created_at).toLocaleDateString():"—"}</small></span><span><strong>{money(item.reward_amount)} USDT</strong><small>{item.rewarded_at?"Rewarded "+new Date(item.rewarded_at).toLocaleDateString():"Not rewarded"}</small></span></div>)}</div></details>;}):<div className="admin-empty-row">No referrals match your search.</div>;})()}
+      </AdminPanel>
+    </>}    {tab==="health"&&<>
       <AdminPanel title="Diagnostic events"><p>Use these events to investigate client errors and slow requests. Diagnostic metadata can contain user-provided text; treat it as untrusted log content.</p></AdminPanel>
       <AdminTable title="Recent diagnostics" columns={["Severity","Event / source","Message","Request","Time"]} emptyMessage="No diagnostics match your search.">
         {diagnostics.filter(item=>matches(item.id,item.level,item.source,item.event_name,item.message,item.page_path,item.request_path,item.browser_family)).map(item=><div className="admin-row" key={item.id}><span><b className={"admin-level-"+(item.level||"info")}>{item.level||"info"}</b></span><span>{item.event_name||"—"}<small>{item.source||"—"} · {item.diagnostic_id||"—"}</small></span><span className="admin-wrap-cell">{item.message||"—"}<small>{item.stack||""}</small></span><span>{item.request_path||item.page_path||"—"}<small>{item.http_status?"HTTP "+item.http_status:""}{item.duration_ms?" · "+item.duration_ms+" ms":""}</small></span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}<small>{item.browser_family||""}</small></span></div>)}
@@ -1406,10 +1314,14 @@ function AdminDashboard({ onExit }) {
     </AdminTable>}
 
     {tab==="settings"&&<AdminSettings settings={data.settings} onSave={act}/>}
+    {tab==="administrators"&&<AdminAdministrators users={administrators} allUsers={allUsers.filter(item=>!item.is_deleted)} currentAdminId={data.currentAdminId} busy={busy} onAction={act} userName={userName}/>}
     {busy&&<div className="admin-busy" role="status">Updating platform data…</div>}
     </main></div>
   </div>;
 }
+function AdminUserEditor({user,onClose,onSave}){const [name,setName]=useState(user.display_name||""),[username,setUsername]=useState(user.username||""),[email,setEmail]=useState(user.email||""),[busy,setBusy]=useState(false);async function submit(e){e.preventDefault();setBusy(true);try{await onSave({display_name:name.trim(),username:username.trim().replace(/^@/,""),email:email.trim().toLowerCase()});}finally{setBusy(false);}}return <div className="auth-modal-backdrop admin-modal-backdrop" onClick={onClose}><section className="auth-modal admin-editor-modal" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}><button className="auth-close" type="button" onClick={onClose} aria-label="Close">×</button><div className="eyebrow">CUSTOMER ACCOUNT</div><h2>Edit user</h2><p>Identity changes are separate from audited wallet adjustments.</p><form className="auth-email-form" onSubmit={submit}><label>Display name<input value={name} onChange={e=>setName(e.target.value)} maxLength={100} required/></label><label>Username<input value={username} onChange={e=>setUsername(e.target.value)} pattern="[A-Za-z0-9_]{3,24}" minLength={3} maxLength={24} required/></label><label>Email address<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><div className="admin-modal-actions"><button className="secondary" type="button" onClick={onClose}>Cancel</button><button className="mini-action" type="submit" disabled={busy}>{busy?"Saving…":"Save changes"}</button></div></form></section></div>;}
+function AdminAdministrators({users,allUsers,currentAdminId,busy,onAction,userName}){const [target,setTarget]=useState(""),[filter,setFilter]=useState("");const candidates=allUsers.filter(x=>!x.is_admin&&!x.is_deleted&&[x.display_name,x.username,x.email,x.id].some(v=>String(v||"").toLowerCase().includes(filter.toLowerCase())));async function add(){const chosen=allUsers.find(x=>x.id===target);if(!chosen||!window.confirm("Grant administrator access to "+(chosen.display_name||chosen.email||chosen.id)+"?"))return;if(await onAction("set_admin_access",{user_id:target,is_admin:true})){setTarget("");setFilter("");}}return <div className="admin-stack"><section className="admin-card"><div className="admin-section-title"><div><h2>Administrator access</h2><p>Customer management cannot grant admin privileges.</p></div><span className="admin-table-count">{users.length} admins</span></div></section><section className="admin-card"><div className="admin-section-title"><div><h2>Add an administrator</h2><p>Select an existing active customer account.</p></div></div><div className="admin-admin-add"><input value={filter} onChange={e=>{setFilter(e.target.value);setTarget("");}} placeholder="Find by name, username or email"/><select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Choose account…</option>{candidates.map(x=><option key={x.id} value={x.id}>{x.display_name||x.username||x.email} · {x.email||x.id.slice(0,8)}</option>)}</select><button className="mini-action" type="button" disabled={busy||!target} onClick={add}>Grant admin access</button></div></section><AdminTable title="Current administrators" columns={["Administrator","Email / username","Joined","Access"]} emptyMessage="No active administrators.">{users.map(x=><div className="admin-row" key={x.id}><span><strong>{x.display_name||x.username||"Administrator"}</strong><small>{x.id}</small></span><span>{x.email||"—"}<small>{x.username?"@"+x.username:"Username not set"}</small></span><span>{x.created_at?new Date(x.created_at).toLocaleDateString():"—"}</span><span>{x.id===currentAdminId?<b>Current session</b>:<button type="button" className="mini-action danger-action" disabled={busy} onClick={()=>{if(window.confirm("Remove administrator access from "+userName(x.id)+"?"))void onAction("set_admin_access",{user_id:x.id,is_admin:false});}}>Remove admin</button>}</span></div>)}</AdminTable></div>;}
+
 function AdminGrantSubscription({users,plans,onAction}){
   const [userId,setUserId]=useState("");
   const [planId,setPlanId]=useState(plans.find(item=>item.active)?.id||plans[0]?.id||"");
@@ -1490,26 +1402,19 @@ function AdminWithdrawals({transactions,onAction,userName=(id)=>String(id||"").s
       </div>;
     })}{withdrawals.length===0&&<div className="empty-state">No withdrawal requests found.</div>}</AdminTable></>;
 }
-function AdminWallets({wallets,users,onAction}){
-  const [userId,setUserId]=useState(users.find(x=>x.is_admin)?.id||"");
-  const [amount,setAmount]=useState("");
-  const [direction,setDirection]=useState("credit");
-  const [reason,setReason]=useState("Admin wallet adjustment");
-  const [requestId,setRequestId]=useState("");
-  async function submit(e){
-    e.preventDefault();
-    const value=Number(amount);
-    if(!userId||!Number.isFinite(value)||value<=0)return;
-    const requestIdForSubmit=requestId||crypto.randomUUID();
-    setRequestId(requestIdForSubmit);
-    const ok=await onAction("adjust_wallet",{user_id:userId,asset:"USDT",network:"TRC-20",amount:value,direction,reason,request_id:requestIdForSubmit});
-    if(ok){setAmount("");setRequestId("");}
-  }
-  return <><section className="admin-card"><div className="admin-section-title"><div><h2>Wallet controls</h2><p className="helper">Server-side wallet adjustments are recorded in the ledger. Admin/test accounts cannot withdraw.</p></div></div>
-    <form className="admin-setting" onSubmit={submit}><label>User</label><select value={userId} onChange={e=>{setUserId(e.target.value);setRequestId("");}}>{users.map(u=><option key={u.id} value={u.id}>{u.display_name||u.email||u.id.slice(0,8)}{u.is_admin?" · ADMIN":""}</option>)}</select><label>Amount USDT</label><input inputMode="decimal" value={amount} onChange={e=>{setAmount(e.target.value);setRequestId("");}} placeholder="5000"/><label>Action</label><select value={direction} onChange={e=>{setDirection(e.target.value);setRequestId("");}}><option value="credit">Credit available balance</option><option value="debit">Debit available balance</option></select><label>Reason</label><input value={reason} onChange={e=>{setReason(e.target.value);setRequestId("");}}/><button className="mini-action" type="submit">Apply adjustment</button></form></section>
-    <AdminTable title="Wallet balances" columns={["User","Asset","Network","Available","Locked"]}>{wallets.map(w=><div className="admin-row" key={w.id}><span>{users.find(u=>u.id===w.user_id)?.display_name||w.user_id.slice(0,8)+"…"}</span><span>{w.asset}</span><span>{w.network}</span><span>{Number(w.available_balance).toFixed(4)}</span><span>{Number(w.locked_balance).toFixed(4)}</span></div>)}</AdminTable></>;
+function AdminWallets({wallets,users,onAction,search=""}){
+ const [userId,setUserId]=useState(users[0]?.id||""),[amount,setAmount]=useState(""),[direction,setDirection]=useState("credit"),[reason,setReason]=useState("Admin wallet adjustment"),[requestId,setRequestId]=useState(""),[userSearch,setUserSearch]=useState("");
+ const eligibleUsers=users.filter(u=>[u.id,u.username,u.display_name,u.email].some(v=>String(v||"").toLowerCase().includes(userSearch.toLowerCase())));
+ const visibleWallets=wallets.filter(w=>w.asset==="USDT"||Number(w.available_balance||0)!==0||Number(w.locked_balance||0)!==0);
+ async function submit(e){e.preventDefault();const value=Number(amount);if(!userId||!Number.isFinite(value)||value<=0||reason.trim().length<3)return;const request=requestId||crypto.randomUUID();setRequestId(request);const ok=await onAction("adjust_wallet",{user_id:userId,asset:"USDT",network:"TRC-20",amount:value,direction,reason:reason.trim(),request_id:request});if(ok){setAmount("");setRequestId("");}}
+ return <div className="admin-stack"><section className="admin-card"><div className="admin-section-title"><div><h2>Wallet controls</h2><p>Choose a customer, then credit or debit their available USDT balance. Every adjustment is processed server-side and recorded in the wallet ledger. Test/admin accounts cannot withdraw.</p></div></div><form className="admin-wallet-adjust-form" onSubmit={submit}><label>Find customer<input value={userSearch} onChange={e=>{setUserSearch(e.target.value);setUserId("");setRequestId("");}} placeholder="Search name, username, email or ID"/></label><label>Customer account<select value={userId} onChange={e=>{setUserId(e.target.value);setRequestId("");}} required><option value="">Select customer…</option>{eligibleUsers.map(u=><option key={u.id} value={u.id}>{u.display_name||u.username||u.email||u.id.slice(0,8)}{u.email?" · "+u.email:""}</option>)}</select></label><label>Amount (USDT)<input inputMode="decimal" type="number" min="0.000001" step="0.000001" value={amount} onChange={e=>{setAmount(e.target.value);setRequestId("");}} placeholder="0.00" required/></label><label>Adjustment<select value={direction} onChange={e=>{setDirection(e.target.value);setRequestId("");}}><option value="credit">Add to available balance</option><option value="debit">Subtract from available balance</option></select></label><label>Reason for audit trail<input value={reason} onChange={e=>{setReason(e.target.value);setRequestId("");}} minLength={3} maxLength={300} required placeholder="Reason for this adjustment"/></label><button className="mini-action" type="submit" disabled={!userId||Number(amount)<=0||reason.trim().length<3}>Apply audited adjustment</button></form></section><AdminTable title="Customer wallet balances" columns={["Customer","Asset / network","Available","Locked","Last updated"]} emptyMessage="No wallet balances match your search.">{visibleWallets.filter(w=>{const u=users.find(x=>x.id===w.user_id);return !search||[w.user_id,w.asset,w.network,u?.display_name,u?.username,u?.email].some(v=>String(v||"").toLowerCase().includes(search.toLowerCase()));}).map(w=>{const u=users.find(x=>x.id===w.user_id);return <div className="admin-row" key={w.id}><span><strong>{u?.display_name||u?.username||"Customer"}</strong><small>{u?.email||w.user_id}</small></span><span>{w.asset}<small>{w.network}</small></span><span>{Number(w.available_balance||0).toFixed(4)}</span><span>{Number(w.locked_balance||0).toFixed(4)}</span><span>{w.updated_at?new Date(w.updated_at).toLocaleString():"—"}</span></div>;})}</AdminTable><AdminPanel title="Wallet asset policy"><p>USDT on TRC-20 is the default customer ledger wallet. Other asset balances are shown only when a balance exists; a ledger wallet is not proof that a customer has connected or supplied an external wallet address. Do not invent or assign a personal TON address.</p></AdminPanel></div>;
 }
-function AdminSettings({settings,onSave}){const [values,setValues]=useState(Object.fromEntries((settings||[]).map(x=>[x.key,JSON.stringify(x.value)])));return <AdminPanel title="Application controls"><p className="helper">Central product settings can be changed here without rebuilding the frontend.</p>{Object.entries(values).map(([key,value])=><div className="admin-setting" key={key}><label>{key}</label><input value={value} onChange={e=>setValues({...values,[key]:e.target.value})}/><button className="mini-action" onClick={()=>{try{onSave("update_setting",{key,value:JSON.parse(value)})}catch{}}}>Save</button></div>)}</AdminPanel>}
+function AdminSettings({settings,onSave}) {
+ const [values,setValues]=useState(Object.fromEntries((settings||[]).map(x=>[x.key,JSON.stringify(x.value,null,2)]))),[errors,setErrors]=useState({});
+ const friendly={"deposit_addresses":["Deposit destinations","Supported asset and network addresses shown to customers."],"maintenance_mode":["Maintenance mode","Temporarily restrict access during planned service work."],"trading_enabled":["Trading access","Controls whether supported trading actions are available."],"ai_trading_enabled":["AI trading","Controls the AI trading feature at platform level."],"withdrawals_enabled":["Withdrawals","Controls whether new withdrawal requests may be submitted."],"ai_credit_packages":["AI credit packages","Available packages and their pricing configuration."]};
+ const ordered=(settings||[]).slice().sort((x,y)=>{const rank=k=>k==="deposit_addresses"?0:k.includes("maintenance")?1:k.includes("trading")?2:k.includes("withdraw")?3:5;return rank(x.key)-rank(y.key)||x.key.localeCompare(y.key);});
+ return <div className="admin-settings-workspace"><section className="admin-settings-hero"><span className="eyebrow">PLATFORM CONFIGURATION</span><h2>Application controls</h2><p>Review settings by purpose. Changes are saved individually and recorded in the administrator audit log.</p><span className="admin-settings-count">{ordered.length} configurable settings</span></section><div className="admin-settings-grid">{ordered.map(item=>{const key=item.key,value=values[key]??JSON.stringify(item.value,null,2),meta=friendly[key]||[key.replace(/_/g," ").replace(/\b\w/g,m=>m.toUpperCase()),"Advanced platform setting. Review the value carefully before saving."];const parsed=(()=>{try{return JSON.parse(value)}catch{return undefined}})();return <section className="admin-setting-card" key={key}><div className="admin-setting-card-head"><span className="admin-setting-icon">⚙</span><div><h3>{meta[0]}</h3><p>{meta[1]}</p></div></div><div className="admin-setting-key">SETTING KEY · {key}</div>{typeof item.value==="boolean"?<label className="admin-setting-toggle"><span><strong>{parsed===true?"Enabled":"Disabled"}</strong><small>Switch this platform control on or off.</small></span><input type="checkbox" checked={parsed===true} onChange={e=>setValues(v=>({...v,[key]:JSON.stringify(e.target.checked)}))}/></label>:<textarea className="admin-setting-editor" rows={Math.min(8,Math.max(3,value.split("\n").length))} value={value} onChange={e=>{setValues(v=>({...v,[key]:e.target.value}));setErrors(v=>({...v,[key]:""}));}} spellCheck={false}/>}{errors[key]&&<div className="error-banner">{errors[key]}</div>}<div className="admin-setting-card-foot"><span>{parsed===undefined?"Invalid JSON":"Ready to save"}</span><button className="mini-action" type="button" disabled={parsed===undefined} onClick={async()=>{const ok=await onSave("update_setting",{key,value:parsed});if(ok)setErrors(v=>({...v,[key]:""}));else setErrors(v=>({...v,[key]:"Save failed. Review the admin error above and try again."}));}}>Save setting</button></div></section>;})}</div></div>;
+}
 
 function OpportunityCard({ item, setPage }) {
   const score = Math.round(Number(item.signal_score || 0) * 100);
