@@ -69,6 +69,36 @@ The draft PR now includes:
 
 These changes are on `launch-readiness-2026-10-19` only. They have not been merged, the SQL migrations have not been applied to Supabase, and production behavior has not been tested. The withdrawal completion action records an operator-attested external payout; it does not send funds or verify the chain transaction itself. Controlled integration testing and an operational payout procedure are still required.
 
+## Central wallet and ledger architecture direction
+
+The intended operating model is a centralized financial service with one authoritative internal ledger, while each user retains a separate logical wallet balance. A central treasury wallet (or a controlled set of wallets by asset/network) holds the actual on-chain funds. These are related but distinct layers: the internal ledger tracks who is owed what; the treasury holds the assets that back those liabilities.
+
+The live schema inventory includes:
+- `public.wallets`: per-user logical wallet balances, including available and locked amounts;
+- `public.wallet_transactions`: user-facing transaction and accounting records;
+- `public.deposit_requests` and `public.payment_orders`: deposit/payment workflow records.
+
+No explicit treasury/central-wallet database table was found in this inventory. That does not prove no external treasury wallet exists; it means the source of truth for treasury addresses, signing authority, and balance reconciliation still needs to be documented and verified.
+
+Required design controls:
+- Keep each asset and network distinct; do not combine USDT on TRC-20 with TON or another network as if they were the same asset.
+- Route deposits, withdrawals, swaps, trade locks/settlement, and admin corrections through authenticated server-side operations and a consistent ledger.
+- Credit deposits only after the correct chain/provider verification and duplicate/replay checks.
+- For a withdrawal, reserve the user's balance, keep the request pending for admin review, record the rejection reason and an explicit refund ledger credit if rejected, or complete it only after the external payout has been sent and independently verified.
+- Reconcile treasury balances against internal user liabilities, pending/locked withdrawals, fees, and platform reserves on a regular schedule.
+- Do not describe the manual payout workflow as automatic on-chain execution. A payout provider/transaction-signing integration and chain confirmation checks are separate future work.
+
+Additional high-priority gap: the currently deployed `private.request_withdrawal` function does not accept a client idempotency key. It reserves funds transactionally, but a repeated submission can create more than one pending withdrawal if sufficient balance remains. Add request-level idempotency and test concurrent/retried submissions before enabling real-money withdrawals.
+
+## Branch changes added during follow-up
+
+- Withdrawal history now exposes the saved administrator review reason, destination, and transaction hash in the expandable transaction details.
+- A cancelled withdrawal is labelled as cancelled/refunded rather than looking like a completed debit.
+- The rejection migration now creates a separate `withdrawal_refund` credit ledger entry in the same database transaction as the balance refund, so the refund is explicitly visible for reconciliation.
+- The Wrangler `previews` configuration was added after the Cloudflare preview build failed because the config did not contain the required block. GitHub's frontend build verification passed after the initial config fix; the latest SQL/UI follow-up still needs a fresh build result.
+
+These additions remain on the draft branch. No migration has been applied to production, and none of the new database functions has been validated against a non-production database yet.
+
 ## Release sequence
 
 1. Preserve the current production state and capture a baseline.
