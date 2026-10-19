@@ -1151,7 +1151,17 @@ function AdminDashboard({ onExit }) {
     try {
       const result = await supabase.functions.invoke("admin-control", { body: { action: "overview" } });
       if (result.error || result.data?.error) setError(result.data?.error || result.error?.message || "Could not load admin data.");
-      else { setData(result.data); setError(""); setLastUpdated(new Date()); }
+      else {
+        const verificationResult = await supabase.functions.invoke("admin-control", { body: { action: "list_identity_verifications" } });
+        if (verificationResult.error || verificationResult.data?.error) {
+          setData({...result.data,identityVerifications:[]});
+          setError(verificationResult.data?.error || verificationResult.error?.message || "Could not load identity verification queue.");
+        } else {
+          setData({...result.data,identityVerifications:verificationResult.data?.verifications||[]});
+          setError("");
+        }
+        setLastUpdated(new Date());
+      }
     } catch (loadError) { setError(loadError?.message || "Could not load admin data."); }
     finally { setBusy(false); }
   }, []);
@@ -1213,11 +1223,12 @@ function AdminDashboard({ onExit }) {
   const pendingAiCreditOrders=aiCreditOrders.filter(item=>item.status==="pending").length;
   const availableTotal=wallets.filter(item=>item.asset==="USDT").reduce((sum,item)=>sum+Number(item.available_balance||0),0);
   const lockedTotal=wallets.filter(item=>item.asset==="USDT").reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
-  const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"],["administrators","Administrators","♙"]]}];
+  const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["verification","Identity verification","✓"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"],["administrators","Administrators","♙"]]}];
   const activeNavItem=navGroups.flatMap(group=>group.items).find(([id])=>id===tab);
   const sectionDescriptions={
     overview:"A live snapshot of platform activity, financial queues, and system health.",
     users:"Search, edit and manage customer accounts. Administrator access is managed separately.",
+    verification:"Review government ID and camera face-scan submissions before enabling withdrawals.",
     wallets:"Review wallet balances and make audited balance adjustments.",
     aiPurchases:"Track AI credit orders, payment evidence, sender wallets, and credit delivery.",
     deposits:"Review wallet deposit payments and submitted deposit claims separately from purchases.",
@@ -1285,6 +1296,7 @@ function AdminDashboard({ onExit }) {
       </div>
     </>}
 
+    {tab==="verification"&&<AdminIdentityVerifications verifications={data.identityVerifications||[]} onAction={act} busy={busy}/>}
     {tab==="users"&&<>
       <AdminTable title={"Customers · "+users.length+" active (latest records loaded)"} columns={["User","Email / username","Provider","Joined","Access"]} emptyMessage="No users match your search.">
         {users.filter(item=>matches(item.id,item.display_name,item.username,item.email,item.last_login_provider)).map(item=><div className="admin-row" key={item.id}><span><strong>{item.display_name||item.telegram_username||"User"}</strong><small>{item.id}</small></span><span>{item.email||"—"}<small>{item.username?"@"+item.username:"Username not set"}</small></span><span>{item.last_login_provider||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span><span><b>{"Customer"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>setEditingUser(item)}>Edit user</button> <button type="button" className="mini-action danger-action" disabled={busy} onClick={()=>{if(window.confirm("Remove this user from the active customer list? Sign-in will be blocked, and wallet, payment, referral and trading history will be preserved for audit integrity."))void act("delete_user",{user_id:item.id});}}>Delete user</button></span></div>)}
