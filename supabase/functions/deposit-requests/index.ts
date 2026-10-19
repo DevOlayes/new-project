@@ -224,6 +224,9 @@ Deno.serve(async(req:Request)=>{
   if(authError||!user) return json({error:"Please sign in again to continue."},401);
   const body=await req.json().catch(()=>({}));
   if(body.action==="list"){
+    // Keep the user's payment history consistent with the 24-hour pending expiry.
+    const expiryResult = await admin.rpc("expire_incomplete_payment_requests");
+    if (expiryResult.error) console.warn("Payment expiry check failed", expiryResult.error.message);
     const {data,error}=await admin.from("payment_orders")
       .select("id,purpose,base_amount,payment_amount,credits,status,tx_hash,created_at,expires_at,paid_at")
       .eq("user_id",user.id).order("created_at",{ascending:false}).limit(30);

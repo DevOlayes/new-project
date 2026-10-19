@@ -36,6 +36,12 @@ export default function App() {
   const [inMiniApp, setInMiniApp] = useState(false);
   const [page, setPage] = useState(() => window.location.pathname.split("/").filter(Boolean).join("/") === "admin" ? "admin" : "home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close the desktop navigation drawer whenever a destination changes.
+  // Mobile keeps its existing interaction.
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 760px)").matches && sidebarOpen) setSidebarOpen(false);
+  }, [page]);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [onboardingState, setOnboardingState] = useState(null);
@@ -695,7 +701,12 @@ export default function App() {
 
   return <div className={sidebarOpen ? "app-shell sidebar-open" : "app-shell"}>
     <header className="topbar"><button type="button" className="sidebar-toggle" aria-label={sidebarOpen ? "Close side menu" : "Open side menu"} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}><span aria-hidden="true">{sidebarOpen ? "×" : "☰"}</span></button><img className="app-wordmark" src="/flexar-public-logo.webp" alt="FLEXAR AI" /></header>
-    <main className="content">
+    <main className="content" onClickCapture={(event) => {
+      if (window.matchMedia("(min-width: 760px)").matches && sidebarOpen &&
+          event.target instanceof Element && event.target.closest("button,a,[role='button']")) {
+        setSidebarOpen(false);
+      }
+    }}>
       {authError && <div className="error-banner">{authError}</div>}
       <AppErrorBoundary page={page}>
         <div key={page} className="page-transition" aria-live="polite">
@@ -1204,18 +1215,37 @@ function AdminDashboard({ onExit }) {
   const counts=data.counts||{};
   const won=learning.filter(item=>item.outcome==="won").length, lost=learning.filter(item=>item.outcome==="lost").length;
   const pendingWithdrawals=tx.filter(item=>item.type==="withdrawal"&&["pending","processing"].includes(item.status)).length;
-  const pendingDeposits=deposits.filter(item=>item.status==="pending").length;
+  const pendingDeposits=walletDepositOrders.filter(item=>item.status==="pending").length+deposits.filter(item=>item.status==="pending").length;
   const aiPaidOrders=aiCreditOrders.filter(item=>item.status==="paid");
   const aiCreditRevenue=aiPaidOrders.reduce((sum,item)=>sum+Number(item.base_amount||0),0);
   const pendingAiCreditOrders=aiCreditOrders.filter(item=>item.status==="pending").length;
   const availableTotal=wallets.reduce((sum,item)=>sum+Number(item.available_balance||0),0);
   const lockedTotal=wallets.reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
   const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"]]}];
+  const activeNavItem=navGroups.flatMap(group=>group.items).find(([id])=>id===tab);
+  const sectionDescriptions={
+    overview:"A live snapshot of platform activity, financial queues, and system health.",
+    users:"Manage FLEXAR accounts, identity details, and administrator access.",
+    wallets:"Review wallet balances and make audited balance adjustments.",
+    aiPurchases:"Track AI credit orders, payment evidence, sender wallets, and credit delivery.",
+    deposits:"Review wallet deposit payments and submitted deposit claims separately from purchases.",
+    withdrawals:"Review withdrawal requests and record payout outcomes.",
+    transactions:"Inspect wallet movements and financial references across the platform.",
+    trading:"Review recent trading activity and position outcomes.",
+    ai:"Monitor the AI engine and its operational configuration.",
+    markets:"Control which markets are enabled and tradable.",
+    credits:"Audit AI credit grants, purchases, and adjustments.",
+    subscriptions:"Manage plan access, subscription status, and billing cycles.",
+    rewards:"Review reward allocations and referral activity.",
+    health:"Investigate diagnostics, client errors, and platform warnings.",
+    audit:"Review administrator actions and their recorded context.",
+    settings:"Manage platform-level settings and operational preferences."
+  };
 
-  return <div className="admin-shell"><div className="admin-layout">
+  return <div className="admin-shell"><div className="admin-layout" data-admin-section={tab}>
     <aside className="admin-sidebar"><div className="admin-sidebar-brand"><img src="/flexa-symbol.webp" alt=""/><span><strong>FLEXAR AI</strong><small>ADMIN CONSOLE</small></span></div><div className="admin-sidebar-identity"><span className="admin-sidebar-avatar">A</span><span><strong>Operations</strong><small>Secure administrator</small></span><i/></div><nav className="admin-sidebar-nav" aria-label="Admin navigation">{navGroups.map(group=><div className="admin-nav-group" key={group.label}><small className="admin-nav-label">{group.label}</small>{group.items.map(([id,label,glyph])=><button type="button" key={id} className={tab===id?"active":""} aria-current={tab===id?"page":undefined} onClick={()=>setTab(id)}><span className="admin-nav-glyph">{glyph}</span><span>{label}</span>{id==="aiPurchases"&&pendingAiCreditOrders>0&&<b className="admin-nav-count">{pendingAiCreditOrders}</b>}</button>)}</div>)}</nav><div className="admin-sidebar-footer"><span className="admin-live-dot"/><span><strong>Operations service</strong><small>Protected admin session</small></span></div></aside><main className="admin-main">
     <header className="admin-header">
-      <div><small>FLEXAR AI · OPERATIONS</small><h1>Admin Dashboard</h1><p>Users, funds, trading, AI operations and platform controls.</p><span className="admin-updated">{lastUpdated ? "Last refreshed "+lastUpdated.toLocaleTimeString() : "Loading live data"}</span></div>
+      <div className="admin-page-heading"><small>FLEXAR AI <span>/</span> OPERATIONS <span>/</span> {activeNavItem?.[1]||"Overview"}</small><h1>{activeNavItem?.[1]||"Overview"}</h1><p>{sectionDescriptions[tab]||"Manage FLEXAR AI platform operations."}</p><span className="admin-updated">{lastUpdated ? "Live data refreshed "+lastUpdated.toLocaleTimeString() : "Loading live data"}</span></div>
       <div className="admin-header-actions"><button className="secondary" type="button" disabled={busy} onClick={()=>void load()}>{busy?"Refreshing…":"↻ Refresh data"}</button><button className="secondary" type="button" onClick={onExit}>Exit admin</button></div>
     </header>
     <div className="admin-toolbar"><label htmlFor="admin-global-search">Search loaded records</label><input id="admin-global-search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search users, IDs, transactions, assets, errors…"/>{search&&<button type="button" className="mini-action" onClick={()=>setSearch("")}>Clear</button>}</div>
