@@ -64,7 +64,7 @@ The admin UI labels the engine `opportunity-v2`, while the live opportunity engi
 The draft PR now includes:
 - a database RPC for atomic, bounded, audited, idempotent admin USDT/TRC-20 balance adjustments;
 - admin UI/API wiring for that adjustment;
-- an explicit manual withdrawal review flow: pending → processing after approval, pending → cancelled with a refund on rejection, and processing → completed only after an operator records an external payout transaction hash;
+- an explicit manual withdrawal review flow: pending → processing after approval, pending → failed with a refund on rejection, and processing → completed only after an operator records an external payout transaction hash;
 - a draft withdrawal-review interface in the admin transactions panel.
 
 These changes are on `launch-readiness-2026-10-19` only. They have not been merged, the SQL migrations have not been applied to Supabase, and production behavior has not been tested. The withdrawal completion action records an operator-attested external payout; it does not send funds or verify the chain transaction itself. Controlled integration testing and an operational payout procedure are still required.
@@ -93,7 +93,7 @@ Additional high-priority gap: the currently deployed `private.request_withdrawal
 ## Branch changes added during follow-up
 
 - Withdrawal history now exposes the saved administrator review reason, destination, and transaction hash in the expandable transaction details.
-- A cancelled withdrawal is labelled as cancelled/refunded rather than looking like a completed debit.
+- A rejected withdrawal is stored with the supported `failed` status and shown to users as **Transaction failed**; the saved failure reason and refund entry remain available in history. The failed status uses the existing theme's red status treatment, while the existing amount styling is preserved.
 - The rejection migration now creates a separate `withdrawal_refund` credit ledger entry in the same database transaction as the balance refund, so the refund is explicitly visible for reconciliation.
 - The Wrangler `previews` configuration was added after the Cloudflare preview build failed because the config did not contain the required block. GitHub's frontend build verification passed after the initial config fix; the latest SQL/UI follow-up still needs a fresh build result.
 
