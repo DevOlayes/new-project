@@ -1228,10 +1228,10 @@ function AdminDashboard({ onExit }) {
   const counts=data.counts||{};
   const won=learning.filter(item=>item.outcome==="won").length, lost=learning.filter(item=>item.outcome==="lost").length;
   const pendingWithdrawals=tx.filter(item=>item.type==="withdrawal"&&["pending","processing"].includes(item.status)).length;
-  const pendingDeposits=walletDepositOrders.filter(item=>item.status==="pending"&&(item.payment_attempted_at||item.verification_status==="needs_review")).length+deposits.filter(item=>item.status==="pending").length;
+  const pendingDeposits=walletDepositOrders.filter(item=>["pending","incomplete"].includes(item.status)&&(item.payment_attempted_at||item.verification_status==="needs_review")).length+deposits.filter(item=>item.status==="pending").length;
   const aiPaidOrders=aiCreditOrders.filter(item=>item.status==="paid");
   const aiCreditRevenue=aiPaidOrders.reduce((sum,item)=>sum+Number(item.base_amount||0),0);
-  const pendingAiCreditOrders=aiCreditOrders.filter(item=>item.status==="pending"&&(item.payment_attempted_at||item.verification_status==="needs_review")).length;
+  const pendingAiCreditOrders=aiCreditOrders.filter(item=>["pending","incomplete"].includes(item.status)&&(item.payment_attempted_at||item.verification_status==="needs_review")).length;
   const availableTotal=wallets.filter(item=>item.asset==="USDT").reduce((sum,item)=>sum+Number(item.available_balance||0),0);
   const lockedTotal=wallets.filter(item=>item.asset==="USDT").reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
   const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["verification","Identity verification","✓"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"],["administrators","Administrators","♙"]]}];
