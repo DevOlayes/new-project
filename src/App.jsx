@@ -1165,7 +1165,7 @@ function AdminDashboard({ onExit }) {
   const rewards=data.rewards||[], referrals=data.referrals||[], modelStats=data.modelStats||[], audit=data.audit||[];
   const q=search.trim().toLowerCase();
   const matches=(...values)=>!q||values.some(value=>String(value??"").toLowerCase().includes(q));
-  const userName=(id)=>{const u=users.find(item=>item.id===id);return u?.display_name||u?.telegram_username||u?.email||(id?String(id).slice(0,8)+"…":"Unknown user");};
+  const userName=(id)=>{const u=allUsers.find(item=>item.id===id);return u?.display_name||u?.username||u?.telegram_username||u?.email||(id?String(id).slice(0,8)+"…":"Unknown user");};
   const userEmail=(id)=>users.find(item=>item.id===id)?.email||"Email not available";
   const money=(value,digits=2)=>Number(value||0).toLocaleString(undefined,{minimumFractionDigits:digits,maximumFractionDigits:digits});
   const counts=data.counts||{};
@@ -1250,14 +1250,14 @@ function AdminDashboard({ onExit }) {
     </>}
 
     {tab==="users"&&<>
-      <AdminTable title={"Users · "+(counts.users??users.length)+" total (latest records loaded)"} columns={["User","Email / Telegram","Provider","Joined","Access"]} emptyMessage="No users match your search.">
+      <AdminTable title={"Customers · "+users.length+" active (latest records loaded)"} columns={["User","Email / Telegram","Provider","Joined","Access"]} emptyMessage="No users match your search.">
         {users.filter(item=>matches(item.id,item.display_name,item.username,item.email,item.last_login_provider)).map(item=><div className="admin-row" key={item.id}><span><strong>{item.display_name||item.telegram_username||"User"}</strong><small>{item.id}</small></span><span>{item.email||"—"}<small>{item.username?"@"+item.username:"Username not set"}</small></span><span>{item.last_login_provider||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span><span><b>{"Customer"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>setEditingUser(item)}>Edit user</button> <button type="button" className="mini-action danger-action" disabled={busy} onClick={()=>{if(window.confirm("Deactivate this user? Financial history is preserved."))void act("delete_user",{user_id:item.id});}}>Deactivate</button></span></div>)}
       </AdminTable>
-      <p className="admin-note">Role changes require confirmation. The current administrator cannot remove their own access. User rows show the latest records loaded.</p>
+      <p className="admin-note">Customer accounts can be edited or deactivated here. Deactivation preserves wallet, payment and trading history. Administrator privileges are managed only in the Administrators section.</p>
     </>}
 
     {tab==="users"&&editingUser&&<AdminUserEditor user={editingUser} onClose={()=>setEditingUser(null)} onSave={async patch=>{const ok=await act("update_user",{user_id:editingUser.id,patch});if(ok)setEditingUser(null);return ok;}}/>}
-    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network))} users={users} onAction={act} search={search}/>}
+    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network,userName(item.user_id),userEmail(item.user_id)))} users={users} onAction={act} search={search}/>}
 
     {tab==="deposits"&&<>
       <div className="admin-kpis"><Kpi label="Deposit requests" value={deposits.length}/><Kpi label="Awaiting review" value={pendingDeposits}/><Kpi label="Incomplete after 24 hours" value={deposits.filter(item=>item.status==="incomplete").length}/><Kpi label="Approved" value={deposits.filter(item=>item.status==="approved").length}/></div>
