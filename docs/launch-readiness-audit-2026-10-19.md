@@ -59,6 +59,16 @@ The admin UI labels the engine `opportunity-v2`, while the live opportunity engi
 
 **Required action:** use a single source of truth for the deployed engine version so operators see accurate status.
 
+## Remediation started on branch
+
+The draft PR now includes:
+- a database RPC for atomic, bounded, audited, idempotent admin USDT/TRC-20 balance adjustments;
+- admin UI/API wiring for that adjustment;
+- an explicit manual withdrawal review flow: pending → processing after approval, pending → cancelled with a refund on rejection, and processing → completed only after an operator records an external payout transaction hash;
+- a draft withdrawal-review interface in the admin transactions panel.
+
+These changes are on `launch-readiness-2026-10-19` only. They have not been merged, the SQL migrations have not been applied to Supabase, and production behavior has not been tested. The withdrawal completion action records an operator-attested external payout; it does not send funds or verify the chain transaction itself. Controlled integration testing and an operational payout procedure are still required.
+
 ## Release sequence
 
 1. Preserve the current production state and capture a baseline.
