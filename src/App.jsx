@@ -370,7 +370,7 @@ export default function App() {
     // session. This is the single initial auth source; don't run getClaims in
     // the same effect because doing both creates duplicate state updates.
     const initialize = async () => {
-      if (miniApp?.initData) {
+      if (false && miniApp?.initData) {
         const { data, error } = await supabase.functions.invoke("telegram-auth", {
           body: { initData: miniApp.initData },
         });
@@ -683,7 +683,7 @@ export default function App() {
   }
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => { window.history.pushState({}, "", "/"); setPage("home"); }} />;
-  if (!inMiniApp && !user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
+  if (!user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
   if (user && loading) {
     return <div className="flexar-loading-screen" role="status" aria-live="polite">
       <div className="flexar-loading-mark"><img src="/flexa-symbol.webp" alt="FLEXAR AI" /><span className="flexar-loading-ring"/></div>
@@ -693,7 +693,6 @@ export default function App() {
     </div>;
   }
   if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
-  if (!user) return <div className="auth-screen"><div className="auth-card"><div className="brand"><img className="brand-symbol" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><div><strong>FLEXAR AI</strong><small>AI TRADES</small></div></div><h1>Connect your Telegram account</h1><p>Open FLEXAR AI from the Telegram Mini App so Telegram can securely identify your account.</p>{authError && <div className="error-banner">{authError}</div>}<span className="auth-hint">No separate password is required.</span></div></div>;
   if (user && profile && onboardingState && !onboardingState.completed) return <Onboarding profile={profile} initialState={onboardingState} onComplete={(next) => { setOnboardingState({...next, completed:true}); setProfile((current) => ({...(current || {}), onboarding_completed:true, onboarding_step:4, country_code:next.countryCode, trading_experience:next.experience, onboarding_goals:next.goals, trading_style:next.style, ai_preference:next.aiPreference})); setPage("home"); }} />;
 
   const notifications = account.notifications || [];
@@ -818,65 +817,15 @@ function Landing({ market, showAuth, setShowAuth, installPrompt, installFLEXAR }
   return <div className="landing"><div className="landing-orb orb-one" /><div className="landing-orb orb-two" />
     <header className="landing-topbar"><img className="landing-wordmark" src="/flexar-public-logo.webp" alt="FLEXAR AI" /></header>
     <main className="landing-content">
-      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>FLEXAR AI continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta" onClick={() => setShowAuth(true)}>Get started <b>→</b></button>{installPrompt && <button className="install-cta" onClick={installFLEXAR}>Install FLEXAR AI</button>}<div className="landing-trust">Free account · Google or Telegram · No FLEXAR AI password</div><span className="hero-status"><i /> Market data connected</span></div></section>
+      <section className="landing-hero"><div className="eyebrow">AI-POWERED MARKET OPPORTUNITIES</div><h1>Let the AI find<br /><span>the trade.</span></h1><p>FLEXAR AI continuously studies market conditions and surfaces simplified trading opportunities, so you do not need to understand complex charts before every trade.</p><div className="landing-actions"><button className="landing-cta" onClick={() => setShowAuth(true)}>Get started <b>→</b></button>{installPrompt && <button className="install-cta" onClick={installFLEXAR}>Install FLEXAR AI</button>}<div className="landing-trust">Free account · Email or Google · Your account, your control</div><span className="hero-status"><i /> Market data connected</span></div></section>
       <section className="landing-terminal"><div className="terminal-top"><div><small>LIVE MARKET</small><strong>BTC / USDT</strong></div><span className={change >= 0 ? "green" : "red"}>{change == null ? "—" : (change >= 0 ? "+" : "") + change.toFixed(2) + "%"}</span></div><Chart /><div className="terminal-bottom"><strong>{price == null ? "Loading…" : "$" + price.toLocaleString(undefined,{maximumFractionDigits:2})}</strong><span>PUBLIC MARKET DATA</span></div><div className="floating-card float-card-a">AI OPPORTUNITY <b>SCANNING</b></div><div className="floating-card float-card-b">AI WINDOW <b>QUALIFYING SETUP</b></div></section>
       <section className="welcome-campaign"><div><span className="eyebrow">NEW USER CAMPAIGN</span><h2>Claim your <b>$50</b> welcome reward.</h2><p>Use the reward to trade. The reward itself cannot be withdrawn; only eligible profit generated from it can be withdrawn before the 12-day deadline.</p></div><span className="campaign-badge">12 DAYS</span></section><section className="opportunity-preview"><div><div className="eyebrow">AI OPPORTUNITY FEED</div><h2>Users do not hunt for trades. FLEXAR AI finds them.</h2></div><div className="opportunity-demo"><div><span>BTC / USDT</span><strong>AI opportunity detected</strong></div><b>UP ↗</b><small>RISK MANAGED · REVIEW READY</small></div></section>
       <section className="landing-section"><div className="eyebrow">HOW FLEXAR WORKS</div><h2>Simple on the surface. Intelligent underneath.</h2><div className="landing-steps"><LandingStep n="01" title="Scan" text="Market data is continuously collected and analyzed across supported markets."/><LandingStep n="02" title="Select" text="The engine filters signals and turns stronger setups into user-friendly opportunities."/><LandingStep n="03" title="Trade" text="You review the opportunity, choose your stake and confirm when ready." /></div></section>
       <section className="landing-section"><div className="feature-row"><LandingFeature title="AI-first trading" text="The system does the heavy market analysis before presenting an opportunity."/><LandingFeature title="Real market data" text="Charts and future signals are designed around real market pricing, not invented demo prices."/><LandingFeature title="Transparent activity" text="Trades, balances and wallet events remain connected to your account ledger." /></div></section>
     </main>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</div>;
 }
-function AuthModal({ onClose }) {
-  const [mode, setMode] = useState("signup");
-  const [error, setError] = useState("");
-  return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="FLEXAR AI" /><div className="eyebrow">WELCOME TO FLEXAR AI</div><h2>{mode === "signup" ? "Start in seconds." : "Welcome back."}</h2><p>{mode === "signup" ? "Create your FLEXAR AI account with Google or Telegram." : "Sign in with the same account you used before."}</p><AuthOptions setAuthError={setError} authError={error} /><button className="auth-mode-toggle" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Already have an account? Sign in" : "New to FLEXAR AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use FLEXAR AI responsibly and follow applicable terms.</small></div></div>;
-}
-
-function AuthOptions({ setAuthError, authError }) {
-  const [busy, setBusy] = useState("");
-
-  async function continueWithGoogle() {
-    if (!supabase) { setAuthError("Supabase is not configured in this build."); return; }
-    setBusy("google"); setAuthError("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${FLEXAR_APP_URL}/` }
-    });
-    if (error) { setBusy(""); setAuthError(error.message || "Google sign-in could not start."); }
-  }
-
-  function continueWithTelegram() {
-    const botUsername = "flexarxbot";
-    setBusy("telegram");
-    setAuthError("");
-    const miniAppLink = `https://t.me/${botUsername}?startapp=login&mode=fullscreen`;
-    window.location.href = miniAppLink;
-  }
-
-  return <div className="auth-options">
-    <button type="button" className="auth-provider google" onClick={continueWithGoogle} disabled={!!busy}>
-      <span className="provider-mark google-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" role="img" aria-label="Google">
-          <path fill="#4285F4" d="M21.35 12.27c0-.72-.06-1.42-.18-2.09H12v3.95h5.24a4.48 4.48 0 0 1-1.94 2.94v2.44h3.14c1.84-1.69 2.91-4.18 2.91-7.24Z"/>
-          <path fill="#34A853" d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.44c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.52A9.75 9.75 0 0 0 12 21.7Z"/>
-          <path fill="#FBBC05" d="M6.54 13.79a5.87 5.87 0 0 1 0-3.58V7.69H3.3a9.75 9.75 0 0 0 0 8.62l3.24-2.52Z"/>
-          <path fill="#EA4335" d="M12 6.18c1.43 0 2.72.49 3.73 1.46l2.8-2.8C16.84 3.2 14.63 2.3 12 2.3a9.75 9.75 0 0 0-8.7 5.39l3.24 2.52C7.31 7.9 9.46 6.18 12 6.18Z"/>
-        </svg>
-      </span>
-      <span>{busy === "google" ? "Connecting Google…" : "Continue with Google"}</span><b>→</b>
-    </button>
-
-    <button className="auth-provider telegram" type="button" onClick={continueWithTelegram} disabled={!!busy}>
-      <span className="provider-mark telegram-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" role="img" aria-label="Telegram">
-          <path fill="currentColor" d="M21.5 3.5 18.3 20c-.24 1.17-.88 1.46-1.78.91l-4.92-3.63-2.37 2.28c-.26.26-.48.48-.98.48l.35-5.02 9.14-8.26c.4-.35-.09-.55-.62-.2L5.81 13.9.98 12.38c-1.05-.33-1.07-1.05.22-1.56L20.1 3.03c.88-.33 1.65.2 1.4.47Z"/>
-        </svg>
-      </span>
-      <span>{busy === "telegram" ? "Connecting Telegram…" : "Continue with Telegram"}</span><b>→</b>
-    </button>
-
-    {authError && <div className="error-banner">{authError}</div>}
-  </div>;
-}
+function AuthModal({onClose}){const [mode,setMode]=useState("signup"),[error,setError]=useState(""),[notice,setNotice]=useState("");return <div className="auth-modal-backdrop" onClick={onClose}><div className="auth-modal" onClick={e=>e.stopPropagation()}><button className="auth-close" onClick={onClose} aria-label="Close">×</button><img className="auth-modal-icon" src="/flexa-symbol.webp" alt="FLEXAR AI"/><div className="eyebrow">WELCOME TO FLEXAR AI</div><h2>{mode==="signup"?"Create your account.":"Welcome back."}</h2><p>{mode==="signup"?"Register with username, email and password, or continue with Google.":"Sign in with email and password, or continue with Google."}</p><AuthOptions mode={mode} setAuthError={setError} authError={error} notice={notice} setNotice={setNotice}/><button className="auth-mode-toggle" type="button" onClick={()=>{setMode(mode==="signup"?"login":"signup");setError("");setNotice("");}}>{mode==="signup"?"Already have an account? Sign in":"New to FLEXAR AI? Create an account"}</button><small className="auth-legal">By continuing, you agree to use FLEXAR AI responsibly and follow applicable terms.</small></div></div>;}
+function AuthOptions({mode,setAuthError,authError,notice,setNotice}){const [busy,setBusy]=useState(""),[username,setUsername]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState("");async function submit(e){e.preventDefault();if(!supabase){setAuthError("Supabase is not configured.");return;}const em=email.trim().toLowerCase(),un=username.trim().replace(/^@/,"");if(mode==="signup"&&!/^[A-Za-z0-9_]{3,24}$/.test(un)){setAuthError("Username must be 3–24 letters, numbers or underscores.");return;}if(password.length<8){setAuthError("Password must be at least 8 characters.");return;}setBusy("email");setAuthError("");setNotice("");try{if(mode==="signup"){const {data,error}=await supabase.auth.signUp({email:em,password,options:{data:{username:un,full_name:un}}});if(error)throw error;setNotice(data.session?"Account created and signed in.":"Check your email to confirm your account, then sign in.");}else{const {error}=await supabase.auth.signInWithPassword({email:em,password});if(error)throw error;}}catch(err){setAuthError(err?.message||"Authentication failed.");}finally{setBusy("");}}async function google(){if(!supabase){setAuthError("Supabase is not configured.");return;}setBusy("google");setAuthError("");const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:`${FLEXAR_APP_URL}/`}});if(error){setBusy("");setAuthError(error.message||"Google sign-in could not start.");}}return <div className="auth-options"><form className="auth-email-form" onSubmit={submit}>{mode==="signup"&&<label>Username<input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} minLength={3} maxLength={24} placeholder="e.g. dike_w" required/></label>}<label>Email address<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required/></label><label>Password<input type="password" autoComplete={mode==="signup"?"new-password":"current-password"} value={password} onChange={e=>setPassword(e.target.value)} minLength={8} placeholder="At least 8 characters" required/></label><button className="auth-provider auth-email-submit" type="submit" disabled={!!busy}>{busy==="email"?"Please wait…":mode==="signup"?"Create account":"Sign in"}<b>→</b></button></form><div className="auth-divider"><span>OR</span></div><button type="button" className="auth-provider google" onClick={google} disabled={!!busy}><span className="provider-mark google-mark">G</span><span>{busy==="google"?"Connecting Google…":"Continue with Google"}</span><b>→</b></button>{notice&&<div className="auth-success" role="status">{notice}</div>}{authError&&<div className="error-banner" role="alert">{authError}</div>}</div>;}
 function Onboarding({ profile, initialState, onComplete }) {
   const [step, setStep] = useState(Math.min(3, Math.max(0, Number(initialState?.step || 0))));
   const [countryCode, setCountryCode] = useState(initialState?.countryCode || "");
@@ -1175,7 +1124,7 @@ function AdminDashboard({ onExit }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);\n  const [editingUser, setEditingUser] = useState(null);
 
   const load = useCallback(async () => {
     if (!supabase) { setError("Admin data service is not configured."); return; }
@@ -1208,7 +1157,7 @@ function AdminDashboard({ onExit }) {
     <div className="admin-card admin-loading-card">{busy ? "Loading platform data…" : "Platform data is not available."}<button className="mini-action" type="button" onClick={() => void load()}>Retry</button></div>
   </div>;
 
-  const users=data.users||[], tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[];
+  const allUsers=data.users||[], users=allUsers.filter(item=>!item.is_admin&&!item.is_deleted), administrators=allUsers.filter(item=>item.is_admin&&!item.is_deleted), tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[];
   const markets=data.markets||[], plans=data.plans||[], subs=data.subscriptions||[], learning=data.learning||[];
   const adaptive=data.adaptive||[], wallets=data.wallets||[], deposits=data.depositRequests||[];
   const paymentOrders=data.paymentOrders||[], walletDepositOrders=paymentOrders.filter(item=>item.purpose==="wallet_deposit"), aiCreditOrders=data.aiCreditOrders||[], diagnostics=data.diagnostics||[], credits=data.creditTransactions||[];
@@ -1227,11 +1176,11 @@ function AdminDashboard({ onExit }) {
   const pendingAiCreditOrders=aiCreditOrders.filter(item=>item.status==="pending").length;
   const availableTotal=wallets.reduce((sum,item)=>sum+Number(item.available_balance||0),0);
   const lockedTotal=wallets.reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
-  const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"]]}];
+  const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"],["administrators","Administrators","♙"]]}];
   const activeNavItem=navGroups.flatMap(group=>group.items).find(([id])=>id===tab);
   const sectionDescriptions={
     overview:"A live snapshot of platform activity, financial queues, and system health.",
-    users:"Manage FLEXAR accounts, identity details, and administrator access.",
+    users:"Search, edit and manage customer accounts. Administrator access is managed separately.",
     wallets:"Review wallet balances and make audited balance adjustments.",
     aiPurchases:"Track AI credit orders, payment evidence, sender wallets, and credit delivery.",
     deposits:"Review wallet deposit payments and submitted deposit claims separately from purchases.",
@@ -1245,7 +1194,7 @@ function AdminDashboard({ onExit }) {
     rewards:"Review reward allocations and referral activity.",
     health:"Investigate diagnostics, client errors, and platform warnings.",
     audit:"Review administrator actions and their recorded context.",
-    settings:"Manage platform-level settings and operational preferences."
+    settings:"Manage platform-level settings and operational preferences.", administrators:"Manage administrator accounts separately from customers."
   };
 
   return <div className="admin-shell"><div className="admin-layout" data-admin-section={tab}>
@@ -1301,12 +1250,12 @@ function AdminDashboard({ onExit }) {
 
     {tab==="users"&&<>
       <AdminTable title={"Users · "+(counts.users??users.length)+" total (latest records loaded)"} columns={["User","Email / Telegram","Provider","Joined","Access"]} emptyMessage="No users match your search.">
-        {users.filter(item=>matches(item.id,item.display_name,item.telegram_username,item.email,item.last_login_provider)).map(item=><div className="admin-row" key={item.id}><span><strong>{item.display_name||item.telegram_username||"User"}</strong><small>{item.id}</small></span><span>{item.email||item.telegram_username||"—"}</span><span>{item.last_login_provider||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span><span><b>{item.is_admin?"Admin":"User"}</b><button type="button" className="mini-action" disabled={busy||item.id===data.currentAdminId} onClick={()=>{const action=item.is_admin?"remove admin access from":"grant admin access to";if(window.confirm("Are you sure you want to "+action+" "+(item.display_name||item.email||item.id)+"?"))void act("set_user_admin",{user_id:item.id,is_admin:!item.is_admin});}}>{item.is_admin?"Remove admin":"Make admin"}</button></span></div>)}
+        {users.filter(item=>matches(item.id,item.display_name,item.username,item.email,item.last_login_provider)).map(item=><div className="admin-row" key={item.id}><span><strong>{item.display_name||item.telegram_username||"User"}</strong><small>{item.id}</small></span><span>{item.email||"—"}<small>{item.username?"@"+item.username:"Username not set"}</small></span><span>{item.last_login_provider||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span><span><b>{"Customer"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>setEditingUser(item)}>Edit user</button> <button type="button" className="mini-action danger-action" disabled={busy} onClick={()=>{if(window.confirm("Deactivate this user? Financial history is preserved."))void act("delete_user",{user_id:item.id});}}</button></span></div>)}
       </AdminTable>
       <p className="admin-note">Role changes require confirmation. The current administrator cannot remove their own access. User rows show the latest records loaded.</p>
     </>}
 
-    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network))} users={users} onAction={act}/>}
+    {tab==="users"&&editingUser&&<AdminUserEditor user={editingUser} onClose={()=>setEditingUser(null)} onSave={async patch=>{const ok=await act("update_user",{user_id:editingUser.id,patch});if(ok)setEditingUser(null);return ok;}}/>}\n    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network))} users={users} onAction={act} search={search}/>}
 
     {tab==="deposits"&&<>
       <div className="admin-kpis"><Kpi label="Deposit requests" value={deposits.length}/><Kpi label="Awaiting review" value={pendingDeposits}/><Kpi label="Incomplete after 24 hours" value={deposits.filter(item=>item.status==="incomplete").length}/><Kpi label="Approved" value={deposits.filter(item=>item.status==="approved").length}/></div>
@@ -1405,12 +1354,14 @@ function AdminDashboard({ onExit }) {
       {audit.filter(item=>matches(item.admin_user_id,item.action,item.target_type,item.target_id,JSON.stringify(item.details))).map(item=><div className="admin-row" key={item.id}><span>{userName(item.admin_user_id)}<small>{item.admin_user_id}</small></span><span>{item.action}</span><span>{item.target_type||"—"}<small>{item.target_id||"—"}</small></span><span className="admin-wrap-cell">{JSON.stringify(item.details||{})}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span></div>)}
     </AdminTable>}
 
-    {tab==="settings"&&<AdminSettings settings={data.settings} onSave={act}/>}
+    {tab==="settings"&&<AdminSettings settings={data.settings} onSave={act}/>}\n    {tab==="administrators"&&<AdminAdministrators users={administrators} allUsers={allUsers.filter(item=>!item.is_deleted)} currentAdminId={data.currentAdminId} busy={busy} onAction={act} userName={userName}/>}
     {busy&&<div className="admin-busy" role="status">Updating platform data…</div>}
     </main></div>
   </div>;
 }
-function AdminGrantSubscription({users,plans,onAction}){
+function AdminUserEditor({user,onClose,onSave}){const [name,setName]=useState(user.display_name||""),[username,setUsername]=useState(user.username||""),[email,setEmail]=useState(user.email||""),[busy,setBusy]=useState(false);async function submit(e){e.preventDefault();setBusy(true);try{await onSave({display_name:name.trim(),username:username.trim().replace(/^@/,""),email:email.trim().toLowerCase()});}finally{setBusy(false);}}return <div className="auth-modal-backdrop admin-modal-backdrop" onClick={onClose}><section className="auth-modal admin-editor-modal" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}><button className="auth-close" type="button" onClick={onClose} aria-label="Close">×</button><div className="eyebrow">CUSTOMER ACCOUNT</div><h2>Edit user</h2><p>Identity changes are separate from audited wallet adjustments.</p><form className="auth-email-form" onSubmit={submit}><label>Display name<input value={name} onChange={e=>setName(e.target.value)} maxLength={100} required/></label><label>Username<input value={username} onChange={e=>setUsername(e.target.value)} pattern="[A-Za-z0-9_]{3,24}" minLength={3} maxLength={24} required/></label><label>Email address<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><div className="admin-modal-actions"><button className="secondary" type="button" onClick={onClose}>Cancel</button><button className="mini-action" type="submit" disabled={busy}>{busy?"Saving…":"Save changes"}</button></div></form></section></div>;}
+function AdminAdministrators({users,allUsers,currentAdminId,busy,onAction,userName}){const [target,setTarget]=useState(""),[filter,setFilter]=useState("");const candidates=allUsers.filter(x=>!x.is_admin&&!x.is_deleted&&[x.display_name,x.username,x.email,x.id].some(v=>String(v||"").toLowerCase().includes(filter.toLowerCase())));async function add(){const chosen=allUsers.find(x=>x.id===target);if(!chosen||!window.confirm("Grant administrator access to "+(chosen.display_name||chosen.email||chosen.id)+"?"))return;if(await onAction("set_admin_access",{user_id:target,is_admin:true})){setTarget("");setFilter("");}}return <div className="admin-stack"><section className="admin-card"><div className="admin-section-title"><div><h2>Administrator access</h2><p>Customer management cannot grant admin privileges.</p></div><span className="admin-table-count">{users.length} admins</span></div></section><section className="admin-card"><div className="admin-section-title"><div><h2>Add an administrator</h2><p>Select an existing active customer account.</p></div></div><div className="admin-admin-add"><input value={filter} onChange={e=>{setFilter(e.target.value);setTarget("");}} placeholder="Find by name, username or email"/><select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Choose account…</option>{candidates.map(x=><option key={x.id} value={x.id}>{x.display_name||x.username||x.email} · {x.email||x.id.slice(0,8)}</option>)}</select><button className="mini-action" type="button" disabled={busy||!target} onClick={add}>Grant admin access</button></div></section><AdminTable title="Current administrators" columns={["Administrator","Email / username","Joined","Access"]} emptyMessage="No active administrators.">{users.map(x=><div className="admin-row" key={x.id}><span><strong>{x.display_name||x.username||"Administrator"}</strong><small>{x.id}</small></span><span>{x.email||"—"}<small>{x.username?"@"+x.username:"Username not set"}</small></span><span>{x.created_at?new Date(x.created_at).toLocaleDateString():"—"}</span><span>{x.id===currentAdminId?<b>Current session</b>:<button type="button" className="mini-action danger-action" disabled={busy} onClick={()=>{if(window.confirm("Remove administrator access from "+userName(x.id)+"?"))void onAction("set_admin_access",{user_id:x.id,is_admin:false});}}>Remove admin</button>}</span></div>)}</AdminTable></div>;}
+\nfunction AdminGrantSubscription({users,plans,onAction}){
   const [userId,setUserId]=useState("");
   const [planId,setPlanId]=useState(plans.find(item=>item.active)?.id||plans[0]?.id||"");
   const [cycle,setCycle]=useState("monthly");
