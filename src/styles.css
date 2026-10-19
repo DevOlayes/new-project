@@ -2425,3 +2425,95 @@ body{background:var(--bg)}
   .asset-selector-trigger>img{width:25px;height:25px;flex-basis:25px}
   .asset-selector-trigger small{max-width:62px}
 }
+
+
+/* Compact wallet dialogs: keep the visual hierarchy without wasting modal space. */
+.wallet-action-modal{width:min(420px,calc(100vw - 28px))!important;max-height:84vh!important;padding:17px!important;overflow-x:visible!important}
+.wallet-action-modal .wallet-flow-heading{gap:10px;margin:1px 25px 11px 0}
+.wallet-action-modal .wallet-flow-icon{width:40px;height:40px;flex-basis:40px;border-radius:12px}
+.wallet-action-modal .wallet-flow-icon img{width:23px;height:23px}
+.wallet-action-modal .wallet-flow-heading h2{font-size:18px;letter-spacing:-.03em}
+.wallet-action-modal .wallet-flow-heading p{margin-top:5px;font-size:9px;line-height:1.45}
+.wallet-action-modal .wallet-stepper{margin:12px 0;gap:6px}
+.wallet-action-modal .wallet-stepper>span{font-size:8px}
+.wallet-action-modal .wallet-stepper>span b{width:20px;height:20px}
+.wallet-action-modal .wallet-address-card.wallet-network-featured{gap:9px;padding:11px}
+.wallet-action-modal .wallet-asset-title{gap:8px}
+.wallet-action-modal .wallet-asset-title>img{width:30px;height:30px;flex-basis:30px;padding:5px}
+.wallet-action-modal .wallet-asset-title strong{font-size:11px!important}
+.wallet-action-modal .wallet-asset-title small{font-size:8px}
+.wallet-action-modal .wallet-network-pill{font-size:6px;padding:4px 6px}
+.wallet-action-modal .wallet-network-featured>p{font-size:8px;line-height:1.45}
+.wallet-action-modal .wallet-network-featured code{padding:9px!important;font-size:9px!important;overflow-wrap:anywhere}
+.wallet-action-modal .wallet-address-actions{gap:7px}
+.wallet-action-modal .wallet-address-actions button,.wallet-action-modal .deposit-copy-button{padding:7px 10px;font-size:8px}
+.wallet-action-modal .wallet-address-actions>span{font-size:7px}
+.wallet-action-modal .wallet-address-card.wallet-network-coming{padding:9px 11px;gap:9px}
+.wallet-action-modal .wallet-network-coming>img{width:25px;height:25px}
+.wallet-action-modal .wallet-network-coming>span strong{font-size:9px!important}
+.wallet-action-modal .wallet-network-coming>span small{font-size:7px}
+.wallet-action-modal .wallet-network-coming>b{font-size:6px}
+.wallet-action-modal .deposit-amount-form{padding:11px}
+.wallet-action-modal .deposit-amount-form label,.wallet-action-modal .withdrawal-form label{font-size:9px}
+.wallet-action-modal .deposit-amount-input,.wallet-action-modal .withdrawal-amount-input{gap:7px;margin-top:6px;padding:3px 10px;border-radius:10px}
+.wallet-action-modal .deposit-amount-input>span,.wallet-action-modal .withdrawal-amount-input>span{font-size:18px}
+.wallet-action-modal .deposit-amount-input input,.wallet-action-modal .withdrawal-amount-input input{min-height:43px!important;font-size:22px!important;letter-spacing:-.035em}
+.wallet-action-modal .deposit-amount-input b,.wallet-action-modal .withdrawal-amount-input b{padding:6px 7px;font-size:8px}
+.wallet-action-modal .deposit-minimum-hint{gap:7px;margin:9px 0}
+.wallet-action-modal .deposit-minimum-hint>span{width:17px;height:17px;flex-basis:17px;font-size:9px}
+.wallet-action-modal .deposit-minimum-hint p{font-size:8px;line-height:1.5}
+.wallet-action-modal .withdrawal-network-banner{gap:8px;margin:10px 0;padding:9px 10px}
+.wallet-action-modal .withdrawal-network-banner>div strong{font-size:9px}
+.wallet-action-modal .withdrawal-network-banner>div small{font-size:7px;line-height:1.45}
+.wallet-action-modal .withdrawal-network-banner>img{width:23px;height:23px}
+.wallet-action-modal .withdrawal-balance-card{padding:11px 12px;margin-bottom:10px;border-radius:11px}
+.wallet-action-modal .withdrawal-balance-card small{font-size:6px}
+.wallet-action-modal .withdrawal-balance-card strong{margin-top:3px;font-size:19px!important}
+.wallet-action-modal .withdrawal-balance-card span{padding:5px 7px;font-size:8px}
+.wallet-action-modal .withdrawal-form{margin-top:10px}
+.wallet-action-modal .withdrawal-form label{margin-bottom:10px}
+.wallet-action-modal .withdrawal-form input,.wallet-action-modal .withdrawal-form textarea{margin-top:5px}
+.wallet-action-modal .withdrawal-form textarea{min-height:72px;padding:10px;font-size:10px}
+.wallet-action-modal .withdrawal-max-button{margin-bottom:10px;padding:5px 8px}
+.wallet-action-modal .withdrawal-network-warning{gap:7px;margin:0 0 10px;padding:9px}
+.wallet-action-modal .withdrawal-network-warning>span{width:16px;height:16px;flex-basis:16px;font-size:10px}
+.wallet-action-modal .withdrawal-network-warning p{font-size:7px;line-height:1.5}
+.wallet-action-modal .withdrawal-network-warning p strong{font-size:8px}
+.wallet-action-modal .withdrawal-submit{height:41px!important;font-size:9px!important}
+.wallet-action-modal .deposit-payment-step{margin-top:10px;padding:11px;border-radius:12px}
+.wallet-action-modal .deposit-step-title h3{margin:4px 0;font-size:13px}
+.wallet-action-modal .deposit-step-title p{font-size:8px;line-height:1.45}
+.wallet-action-modal .deposit-qr-card{gap:6px;margin:11px auto;padding:9px;border-radius:11px}
+.wallet-action-modal .deposit-qr-code{width:144px;height:144px}
+.wallet-action-modal .deposit-qr-card>small{font-size:7px}
+.wallet-action-modal .deposit-payment-amount{padding:11px;border-radius:10px}
+.wallet-action-modal .deposit-payment-amount>small{font-size:7px}
+.wallet-action-modal .deposit-payment-amount>strong{margin-top:5px;font-size:22px;letter-spacing:-.03em}
+.wallet-action-modal .deposit-payment-amount>strong span{font-size:11px}
+.wallet-action-modal .deposit-payment-amount p{margin-top:6px;font-size:8px;line-height:1.45}
+.wallet-action-modal .deposit-payment-step .deposit-copy-button,.wallet-action-modal .deposit-payment-step .withdrawal-submit{margin-top:8px}
+.wallet-action-modal .deposit-safety-note{margin-top:8px;font-size:7px;line-height:1.5}
+.wallet-action-modal .deposit-history{margin-top:13px;padding-top:10px}
+.wallet-action-modal .deposit-history-head h3{font-size:10px}
+.wallet-action-modal .deposit-history-head>span{font-size:7px}
+.wallet-action-modal .deposit-history .admin-row{padding:8px 0;font-size:9px}
+.wallet-action-modal .deposit-history .empty-state{padding:10px 0;font-size:8px}
+.asset-selector-menu{z-index:10000;box-sizing:border-box;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:thin;scrollbar-color:var(--green) #101b14}
+.asset-selector-menu::-webkit-scrollbar{width:7px}
+.asset-selector-menu::-webkit-scrollbar-track{border-radius:8px;background:#101b14}
+.asset-selector-menu::-webkit-scrollbar-thumb{border:2px solid #101b14;border-radius:8px;background:var(--green)}
+.asset-selector-scroll-hint{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-1px -1px 4px;padding:8px 9px;border-bottom:1px solid rgba(3,252,125,.13);background:#07100b;color:#81958a;font-size:7px;font-weight:850;letter-spacing:.12em}
+.asset-selector-scroll-hint span:last-child{color:var(--green);font-size:13px}
+.asset-selector-option{min-height:48px;padding:8px}
+.asset-selector-option>img{width:27px;height:27px;flex-basis:27px}
+.asset-selector-option>span strong{font-size:9px}
+.asset-selector-option>span small{font-size:7px}
+@media(max-width:520px){
+  .wallet-action-modal{padding:14px!important;max-height:88vh!important}
+  .wallet-action-modal .wallet-flow-heading h2{font-size:17px}
+  .wallet-action-modal .deposit-qr-code{width:132px;height:132px}
+  .wallet-action-modal .deposit-payment-amount>strong{font-size:21px}
+  .wallet-action-modal .wallet-stepper{gap:4px}
+  .wallet-action-modal .wallet-stepper>span{font-size:7px}
+  .wallet-action-modal .wallet-stepper>span b{width:18px;height:18px}
+}
