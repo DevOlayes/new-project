@@ -7,6 +7,17 @@ create unique index if not exists wallet_transactions_tx_hash_lower_key
   on public.wallet_transactions (pg_catalog.lower(tx_hash))
   where tx_hash is not null and pg_catalog.btrim(tx_hash) <> '';
 
+-- The refund is a first-class ledger transaction, so allow its type explicitly.
+alter table public.wallet_transactions
+  drop constraint if exists wallet_transactions_type_check;
+
+alter table public.wallet_transactions
+  add constraint wallet_transactions_type_check
+  check (type = any (array[
+    'deposit','withdrawal','trade_lock','trade_release','trade_profit',
+    'trade_loss','bonus','referral_reward','adjustment','withdrawal_refund'
+  ]::text[]));
+
 create or replace function private.admin_review_withdrawal(
   p_admin_user_id uuid,
   p_transaction_id uuid,
@@ -101,7 +112,7 @@ begin
     where id = v_wallet.id;
 
     update public.wallet_transactions
-    set status = 'cancelled',
+    set status = 'failed',
         metadata = coalesce(metadata, '{}'::jsonb) || pg_catalog.jsonb_build_object(
           'reviewed_by', p_admin_user_id,
           'reviewed_at', pg_catalog.now(),
