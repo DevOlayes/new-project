@@ -1,4 +1,5 @@
 import { Component, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "./lib/supabase";
 import { getTelegramWebApp, isTelegramMiniApp } from "./lib/telegram";
 import { getAccountData } from "./lib/data";
@@ -1039,56 +1040,69 @@ function WalletActions({ action, onClose, account, refreshAccount, assetPrices =
 
 function AssetSelector({ assets, value, onChange, label }) {
   const [open, setOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({});
+  const [menuPosition, setMenuPosition] = useState(null);
   const selectorRef = useRef(null);
   const menuRef = useRef(null);
   const selected = assets.find((asset) => asset.asset === value) || assets[0];
 
+  const updatePosition = () => {
+    const rect = selectorRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const width = Math.max(1, Math.min(280, viewportWidth - 24));
+    const left = Math.max(12, Math.min(rect.right - width, viewportWidth - width - 12));
+    const below = Math.max(0, viewportHeight - rect.bottom - 16);
+    const above = Math.max(0, rect.top - 16);
+    const expectedHeight = Math.min(300, assets.length * 54 + (assets.length > 4 ? 34 : 12));
+    const showBelow = below >= Math.min(expectedHeight, 160) || below >= above;
+    const available = Math.max(48, (showBelow ? below : above) - 8);
+    const maxHeight = Math.max(48, Math.min(300, available));
+    const top = showBelow ? Math.max(8, Math.min(rect.bottom + 7, viewportHeight - maxHeight - 8)) : Math.max(8, rect.top - Math.min(maxHeight, expectedHeight) - 7);
+    setMenuPosition({ position: "fixed", left, top, width, maxHeight });
+  };
+
   useEffect(() => {
     if (!open) return;
-    const updatePosition = () => {
-      const rect = selectorRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const width = Math.min(280, window.innerWidth - 24);
-      const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
-      const below = window.innerHeight - rect.bottom - 18;
-      const above = rect.top - 18;
-      const showBelow = below >= Math.min(190, above) || below >= above;
-      const maxHeight = Math.max(120, Math.min(280, (showBelow ? below : above) - 8));
-      setMenuPosition({ position: "fixed", left, width, maxHeight, top: showBelow ? rect.bottom + 7 : "auto", bottom: showBelow ? "auto" : window.innerHeight - rect.top + 7 });
-    };
     const closeOutside = (event) => {
       if (!selectorRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setOpen(false);
     };
     const closeEscape = (event) => { if (event.key === "Escape") setOpen(false); };
+    const handleScroll = (event) => {
+      if (menuRef.current && event.target !== menuRef.current && !menuRef.current.contains(event.target)) setOpen(false);
+    };
     updatePosition();
     document.addEventListener("pointerdown", closeOutside);
     document.addEventListener("keydown", closeEscape);
+    document.addEventListener("scroll", handleScroll, true);
     window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
     return () => {
       document.removeEventListener("pointerdown", closeOutside);
       document.removeEventListener("keydown", closeEscape);
+      document.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [open]);
+  }, [open, assets.length]);
 
   if (!selected) return null;
-  return <div className="asset-selector" ref={selectorRef}>
-    <button type="button" className="asset-selector-trigger" aria-label={label} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
-      <img src={selected.icon} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
-      <span><strong>{selected.symbol}</strong><small>{selected.label}</small></span>
-      <i aria-hidden="true">{open ? "⌃" : "⌄"}</i>
-    </button>
-    {open && <div ref={menuRef} style={menuPosition} className="asset-selector-menu" role="listbox" aria-label={label} onWheel={(event) => event.stopPropagation()} onTouchMove={(event) => event.stopPropagation()}>
+  const menu = open && menuPosition ? createPortal(
+    <div ref={menuRef} style={menuPosition} className="asset-selector-menu" role="listbox" aria-label={label} onWheel={(event) => event.stopPropagation()} onTouchMove={(event) => event.stopPropagation()}>
       {assets.length > 4 && <div className="asset-selector-scroll-hint"><span>SCROLL TO VIEW ASSETS</span><span aria-hidden="true">↕</span></div>}
       {assets.map((asset) => <button type="button" role="option" aria-selected={asset.asset === value} key={asset.asset} className={asset.asset === value ? "asset-selector-option selected" : "asset-selector-option"} onClick={() => { onChange(asset.asset); setOpen(false); }}>
         <img src={asset.icon} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
         <span><strong>{asset.label}</strong><small>{asset.symbol}{asset.network && asset.network !== "Internal" ? " · " + asset.network : ""}</small></span>
         {asset.asset === value && <b aria-hidden="true">✓</b>}
       </button>)}
-    </div>}
+    </div>, document.body
+  ) : null;
+
+  return <div className="asset-selector" ref={selectorRef}>
+    <button type="button" className="asset-selector-trigger" aria-label={label} aria-haspopup="listbox" aria-expanded={open} onClick={() => { if (open) { setOpen(false); return; } updatePosition(); setOpen(true); }}>
+      <img src={selected.icon} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
+      <span><strong>{selected.symbol}</strong><small>{selected.label}</small></span>
+      <i aria-hidden="true">{open ? "⌃" : "⌄"}</i>
+    </button>
+    {menu}
   </div>;
 }
 function Referral({ account, profile }) {
@@ -1139,31 +1153,219 @@ function ReferralInfoModal({ content, onClose }) {
 }
 
 function AdminDashboard({ onExit }) {
-  const [data,setData]=useState(null), [tab,setTab]=useState("overview"), [busy,setBusy]=useState(false), [error,setError]=useState("");
-  const load=useCallback(async()=>{if(!supabase)return;setBusy(true);const result=await supabase.functions.invoke("admin-control",{body:{action:"overview"}});setBusy(false);if(result.error||result.data?.error)setError(result.data?.error||result.error?.message||"Could not load admin data.");else{setError("");setData(result.data);}},[]);
-  useEffect(()=>{load();},[load]);
-  async function act(action,payload={}){setBusy(true);const result=await supabase.functions.invoke("admin-control",{body:{action,...payload}});setBusy(false);if(result.error||result.data?.error){setError(result.data?.error||result.error?.message||"Action failed.");return false;}await load();return true;}
-  if(!data)return <div className="admin-shell"><header className="admin-header"><div><small>FLEXA AI CONTROL CENTER</small><h1>Admin Dashboard</h1></div></header><div className="admin-card">{error||"Loading control center…"}</div></div>;
-  const users=data.users||[], tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[], markets=data.markets||[], plans=data.plans||[], subs=data.subscriptions||[], learning=data.learning||[], adaptive=data.adaptive||[], wallets=data.wallets||[];
-  const won=learning.filter(x=>x.outcome==="won").length, lost=learning.filter(x=>x.outcome==="lost").length;
-  const money=tx.filter(x=>x.direction==="credit"&&x.status==="completed").reduce((s,x)=>s+Number(x.amount||0),0);
-  const tabs=[["overview","Overview"],["users","Users"],["wallets","Wallets"],["transactions","Transactions"],["trading","Trading"],["markets","Markets"],["ai","AI Engine"],["subscriptions","Subscriptions"],["settings","Settings"]];
-  return <div className="admin-shell"><header className="admin-header"><div><small>FLEXA AI CONTROL CENTER</small><h1>Admin Dashboard</h1><p>Users, money flow, trading, AI intelligence and product controls.</p></div><button className="secondary" onClick={onExit}>Exit admin</button></header>
-  <div className="admin-tabs">{tabs.map(t=><button key={t[0]} className={tab===t[0]?"active":""} onClick={()=>setTab(t[0])}>{t[1]}</button>)}</div>{error&&<div className="admin-alert">{error}</div>}
-  {tab==="overview"&&<><div className="admin-kpis"><Kpi label="Users" value={users.length}/><Kpi label="Transactions" value={tx.length}/><Kpi label="Trading records" value={trades.length}/><Kpi label="AI opportunities" value={opp.length}/><Kpi label="Learning rows" value={learning.length}/><Kpi label="Credit volume" value={money.toFixed(2)}/></div><div className="admin-grid"><AdminPanel title="Engine health"><p>Markets: <b>{markets.filter(x=>x.active).length}/{markets.length}</b> active</p><p>Adaptive profiles: <b>{adaptive.length}</b></p><p>Learning outcomes: <b>{won} wins / {lost} losses</b></p><p>Model: <b>opportunity-v2</b></p></AdminPanel><AdminPanel title="Recent activity">{tx.slice(0,8).map(x=><div className="admin-row" key={x.id}><span>{x.type}</span><b>{x.direction} {Number(x.amount).toFixed(2)}</b></div>)}</AdminPanel></div></>}
-  {tab==="users"&&<AdminTable title="Users" columns={["Name","Email","Provider","Joined","Admin"]}>{users.map(x=><div className="admin-row" key={x.id}><span>{x.display_name||x.telegram_username||"User"}<small>{x.id.slice(0,8)}…</small></span><span>{x.email||"—"}</span><span>{x.last_login_provider||"—"}</span><span>{new Date(x.created_at).toLocaleDateString()}</span><button className="mini-action" onClick={()=>act("set_user_admin",{user_id:x.id,is_admin:!x.is_admin})}>{x.is_admin?"Remove":"Make admin"}</button></div>)}</AdminTable>}
-  {tab==="wallets"&&<AdminWallets wallets={wallets} users={users} onAction={act}/>}
-  {tab==="transactions"&&<><AdminTable title="Financial activity" columns={["Type","Direction","Amount","Status","Time"]}>{tx.map(x=><div className="admin-row" key={x.id}><span>{x.type}</span><span>{x.direction}</span><span>{Number(x.amount).toFixed(4)}</span><span>{x.status}</span><span>{new Date(x.created_at).toLocaleString()}</span></div>)}</AdminTable><AdminWithdrawals transactions={tx} onAction={act}/></>}
-  {tab==="trading"&&<AdminTable title="Trading activity" columns={["Asset","Direction","Stake","Status","Result","Opened"]}>{trades.map(x=><div className="admin-row" key={x.id}><span>{x.asset}</span><span>{x.direction}</span><span>{Number(x.stake).toFixed(2)}</span><span>{x.status}</span><span>{x.result_amount??"—"}</span><span>{new Date(x.opened_at).toLocaleString()}</span></div>)}</AdminTable>}
-  {tab==="markets"&&<AdminTable title="Market controls" columns={["Pair","Type","Source","Active","Tradable"]}>{markets.map(x=><div className="admin-row" key={x.symbol}><span><b>{x.display_symbol}</b><small>{x.symbol}</small></span><span>{x.market_type}</span><span>{x.source}</span><button className="mini-action" onClick={()=>act("update_market",{symbol:x.symbol,active:!x.active})}>{x.active?"Disable":"Enable"}</button><button className="mini-action" onClick={()=>act("update_market",{symbol:x.symbol,tradable:!x.tradable})}>{x.tradable?"Tradable":"Locked"}</button></div>)}</AdminTable>}
-  {tab==="ai"&&<><AdminTable title="Latest AI opportunities" columns={["Pair","Direction","Confidence","Status","Outcome"]}>{opp.slice(0,50).map(x=><div className="admin-row" key={x.id}><span>{x.symbol}</span><span>{x.direction}</span><span>{Math.round(Number(x.signal_score)*100)}%</span><span>{x.status}</span><span>{x.outcome||"pending"}</span></div>)}</AdminTable><AdminTable title="Adaptive model profiles" columns={["Pair","Samples","Weights","Floor"]}>{adaptive.map(x=><div className="admin-row" key={x.id}><span>{x.symbol}</span><span>{x.sample_size}</span><span>{JSON.stringify(x.weights)}</span><span>{x.confidence_floor}</span></div>)}</AdminTable></>}
-  {tab==="subscriptions"&&<><div className="admin-kpis"><Kpi label="Plans" value={plans.length}/><Kpi label="Active subscriptions" value={subs.filter(x=>x.status==="active").length}/><Kpi label="Trials" value={subs.filter(x=>x.status==="trialing").length}/></div><AdminTable title="Plans" columns={["Plan","Monthly","Quarterly","Annual","Trial","Status"]}>{plans.map(x=><div className="admin-row" key={x.id}><span><b>{x.name}</b><small>{x.code}</small></span><span>${x.monthly_price}</span><span>${x.quarterly_price}</span><span>${x.annual_price}</span><span>{x.trial_days} days</span><button className="mini-action" onClick={()=>act("update_plan",{id:x.id,patch:{active:!x.active}})}>{x.active?"Active":"Off"}</button></div>)}</AdminTable><AdminTable title="Recent subscriptions" columns={["User","Status","Cycle","Ends"]}>{subs.slice(0,50).map(x=><div className="admin-row" key={x.id}><span>{x.user_id.slice(0,8)}…</span><span>{x.status}</span><span>{x.billing_cycle}</span><span>{x.ends_at?new Date(x.ends_at).toLocaleDateString():"—"}</span></div>)}</AdminTable></>}
-  {tab==="settings"&&<AdminSettings settings={data.settings} onSave={act}/>} {busy&&<div className="admin-busy">Updating…</div>}</div>;
+  const [data, setData] = useState(null);
+  const [tab, setTab] = useState("overview");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const load = useCallback(async () => {
+    if (!supabase) { setError("Admin data service is not configured."); return; }
+    setBusy(true);
+    try {
+      const result = await supabase.functions.invoke("admin-control", { body: { action: "overview" } });
+      if (result.error || result.data?.error) setError(result.data?.error || result.error?.message || "Could not load admin data.");
+      else { setData(result.data); setError(""); setLastUpdated(new Date()); }
+    } catch (loadError) { setError(loadError?.message || "Could not load admin data."); }
+    finally { setBusy(false); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  async function act(action, payload = {}) {
+    if (!supabase) { setError("Admin data service is not configured."); return false; }
+    setBusy(true);
+    try {
+      const result = await supabase.functions.invoke("admin-control", { body: { action, ...payload } });
+      if (result.error || result.data?.error) { setError(result.data?.error || result.error?.message || "Action failed."); return false; }
+      setError("");
+      await load();
+      return true;
+    } catch (actionError) { setError(actionError?.message || "Action failed."); return false; }
+    finally { setBusy(false); }
+  }
+
+  if (!data) return <div className="admin-shell">
+    <header className="admin-header"><div><small>FLEXAR AI · OPERATIONS</small><h1>Admin Dashboard</h1><p>Secure platform operations and monitoring.</p></div><button className="secondary" type="button" onClick={onExit}>Exit admin</button></header>
+    {error && <div className="admin-alert" role="alert">{error}</div>}
+    <div className="admin-card admin-loading-card">{busy ? "Loading platform data…" : "Platform data is not available."}<button className="mini-action" type="button" onClick={() => void load()}>Retry</button></div>
+  </div>;
+
+  const users=data.users||[], tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[];
+  const markets=data.markets||[], plans=data.plans||[], subs=data.subscriptions||[], learning=data.learning||[];
+  const adaptive=data.adaptive||[], wallets=data.wallets||[], deposits=data.depositRequests||[];
+  const paymentOrders=data.paymentOrders||[], diagnostics=data.diagnostics||[], credits=data.creditTransactions||[];
+  const rewards=data.rewards||[], referrals=data.referrals||[], modelStats=data.modelStats||[], audit=data.audit||[];
+  const q=search.trim().toLowerCase();
+  const matches=(...values)=>!q||values.some(value=>String(value??"").toLowerCase().includes(q));
+  const userName=(id)=>{const u=users.find(item=>item.id===id);return u?.display_name||u?.telegram_username||u?.email||(id?String(id).slice(0,8)+"…":"Unknown user");};
+  const money=(value,digits=2)=>Number(value||0).toLocaleString(undefined,{minimumFractionDigits:digits,maximumFractionDigits:digits});
+  const counts=data.counts||{};
+  const won=learning.filter(item=>item.outcome==="won").length, lost=learning.filter(item=>item.outcome==="lost").length;
+  const pendingWithdrawals=tx.filter(item=>item.type==="withdrawal"&&["pending","processing"].includes(item.status)).length;
+  const pendingPayments=paymentOrders.filter(item=>item.status==="pending").length;
+  const availableTotal=wallets.reduce((sum,item)=>sum+Number(item.available_balance||0),0);
+  const lockedTotal=wallets.reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
+  const tabs=[["overview","Overview"],["users","Users"],["wallets","Wallets"],["deposits","Deposits"],["withdrawals","Withdrawals"],["transactions","Transactions"],["trading","Trading"],["markets","Markets"],["ai","AI engine"],["credits","AI credits"],["subscriptions","Subscriptions"],["rewards","Rewards & referrals"],["health","System health"],["audit","Audit log"],["settings","Settings"]];
+
+  return <div className="admin-shell">
+    <header className="admin-header">
+      <div><small>FLEXAR AI · OPERATIONS</small><h1>Admin Dashboard</h1><p>Users, funds, trading, AI operations and platform controls.</p><span className="admin-updated">{lastUpdated ? "Last refreshed "+lastUpdated.toLocaleTimeString() : "Loading live data"}</span></div>
+      <div className="admin-header-actions"><button className="secondary" type="button" disabled={busy} onClick={()=>void load()}>{busy?"Refreshing…":"↻ Refresh data"}</button><button className="secondary" type="button" onClick={onExit}>Exit admin</button></div>
+    </header>
+    <div className="admin-toolbar"><label htmlFor="admin-global-search">Search loaded records</label><input id="admin-global-search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search users, IDs, transactions, assets, errors…"/>{search&&<button type="button" className="mini-action" onClick={()=>setSearch("")}>Clear</button>}</div>
+    <div className="admin-tabs" role="tablist" aria-label="Admin sections">{tabs.map(([id,label])=><button type="button" role="tab" aria-selected={tab===id} key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}>{label}</button>)}</div>
+    {error&&<div className="admin-alert" role="alert">{error}</div>}
+    {Array.isArray(data.errors)&&data.errors.length>0&&<details className="admin-data-warning"><summary>Some data sources could not be loaded ({data.errors.length})</summary><ul>{data.errors.map((message,index)=><li key={index}>{message}</li>)}</ul></details>}
+
+    {tab==="overview"&&<>
+      <div className="admin-kpis">
+        <Kpi label="Registered users" value={counts.users??users.length}/>
+        <Kpi label="Wallet transactions" value={counts.transactions??tx.length}/>
+        <Kpi label="Trading records" value={counts.trades??trades.length}/>
+        <Kpi label="Pending withdrawals" value={pendingWithdrawals}/>
+        <Kpi label="Pending payment orders" value={pendingPayments}/>
+        <Kpi label="Active markets" value={markets.filter(item=>item.active).length+"/"+markets.length}/>
+        <Kpi label="Available wallet total" value={money(availableTotal)+" USDT"}/>
+        <Kpi label="Locked wallet total" value={money(lockedTotal)+" USDT"}/>
+      </div>
+      <div className="admin-grid">
+        <AdminPanel title="Action required">
+          <button type="button" className="admin-quick-link" onClick={()=>setTab("withdrawals")}><span><strong>Withdrawal queue</strong><small>Requests awaiting review or payout confirmation</small></span><b>{pendingWithdrawals} →</b></button>
+          <button type="button" className="admin-quick-link" onClick={()=>setTab("deposits")}><span><strong>Deposit and payment checks</strong><small>Payment orders and deposit submissions</small></span><b>{pendingPayments} →</b></button>
+          <button type="button" className="admin-quick-link" onClick={()=>setTab("health")}><span><strong>System diagnostics</strong><small>Client errors and recent warnings</small></span><b>{diagnostics.filter(item=>item.level==="error").length} errors →</b></button>
+        </AdminPanel>
+        <AdminPanel title="AI and market health">
+          <div className="admin-summary-line"><span>Enabled markets</span><strong>{markets.filter(item=>item.active).length} / {markets.length}</strong></div>
+          <div className="admin-summary-line"><span>Tradable markets</span><strong>{markets.filter(item=>item.tradable).length}</strong></div>
+          <div className="admin-summary-line"><span>Adaptive profiles</span><strong>{adaptive.length}</strong></div>
+          <div className="admin-summary-line"><span>Evaluation outcomes</span><strong>{won} wins / {lost} losses</strong></div>
+          <div className="admin-summary-line"><span>Model performance rows</span><strong>{modelStats.length}</strong></div>
+        </AdminPanel>
+        <AdminPanel title="Recent financial activity">
+          {tx.slice(0,8).map(item=><div className="admin-activity-row" key={item.id}><span><strong>{item.type?.replace(/_/g," ")||"Transaction"}</strong><small>{userName(item.user_id)} · {item.status||"—"}</small></span><b>{item.direction==="credit"?"+":"−"}{money(item.amount)} USDT</b></div>)}
+          {!tx.length&&<p>No wallet transactions in the latest data window.</p>}
+          <button type="button" className="admin-text-link" onClick={()=>setTab("transactions")}>View transaction ledger →</button>
+        </AdminPanel>
+        <AdminPanel title="Recent system events">
+          {diagnostics.slice(0,6).map(item=><div className="admin-activity-row" key={item.id}><span><strong>{item.event_name||item.source||"Diagnostic event"}</strong><small>{item.message||item.page_path||"No message"} · {item.created_at?new Date(item.created_at).toLocaleString():"—"}</small></span><b className={"admin-level-"+(item.level||"info")}>{item.level||"info"}</b></div>)}
+          {!diagnostics.length&&<p>No diagnostic events available.</p>}
+          <button type="button" className="admin-text-link" onClick={()=>setTab("health")}>Open system health →</button>
+        </AdminPanel>
+      </div>
+    </>}
+
+    {tab==="users"&&<>
+      <AdminTable title={"Users · "+(counts.users??users.length)+" total (latest records loaded)"} columns={["User","Email / Telegram","Provider","Joined","Access"]} emptyMessage="No users match your search.">
+        {users.filter(item=>matches(item.id,item.display_name,item.telegram_username,item.email,item.last_login_provider)).map(item=><div className="admin-row" key={item.id}><span><strong>{item.display_name||item.telegram_username||"User"}</strong><small>{item.id}</small></span><span>{item.email||item.telegram_username||"—"}</span><span>{item.last_login_provider||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span><span><b>{item.is_admin?"Admin":"User"}</b><button type="button" className="mini-action" disabled={busy||item.id===data.currentAdminId} onClick={()=>{const action=item.is_admin?"remove admin access from":"grant admin access to";if(window.confirm("Are you sure you want to "+action+" "+(item.display_name||item.email||item.id)+"?"))void act("set_user_admin",{user_id:item.id,is_admin:!item.is_admin});}}>{item.is_admin?"Remove admin":"Make admin"}</button></span></div>)}
+      </AdminTable>
+      <p className="admin-note">Role changes require confirmation. The current administrator cannot remove their own access. User rows show the latest records loaded.</p>
+    </>}
+
+    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network))} users={users} onAction={act}/>}
+
+    {tab==="deposits"&&<>
+      <AdminPanel title="Deposit handling"><p>Payment orders are verified by the payment service before funds are credited. Use this section for monitoring and reconciliation; never manually mark a transfer paid without independently verifying it on the correct network.</p></AdminPanel>
+      <AdminTable title="Payment orders" columns={["User","Purpose","Expected amount","Status","Transaction / expiry"]} emptyMessage="No payment orders match your search.">
+        {paymentOrders.filter(item=>matches(item.id,item.user_id,item.purpose,item.status,item.tx_hash,item.payment_amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.purpose||"—"}{item.credits?<small>{item.credits} AI credits</small>:null}</span><span>{money(item.payment_amount,6)} USDT<small>Base: {money(item.base_amount)} USDT</small></span><span><b className={"admin-status status-"+(item.status||"unknown")}>{item.status||"unknown"}</b></span><span>{item.tx_hash?<a href={"https://tronscan.org/#/transaction/"+encodeURIComponent(item.tx_hash)} target="_blank" rel="noreferrer">{item.tx_hash.slice(0,18)}… ↗</a>:"Not detected"}<small>{item.expires_at?"Expires "+new Date(item.expires_at).toLocaleString():"—"}</small></span></div>)}
+      </AdminTable>
+      <AdminTable title="Deposit submissions" columns={["User","Asset / network","Amount","Status","Review notes / hash"]} emptyMessage="No deposit submissions match your search.">
+        {deposits.filter(item=>matches(item.id,item.user_id,item.asset,item.network,item.status,item.tx_hash,item.admin_note)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.asset||"USDT"} · {item.network||"—"}</span><span>{money(item.amount,6)}</span><span>{item.status||"—"}</span><span>{item.tx_hash?item.tx_hash.slice(0,18)+"…":"No transaction hash"}<small>{item.admin_note||"No review note"}</small></span></div>)}
+      </AdminTable>
+    </>}
+
+    {tab==="withdrawals"&&<AdminWithdrawals transactions={tx.filter(item=>matches(item.id,item.user_id,item.status,item.tx_hash,item.amount,item.metadata?.destination_address))} onAction={act} userName={userName}/>}
+    {tab==="transactions"&&<AdminTable title="Wallet ledger · latest records" columns={["User","Type","Direction","Amount","Status","Created"]} emptyMessage="No transactions match your search.">
+      {tx.filter(item=>matches(item.id,item.user_id,item.type,item.direction,item.status,item.tx_hash,item.reference,item.amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.type||"—"}<small>{item.reference||""}</small></span><span>{item.direction||"—"}</span><span>{money(item.amount,6)} USDT</span><span>{item.status||"—"}<small>{item.tx_hash?"TX "+item.tx_hash.slice(0,12)+"…":""}</small></span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span></div>)}
+    </AdminTable>}
+
+    {tab==="trading"&&<AdminTable title="Trading activity · latest records" columns={["User","Asset","Direction","Stake","Status / result","Opened / settled"]} emptyMessage="No trades match your search.">
+      {trades.filter(item=>matches(item.id,item.user_id,item.asset,item.direction,item.status,item.stake,item.result_amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.asset||"—"}</span><span>{item.direction||"—"}</span><span>{money(item.stake)} USDT</span><span>{item.status||"—"}<small>{item.result_amount==null?"Result pending":money(item.result_amount)+" USDT"}</small></span><span>{item.opened_at?new Date(item.opened_at).toLocaleString():"—"}<small>{item.settled_at?"Settled "+new Date(item.settled_at).toLocaleString():"—"}</small></span></div>)}
+    </AdminTable>}
+
+    {tab==="markets"&&<AdminTable title="Market controls" columns={["Market","Type / source","Status","Trading access"]} emptyMessage="No markets match your search.">
+      {markets.filter(item=>matches(item.symbol,item.display_symbol,item.market_type,item.source)).map(item=><div className="admin-row" key={item.symbol}><span><strong>{item.display_symbol||item.symbol}</strong><small>{item.symbol}</small></span><span>{item.market_type||"—"}<small>{item.source||"—"}</small></span><span><b>{item.active?"Enabled":"Disabled"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>void act("update_market",{symbol:item.symbol,active:!item.active})}>{item.active?"Disable market":"Enable market"}</button></span><span><b>{item.tradable?"Tradable":"Locked"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>void act("update_market",{symbol:item.symbol,tradable:!item.tradable})}>{item.tradable?"Lock trading":"Allow trading"}</button></span></div>)}
+    </AdminTable>}
+
+    {tab==="ai"&&<>
+      <AdminPanel title="AI evaluation snapshot"><div className="admin-summary-line"><span>Evaluation wins</span><strong>{won}</strong></div><div className="admin-summary-line"><span>Evaluation losses</span><strong>{lost}</strong></div><div className="admin-summary-line"><span>Evaluation rows loaded</span><strong>{learning.length}</strong></div><p className="admin-note">Evaluation history is not a guarantee of future performance.</p></AdminPanel>
+      <AdminTable title="AI opportunities" columns={["Market","Direction","Confidence","Status / outcome","Model / created"]} emptyMessage="No AI opportunities match your search.">
+        {opp.filter(item=>matches(item.id,item.symbol,item.direction,item.status,item.outcome,item.model_version)).map(item=><div className="admin-row" key={item.id}><span><strong>{item.symbol}</strong><small>{item.id}</small></span><span>{item.direction||"—"}</span><span>{Math.round(Number(item.signal_score||0)*100)}%</span><span>{item.status||"—"}<small>{item.outcome||"Pending outcome"}</small></span><span>{item.model_version||"—"}<small>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</small></span></div>)}
+      </AdminTable>
+      <AdminTable title="Adaptive model profiles" columns={["Market","Samples","Confidence floor","Weights","Calculated"]} emptyMessage="No adaptive profiles match your search.">
+        {adaptive.filter(item=>matches(item.symbol,item.model_version,item.sample_size,JSON.stringify(item.weights))).map(item=><div className="admin-row" key={item.id}><span>{item.symbol}<small>{item.model_version||"—"}</small></span><span>{item.sample_size??0}</span><span>{item.confidence_floor??"—"}</span><span className="admin-wrap-cell">{JSON.stringify(item.weights)}</span><span>{item.calculated_at?new Date(item.calculated_at).toLocaleString():"—"}</span></div>)}
+      </AdminTable>
+      <AdminTable title="Model performance history" columns={["Model","Market / interval","Samples","Wins / losses","Win rate"]} emptyMessage="No model performance data available.">
+        {modelStats.filter(item=>matches(item.model_version,item.symbol,item.interval)).map(item=><div className="admin-row" key={item.id}><span>{item.model_version}</span><span>{item.symbol}<small>{item.interval}</small></span><span>{item.sample_size}</span><span>{item.wins} / {item.losses}</span><span>{money(item.win_rate,2)}%</span></div>)}
+      </AdminTable>
+    </>}
+
+    {tab==="credits"&&<AdminTable title="AI credit ledger · latest records" columns={["User","Type","Credits","Amount","Reference / time"]} emptyMessage="No AI credit transactions match your search.">
+      {credits.filter(item=>matches(item.id,item.user_id,item.type,item.reference,item.credits,item.amount_usd)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.type||"—"}</span><span>{money(item.credits,2)}</span><span>{item.amount_usd==null?"—":"$"+money(item.amount_usd)}</span><span>{item.reference||"—"}<small>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</small></span></div>)}
+    </AdminTable>}
+
+    {tab==="subscriptions"&&<>
+      <AdminGrantSubscription users={users} plans={plans} onAction={act}/>
+      <div className="admin-kpis"><Kpi label="Plans" value={plans.length}/><Kpi label="Active subscriptions" value={subs.filter(item=>item.status==="active").length}/><Kpi label="Trials" value={subs.filter(item=>item.status==="trialing").length}/></div>
+      <AdminTable title="Plans and pricing" columns={["Plan","Pricing","Trial","Status"]} emptyMessage="No plans available.">
+        {plans.map(item=><div className="admin-row" key={item.id}><span><strong>{item.name}</strong><small>{item.code} · {item.description||""}</small></span><span>{"Monthly $"+money(item.monthly_price)}<small>{"Quarterly $"+money(item.quarterly_price)+" · Annual $"+money(item.annual_price)}</small></span><span>{item.trial_days} days</span><span><b>{item.active?"Active":"Inactive"}</b><button type="button" className="mini-action" disabled={busy} onClick={()=>void act("update_plan",{id:item.id,patch:{active:!item.active}})}>{item.active?"Deactivate":"Activate"}</button></span></div>)}
+      </AdminTable>
+      <AdminTable title="Subscriptions" columns={["User","Plan","Status / cycle","Period","Action"]} emptyMessage="No subscriptions found.">
+        {subs.filter(item=>matches(item.user_id,item.status,item.billing_cycle,item.payment_reference)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{plans.find(plan=>plan.id===item.plan_id)?.name||item.plan_id}</span><span>{item.status}<small>{item.billing_cycle} · {item.auto_renew?"Auto-renew":"No auto-renew"}</small></span><span>{item.starts_at?new Date(item.starts_at).toLocaleDateString():"—"} – {item.ends_at?new Date(item.ends_at).toLocaleDateString():"—"}</span><span>{["active","trialing","past_due"].includes(item.status)&&<button type="button" className="mini-action" disabled={busy} onClick={()=>{if(window.confirm("Cancel this subscription for "+userName(item.user_id)+"?"))void act("cancel_subscription",{subscription_id:item.id});}}>Cancel subscription</button>}</span></div>)}
+      </AdminTable>
+    </>}
+
+    {tab==="rewards"&&<>
+      <div className="admin-kpis"><Kpi label="Reward records" value={rewards.length}/><Kpi label="Referral records" value={referrals.length}/><Kpi label="Reward value issued" value={money(rewards.reduce((sum,item)=>sum+Number(item.reward_amount||0),0))+" USDT"}/></div>
+      <AdminTable title="User rewards" columns={["User","Reward","Profit","Withdrawable","Status / expiry"]} emptyMessage="No rewards match your search.">
+        {rewards.filter(item=>matches(item.user_id,item.status,item.reward_amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{money(item.reward_amount)} USDT</span><span>{money(item.profit_earned)} USDT</span><span>{money(item.profit_withdrawable)} USDT</span><span>{item.status||"—"}<small>{item.expires_at?new Date(item.expires_at).toLocaleString():"No expiry recorded"}</small></span></div>)}
+      </AdminTable>
+      <AdminTable title="Referral activity" columns={["Referrer","Referred user","Reward","Status","Created / rewarded"]} emptyMessage="No referrals match your search.">
+        {referrals.filter(item=>matches(item.id,item.referrer_id,item.referred_user_id,item.status,item.reward_amount)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.referrer_id)}<small>{item.referrer_id}</small></span><span>{userName(item.referred_user_id)}<small>{item.referred_user_id}</small></span><span>{money(item.reward_amount)} USDT</span><span>{item.status||"—"}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}<small>{item.rewarded_at?"Rewarded "+new Date(item.rewarded_at).toLocaleString():"Not rewarded"}</small></span></div>)}
+      </AdminTable>
+    </>}
+
+    {tab==="health"&&<>
+      <AdminPanel title="Diagnostic events"><p>Use these events to investigate client errors and slow requests. Diagnostic metadata can contain user-provided text; treat it as untrusted log content.</p></AdminPanel>
+      <AdminTable title="Recent diagnostics" columns={["Severity","Event / source","Message","Request","Time"]} emptyMessage="No diagnostics match your search.">
+        {diagnostics.filter(item=>matches(item.id,item.level,item.source,item.event_name,item.message,item.page_path,item.request_path,item.browser_family)).map(item=><div className="admin-row" key={item.id}><span><b className={"admin-level-"+(item.level||"info")}>{item.level||"info"}</b></span><span>{item.event_name||"—"}<small>{item.source||"—"} · {item.diagnostic_id||"—"}</small></span><span className="admin-wrap-cell">{item.message||"—"}<small>{item.stack||""}</small></span><span>{item.request_path||item.page_path||"—"}<small>{item.http_status?"HTTP "+item.http_status:""}{item.duration_ms?" · "+item.duration_ms+" ms":""}</small></span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}<small>{item.browser_family||""}</small></span></div>)}
+      </AdminTable>
+    </>}
+
+    {tab==="audit"&&<AdminTable title="Administrator audit log · latest actions" columns={["Administrator","Action","Target","Details","Time"]} emptyMessage="No audit entries are available yet.">
+      {audit.filter(item=>matches(item.admin_user_id,item.action,item.target_type,item.target_id,JSON.stringify(item.details))).map(item=><div className="admin-row" key={item.id}><span>{userName(item.admin_user_id)}<small>{item.admin_user_id}</small></span><span>{item.action}</span><span>{item.target_type||"—"}<small>{item.target_id||"—"}</small></span><span className="admin-wrap-cell">{JSON.stringify(item.details||{})}</span><span>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</span></div>)}
+    </AdminTable>}
+
+    {tab==="settings"&&<AdminSettings settings={data.settings} onSave={act}/>}
+    {busy&&<div className="admin-busy" role="status">Updating platform data…</div>}
+  </div>;
 }
+function AdminGrantSubscription({users,plans,onAction}){
+  const [userId,setUserId]=useState("");
+  const [planId,setPlanId]=useState(plans.find(item=>item.active)?.id||plans[0]?.id||"");
+  const [cycle,setCycle]=useState("monthly");
+  const [days,setDays]=useState("30");
+  async function submit(event){
+    event.preventDefault();
+    const parsedDays=Number(days);
+    if(!userId||!planId||!Number.isInteger(parsedDays)||parsedDays<1||parsedDays>365)return;
+    if(!window.confirm("Grant this subscription for "+parsedDays+" days to the selected user?"))return;
+    const ok=await onAction("grant_subscription",{user_id:userId,plan_id:planId,billing_cycle:cycle,days:parsedDays});
+    if(ok)setUserId("");
+  }
+  return <section className="admin-card"><div className="admin-section-title"><h2>Grant subscription access</h2></div><form className="admin-grant-form" onSubmit={submit}>
+    <label>User<select value={userId} onChange={event=>setUserId(event.target.value)} required><option value="">Choose user…</option>{users.map(item=><option key={item.id} value={item.id}>{item.display_name||item.telegram_username||item.email||item.id.slice(0,8)}</option>)}</select></label>
+    <label>Plan<select value={planId} onChange={event=>setPlanId(event.target.value)} required>{plans.map(item=><option key={item.id} value={item.id}>{item.name}{item.active?"":" (inactive)"}</option>)}</select></label>
+    <label>Billing cycle<select value={cycle} onChange={event=>setCycle(event.target.value)}><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Annual</option></select></label>
+    <label>Access days<input type="number" min="1" max="365" value={days} onChange={event=>setDays(event.target.value)} required/></label>
+    <button type="submit" className="mini-action">Grant access</button>
+  </form></section>;
+}
+
 function Kpi({label,value}){return <div className="admin-kpi"><small>{label}</small><strong>{value}</strong></div>}
 function AdminPanel({title,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div>{children}</section>}
-function AdminTable({title,columns,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div><div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>{children}</section>}
-function AdminWithdrawals({transactions,onAction}){
+function AdminTable({title,columns,children,emptyMessage="No records to display."}){const hasRows=Array.isArray(children)?children.flat(Infinity).some(child=>child!==null&&child!==false&&child!==undefined):Boolean(children);return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div><div className="admin-table-scroll" style={{"--admin-columns":columns.length}}><div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>{hasRows?children:<div className="admin-empty-row">{emptyMessage}</div>}</div></section>}
+function AdminWithdrawals({transactions,onAction,userName=(id)=>String(id||"").slice(0,8)+"…"}){
   const [notes,setNotes]=useState({});
   const [hashes,setHashes]=useState({});
   const withdrawals=(transactions||[]).filter(x=>x.type==="withdrawal").sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
@@ -1184,7 +1386,7 @@ function AdminWithdrawals({transactions,onAction}){
     <AdminTable title="Withdrawal requests" columns={["User / destination","Amount","Status","Review"]}>{withdrawals.map(item=>{
       const meta=item.metadata||{},note=notes[item.id]||"",hash=hashes[item.id]||"";
       return <div className="admin-row" key={item.id}>
-        <span>{item.user_id.slice(0,8)}…<small>{meta.asset||"USDT"} · {meta.network||"—"}</small><small>{meta.destination_address||"Destination unavailable"}</small></span>
+        <span>{userName(item.user_id)}<small>{item.user_id}</small><small>{meta.asset||"USDT"} · {meta.network||"—"}</small><small>{meta.destination_address||"Destination unavailable"}</small></span>
         <span>{Number(item.amount).toFixed(4)} {meta.asset||"USDT"}</span>
         <span>{item.status==="failed"?"Transaction failed":item.status}<small>{item.tx_hash?"TX: "+item.tx_hash.slice(0,14)+"…":""}</small></span>
         <span className="admin-withdrawal-actions">
