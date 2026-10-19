@@ -1194,27 +1194,31 @@ function AdminDashboard({ onExit }) {
   const users=data.users||[], tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[];
   const markets=data.markets||[], plans=data.plans||[], subs=data.subscriptions||[], learning=data.learning||[];
   const adaptive=data.adaptive||[], wallets=data.wallets||[], deposits=data.depositRequests||[];
-  const paymentOrders=data.paymentOrders||[], diagnostics=data.diagnostics||[], credits=data.creditTransactions||[];
+  const paymentOrders=data.paymentOrders||[], aiCreditOrders=data.aiCreditOrders||[], diagnostics=data.diagnostics||[], credits=data.creditTransactions||[];
   const rewards=data.rewards||[], referrals=data.referrals||[], modelStats=data.modelStats||[], audit=data.audit||[];
   const q=search.trim().toLowerCase();
   const matches=(...values)=>!q||values.some(value=>String(value??"").toLowerCase().includes(q));
   const userName=(id)=>{const u=users.find(item=>item.id===id);return u?.display_name||u?.telegram_username||u?.email||(id?String(id).slice(0,8)+"…":"Unknown user");};
+  const userEmail=(id)=>users.find(item=>item.id===id)?.email||"Email not available";
   const money=(value,digits=2)=>Number(value||0).toLocaleString(undefined,{minimumFractionDigits:digits,maximumFractionDigits:digits});
   const counts=data.counts||{};
   const won=learning.filter(item=>item.outcome==="won").length, lost=learning.filter(item=>item.outcome==="lost").length;
   const pendingWithdrawals=tx.filter(item=>item.type==="withdrawal"&&["pending","processing"].includes(item.status)).length;
   const pendingPayments=paymentOrders.filter(item=>item.status==="pending").length;
+  const aiPaidOrders=aiCreditOrders.filter(item=>item.status==="paid");
+  const aiCreditRevenue=aiPaidOrders.reduce((sum,item)=>sum+Number(item.base_amount||0),0);
+  const pendingAiCreditOrders=aiCreditOrders.filter(item=>item.status==="pending").length;
   const availableTotal=wallets.reduce((sum,item)=>sum+Number(item.available_balance||0),0);
   const lockedTotal=wallets.reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
-  const tabs=[["overview","Overview"],["users","Users"],["wallets","Wallets"],["deposits","Deposits"],["withdrawals","Withdrawals"],["transactions","Transactions"],["trading","Trading"],["markets","Markets"],["ai","AI engine"],["credits","AI credits"],["subscriptions","Subscriptions"],["rewards","Rewards & referrals"],["health","System health"],["audit","Audit log"],["settings","Settings"]];
+  const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"]]}];
 
-  return <div className="admin-shell">
+  return <div className="admin-shell"><div className="admin-layout">
+    <aside className="admin-sidebar"><div className="admin-sidebar-brand"><img src="/flexa-symbol.webp" alt=""/><span><strong>FLEXAR AI</strong><small>ADMIN CONSOLE</small></span></div><div className="admin-sidebar-identity"><span className="admin-sidebar-avatar">A</span><span><strong>Operations</strong><small>Secure administrator</small></span><i/></div><nav className="admin-sidebar-nav" aria-label="Admin navigation">{navGroups.map(group=><div className="admin-nav-group" key={group.label}><small className="admin-nav-label">{group.label}</small>{group.items.map(([id,label,glyph])=><button type="button" key={id} className={tab===id?"active":""} aria-current={tab===id?"page":undefined} onClick={()=>setTab(id)}><span className="admin-nav-glyph">{glyph}</span><span>{label}</span>{id==="aiPurchases"&&pendingAiCreditOrders>0&&<b className="admin-nav-count">{pendingAiCreditOrders}</b>}</button>)}</div>)}</nav><div className="admin-sidebar-footer"><span className="admin-live-dot"/><span><strong>Operations service</strong><small>Protected admin session</small></span></div></aside><main className="admin-main">
     <header className="admin-header">
       <div><small>FLEXAR AI · OPERATIONS</small><h1>Admin Dashboard</h1><p>Users, funds, trading, AI operations and platform controls.</p><span className="admin-updated">{lastUpdated ? "Last refreshed "+lastUpdated.toLocaleTimeString() : "Loading live data"}</span></div>
       <div className="admin-header-actions"><button className="secondary" type="button" disabled={busy} onClick={()=>void load()}>{busy?"Refreshing…":"↻ Refresh data"}</button><button className="secondary" type="button" onClick={onExit}>Exit admin</button></div>
     </header>
     <div className="admin-toolbar"><label htmlFor="admin-global-search">Search loaded records</label><input id="admin-global-search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search users, IDs, transactions, assets, errors…"/>{search&&<button type="button" className="mini-action" onClick={()=>setSearch("")}>Clear</button>}</div>
-    <div className="admin-tabs" role="tablist" aria-label="Admin sections">{tabs.map(([id,label])=><button type="button" role="tab" aria-selected={tab===id} key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}>{label}</button>)}</div>
     {error&&<div className="admin-alert" role="alert">{error}</div>}
     {Array.isArray(data.errors)&&data.errors.length>0&&<details className="admin-data-warning"><summary>Some data sources could not be loaded ({data.errors.length})</summary><ul>{data.errors.map((message,index)=><li key={index}>{message}</li>)}</ul></details>}
 
@@ -1225,6 +1229,8 @@ function AdminDashboard({ onExit }) {
         <Kpi label="Trading records" value={counts.trades??trades.length}/>
         <Kpi label="Pending withdrawals" value={pendingWithdrawals}/>
         <Kpi label="Pending payment orders" value={pendingPayments}/>
+        <Kpi label="AI credit purchases" value={data.counts?.aiCreditOrders??aiCreditOrders.length}/>
+        <Kpi label="AI credit revenue" value={money(aiCreditRevenue)+" USDT"}/>
         <Kpi label="Active markets" value={markets.filter(item=>item.active).length+"/"+markets.length}/>
         <Kpi label="Available wallet total" value={money(availableTotal)+" USDT"}/>
         <Kpi label="Locked wallet total" value={money(lockedTotal)+" USDT"}/>
@@ -1233,6 +1239,7 @@ function AdminDashboard({ onExit }) {
         <AdminPanel title="Action required">
           <button type="button" className="admin-quick-link" onClick={()=>setTab("withdrawals")}><span><strong>Withdrawal queue</strong><small>Requests awaiting review or payout confirmation</small></span><b>{pendingWithdrawals} →</b></button>
           <button type="button" className="admin-quick-link" onClick={()=>setTab("deposits")}><span><strong>Deposit and payment checks</strong><small>Payment orders and deposit submissions</small></span><b>{pendingPayments} →</b></button>
+          <button type="button" className="admin-quick-link" onClick={()=>setTab("aiPurchases")}><span><strong>AI credit purchases</strong><small>Identify buyers, match transfers, and check verification</small></span><b>{pendingAiCreditOrders} pending →</b></button>
           <button type="button" className="admin-quick-link" onClick={()=>setTab("health")}><span><strong>System diagnostics</strong><small>Client errors and recent warnings</small></span><b>{diagnostics.filter(item=>item.level==="error").length} errors →</b></button>
         </AdminPanel>
         <AdminPanel title="AI and market health">
@@ -1300,6 +1307,14 @@ function AdminDashboard({ onExit }) {
       </AdminTable>
     </>}
 
+    {tab==="aiPurchases"&&<>
+      <div className="admin-kpis"><Kpi label="AI credit orders" value={data.counts?.aiCreditOrders??aiCreditOrders.length}/><Kpi label="Paid orders" value={aiPaidOrders.length}/><Kpi label="Awaiting payment" value={pendingAiCreditOrders}/><Kpi label="Verified package revenue" value={money(aiCreditRevenue)+" USDT"}/></div>
+      <AdminPanel title="Payment identity and verification"><p>Each order is tied to the signed-in FLEXAR account and its unique expected amount. For a verified order, the backend records the observed sender wallet, recipient, USDT contract, transfer amount, transaction hash, and solidified block receipt. A blockchain address proves which wallet sent funds, not the real-world identity of its owner. Older paid orders are marked as legacy/unattributed if sender evidence was not recorded at the time.</p></AdminPanel>
+      <AdminTable title="AI credit purchases · latest orders" columns={["Buyer / account","Package","Payment","Verification","Sender wallet / transaction","Order / time"]} emptyMessage="No AI credit purchase orders match your search.">
+        {aiCreditOrders.filter(item=>matches(item.id,item.user_id,userName(item.user_id),userEmail(item.user_id),item.status,item.payment_amount,item.credits,item.tx_hash,item.sender_address,item.verification_status)).map(item=><div className="admin-row" key={item.id}><span><strong>{userName(item.user_id)}</strong><small>{userEmail(item.user_id)}</small><small>{item.user_id}</small></span><span>{item.credits||"—"} credits<small>Order price {money(item.base_amount)} USDT</small></span><span>{money(item.payment_amount,2)} USDT<small className={"admin-status status-"+(item.status||"unknown")}>{item.status||"unknown"}</small></span><span><b className={"admin-status "+(item.verification_status==="verified"?"status-completed":item.verification_status==="legacy_unattributed"?"status-expired":"status-pending")}>{(item.verification_status||"pending").replace(/_/g," ")}</b><small>{item.block_number?"Block "+item.block_number:"No verified block recorded"}</small><small>{item.block_timestamp?new Date(item.block_timestamp).toLocaleString():""}</small></span><span>{item.sender_address?<code className="admin-wallet-address">{item.sender_address}</code>:<small>Sender not recorded</small>}{item.tx_hash?<a href={"https://tronscan.org/#/transaction/"+encodeURIComponent(item.tx_hash)} target="_blank" rel="noreferrer">View transaction ↗<small>{item.tx_hash}</small></a>:<small>Awaiting transaction</small>}</span><span><small>{item.id}</small><small>Created {item.created_at?new Date(item.created_at).toLocaleString():"—"}</small><small>{item.paid_at?"Paid "+new Date(item.paid_at).toLocaleString():item.expires_at?"Expires "+new Date(item.expires_at).toLocaleString():"—"}</small></span></div>)}
+      </AdminTable>
+    </>}
+
     {tab==="credits"&&<AdminTable title="AI credit ledger · latest records" columns={["User","Type","Credits","Amount","Reference / time"]} emptyMessage="No AI credit transactions match your search.">
       {credits.filter(item=>matches(item.id,item.user_id,item.type,item.reference,item.credits,item.amount_usd)).map(item=><div className="admin-row" key={item.id}><span>{userName(item.user_id)}<small>{item.user_id}</small></span><span>{item.type||"—"}</span><span>{money(item.credits,2)}</span><span>{item.amount_usd==null?"—":"$"+money(item.amount_usd)}</span><span>{item.reference||"—"}<small>{item.created_at?new Date(item.created_at).toLocaleString():"—"}</small></span></div>)}
     </AdminTable>}
@@ -1338,6 +1353,7 @@ function AdminDashboard({ onExit }) {
 
     {tab==="settings"&&<AdminSettings settings={data.settings} onSave={act}/>}
     {busy&&<div className="admin-busy" role="status">Updating platform data…</div>}
+    </main></div>
   </div>;
 }
 function AdminGrantSubscription({users,plans,onAction}){
@@ -1539,9 +1555,9 @@ function PairIcon({ symbol, cryptoIcons = {} }) {
 const AI_CREDIT_PLANS = [{credits:20,price:10,bonus:0},{credits:45,price:15,bonus:0},{credits:80,price:25,bonus:0},{credits:140,price:40,bonus:0},{credits:230,price:60,bonus:0},{credits:320,price:80,bonus:0},{credits:420,price:100,bonus:0},{credits:550,price:125,bonus:0},{credits:700,price:150,bonus:0}];
 
 function AICreditsPage({ profile, onBack, refreshAccount }) {
-  const [busyPlan,setBusyPlan]=useState(0),[notice,setNotice]=useState(""),[paymentOrder,setPaymentOrder]=useState(null),[paymentAddress,setPaymentAddress]=useState("");
+  const [busyPlan,setBusyPlan]=useState(0),[notice,setNotice]=useState(""),[paymentOrder,setPaymentOrder]=useState(null),[paymentAddress,setPaymentAddress]=useState(""),[paymentOpen,setPaymentOpen]=useState(false);
   const balance=Number(profile?.ai_credits||0);
-  useEffect(()=>{let cancelled=false;async function restorePendingPayment(){if(!supabase)return;try{const [{data:history,error:historyError},{data:walletData,error:walletError}]=await Promise.all([supabase.functions.invoke("deposit-requests",{body:{action:"list"}}),supabase.functions.invoke("wallet-info")]);if(cancelled||historyError||walletError)return;const pending=(history?.requests||[]).find(item=>item.purpose==="ai_credits"&&item.status==="pending");if(pending){setPaymentAddress(walletData?.deposit_addresses?.USDT?.address||"");setPaymentOrder({...pending,order_id:pending.id});}}catch{}}restorePendingPayment();return()=>{cancelled=true}},[]);
+  useEffect(()=>{let cancelled=false;async function restorePendingPayment(){if(!supabase)return;try{const [{data:history,error:historyError},{data:walletData,error:walletError}]=await Promise.all([supabase.functions.invoke("deposit-requests",{body:{action:"list"}}),supabase.functions.invoke("wallet-info")]);if(cancelled||historyError||walletError)return;const pending=(history?.requests||[]).find(item=>item.purpose==="ai_credits"&&item.status==="pending");if(pending){setPaymentAddress(walletData?.deposit_addresses?.USDT?.address||"");setPaymentOrder({...pending,order_id:pending.id});setPaymentOpen(true);}}catch{}}restorePendingPayment();return()=>{cancelled=true}},[]);
   async function buy(plan){
     if(!supabase||busyPlan)return;
     setBusyPlan(plan.credits);setNotice("");
@@ -1552,7 +1568,7 @@ function AICreditsPage({ profile, onBack, refreshAccount }) {
       if(!address)throw new Error("The USDT payment wallet is temporarily unavailable.");
       const {data,error}=await supabase.functions.invoke("deposit-requests",{body:{action:"create",purpose:"ai_credits",credits:plan.credits}});
       if(error||data?.error)throw new Error(data?.error||error?.message||"Could not create your payment request.");
-      setPaymentAddress(address);setPaymentOrder(data);
+      setPaymentAddress(address);setPaymentOrder(data);setPaymentOpen(true);
     }catch(error){setNotice(error.message||"Could not create your payment request.");}
     finally{setBusyPlan(0);}
   }
@@ -1564,7 +1580,7 @@ function AICreditsPage({ profile, onBack, refreshAccount }) {
       if(error)throw new Error(data?.error||error.message||"Could not check this payment.");
       if(data?.error)throw new Error(data.error);
       if(!data?.ok){setNotice(data?.message||"Payment has not been detected yet. Please try again shortly.");return;}
-      setPaymentOrder(null);
+      setPaymentOrder(null);setPaymentOpen(false);
       setNotice(`${Number(data.credits||paymentOrder.credits)} AI credits added successfully. Your purchase is complete.`);
       window.dispatchEvent(new CustomEvent("flexar-ai-credits-updated"));
       await refreshAccount();
@@ -1576,18 +1592,22 @@ function AICreditsPage({ profile, onBack, refreshAccount }) {
     <button type="button" className="ai-credits-back" onClick={onBack}>← Back to AI Trading</button>
     <section className="ai-credits-hero"><div><small>FLEXAR AI ACCESS</small><h1>AI Credits</h1><p>Power more AI market scans with discounted packages and bonus credits.</p><button type="button" className="ai-credit-add-button" onClick={()=>document.getElementById("ai-credit-packages")?.scrollIntoView({behavior:"smooth",block:"start"})}>Buy more credits ↓</button></div><div className="ai-credits-balance"><small>YOUR BALANCE</small><strong>{balance.toFixed(1)}</strong><span>credits remaining</span></div></section>
     {notice&&<div className="notice ai-credits-notice" role="status">{notice}</div>}
-    {paymentOrder&&<section className="ai-credits-note" aria-live="polite">
-      <strong>Complete your USDT payment</strong>
-      <p>Package: {paymentOrder.credits} AI credits · Package price: ${Number(paymentOrder.base_amount).toFixed(2)} USDT</p>
-      <p>Send this exact amount on the TRON (TRC-20) network:</p>
-      <h2>{Number(paymentOrder.payment_amount).toFixed(2)} USDT</h2>
-      <p className="helper">The final decimal places uniquely identify your order. Send the exact amount shown. Your selected package and credit quantity stay unchanged; the extra cents are only a payment identifier. Send the exact amount shown.</p>
-      <p><strong>USDT · TRC-20 deposit wallet</strong></p>
-      <code style={{display:"block",overflowWrap:"anywhere"}}>{paymentAddress}</code>
-      <button type="button" className="ai-credit-add-button" onClick={()=>copyText(paymentAddress)}>Copy wallet address</button>
-      <button type="button" className="ai-credit-add-button" disabled={busyPlan!==0} onClick={confirmPayment}>{busyPlan!==0?"Checking blockchain…":"Confirm Payment →"}</button>
-      
-    </section>}
+    {paymentOrder&&!paymentOpen&&<section className="ai-credit-pending-bar"><div><small>PAYMENT REQUEST IN PROGRESS</small><strong>{Number(paymentOrder.payment_amount).toFixed(2)} USDT · {paymentOrder.credits} AI credits</strong><span>Finish your existing order before creating another.</span></div><button type="button" onClick={()=>setPaymentOpen(true)}>Continue payment →</button></section>}
+    {paymentOrder&&paymentOpen&&<div className="auth-modal-backdrop ai-credit-payment-backdrop" onClick={()=>setPaymentOpen(false)}>
+      <section className="wallet-action-modal ai-credit-payment-modal" onClick={event=>event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ai-credit-payment-title">
+        <button className="auth-close" type="button" onClick={()=>setPaymentOpen(false)} aria-label="Close payment details">×</button>
+        <div className="wallet-flow-heading"><span className="wallet-flow-icon"><img src="https://cdn.simpleicons.org/tether" alt="USDT"/></span><div><div className="eyebrow">FLEXAR AI · SECURE CHECKOUT</div><h2 id="ai-credit-payment-title">Buy AI credits</h2><p>Complete payment with USDT on the TRON (TRC-20) network.</p></div></div>
+        <div className="wallet-stepper"><span className="complete"><b>1</b> Package</span><i/><span className="current"><b>2</b> Transfer</span><i/><span><b>3</b> Verify</span></div>
+        <div className="ai-credit-order-summary"><div><span>Selected package</span><strong>{paymentOrder.credits} AI credits</strong></div><div><span>Package price</span><strong>{Number(paymentOrder.base_amount).toFixed(2)} USDT</strong></div></div>
+        <div className="deposit-qr-card">{paymentAddress?<img className="deposit-qr-code" src={"https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data="+encodeURIComponent(paymentAddress)} alt="QR code for FLEXAR USDT TRC-20 payment address"/>:<div className="deposit-qr-placeholder">Payment address unavailable</div>}<small>USDT · TRON · TRC-20</small></div>
+        <div className="deposit-payment-amount"><small>SEND EXACTLY</small><strong>{Number(paymentOrder.payment_amount).toFixed(2)} <span>USDT</span></strong><p>Send the exact amount to match this order. Your credit package is added only after on-chain verification.</p></div>
+        <div className="ai-credit-address-block"><small>FLEXAR PAYMENT ADDRESS</small><code>{paymentAddress||"Loading payment address…"}</code><button type="button" className="deposit-copy-button" disabled={!paymentAddress} onClick={()=>copyText(paymentAddress)}>Copy address</button></div>
+        <p className="deposit-safety-note">Send USDT only on TRC-20. The system checks the token contract, amount, recipient, sender in the transfer receipt, transaction finality, and duplicate use before crediting your account.</p>
+        {notice&&<div className="notice" role="status">{notice}</div>}
+        <button type="button" className="withdrawal-submit" disabled={busyPlan!==0} onClick={confirmPayment}>{busyPlan!==0?"Checking blockchain…":"I have sent the payment · Verify →"}</button>
+        <button type="button" className="ai-credit-modal-close" onClick={()=>setPaymentOpen(false)}>I’ll finish this later</button>
+      </section>
+    </div>}
     <section className="ai-credit-plans" id="ai-credit-packages"><div className="ai-credits-section-head"><div><small>CHOOSE A PACKAGE</small><h2>More credits. Better value.</h2></div><span>1 AI trade = 1.5 credits</span></div><div className="ai-credit-plan-grid">{AI_CREDIT_PLANS.map(plan=>{const total=plan.credits+plan.bonus,regular=plan.credits/2,discount=regular>plan.price?Math.round((1-plan.price/regular)*100):0;return <article className={plan.credits===45?"ai-credit-plan featured":"ai-credit-plan"} key={plan.credits}>{plan.credits===50&&<div className="ai-plan-badge">POPULAR</div>}<div className="ai-plan-top"><span>{plan.credits} credits</span>{discount>0&&<b>Save {discount}%</b>}</div><strong className="ai-plan-price">${plan.price}</strong><span className="ai-plan-total">{total} total credits {plan.bonus>0&&<em>+{plan.bonus} bonus</em>}</span><span className="ai-plan-run-count">Up to {Math.floor(total/1.5)} full AI scans</span><button type="button" onClick={()=>buy(plan)} disabled={Boolean(busyPlan)||Boolean(paymentOrder)}>{busyPlan===plan.credits?"Preparing payment…":`Buy ${total} credits →`}</button></article>})}</div></section>
     <section className="ai-credits-note"><strong>How credits work</strong><p>Each time FLEXAR AI opens a trade, 1.5 credits are consumed. Your credits stay available until you use them, so larger packages give you more trading capacity at a lower effective cost.</p></section>
   </div>;

@@ -26,7 +26,7 @@ Deno.serve(async(req)=>{
     const action=body.action||"overview";
 
     if(action==="overview"){
-      const [users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets,depositRequests,paymentOrders,diagnostics,creditTransactions,modelStats,audit,usersCount,transactionsCount,tradesCount,opportunitiesCount]=await Promise.all([
+      const [users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets,depositRequests,paymentOrders,aiCreditOrders,diagnostics,creditTransactions,modelStats,audit,usersCount,transactionsCount,tradesCount,opportunitiesCount,aiCreditOrdersCount]=await Promise.all([
         admin.from("profiles").select("id,display_name,telegram_username,email,is_admin,created_at,last_login_provider").order("created_at",{ascending:false}).limit(500),
         admin.from("wallet_transactions").select("id,user_id,type,direction,amount,status,reference,tx_hash,metadata,created_at,completed_at").order("created_at",{ascending:false}).limit(500),
         admin.from("trades").select("id,user_id,asset,direction,stake,status,result_amount,opened_at,settled_at").order("opened_at",{ascending:false}).limit(500),
@@ -41,7 +41,8 @@ Deno.serve(async(req)=>{
         admin.from("adaptive_model_weights").select("*").order("symbol"),
         admin.from("wallets").select("id,user_id,asset,network,available_balance,locked_balance,updated_at").order("updated_at",{ascending:false}).limit(1000),
         admin.from("deposit_requests").select("id,user_id,asset,network,amount,tx_hash,status,admin_note,reviewed_by,reviewed_at,created_at").order("created_at",{ascending:false}).limit(300),
-        admin.from("payment_orders").select("id,user_id,purpose,base_amount,payment_amount,credits,status,tx_hash,block_number,created_at,expires_at,paid_at").order("created_at",{ascending:false}).limit(300),
+        admin.from("payment_orders").select("id,user_id,purpose,base_amount,payment_amount,credits,status,tx_hash,block_number,created_at,expires_at,paid_at,sender_address,recipient_address,token_contract,verified_amount,block_timestamp,verification_status,verification_details").order("created_at",{ascending:false}).limit(300),
+        admin.from("payment_orders").select("id,user_id,purpose,base_amount,payment_amount,credits,status,tx_hash,block_number,created_at,expires_at,paid_at,sender_address,recipient_address,token_contract,verified_amount,block_timestamp,verification_status,verification_details").eq("purpose","ai_credits").order("created_at",{ascending:false}).limit(1000),
         admin.from("client_diagnostic_events").select("id,created_at,event_time,diagnostic_id,session_id,level,source,event_name,message,stack,page_path,request_path,http_status,duration_ms,browser_family,metadata").order("created_at",{ascending:false}).limit(300),
         admin.from("ai_credit_transactions").select("id,user_id,type,credits,amount_usd,reference,metadata,created_at").order("created_at",{ascending:false}).limit(300),
         admin.from("model_performance_stats").select("id,model_version,symbol,interval,sample_size,wins,losses,voids,win_rate,avg_price_change_pct,calculated_at").order("calculated_at",{ascending:false}).limit(300),
@@ -49,14 +50,15 @@ Deno.serve(async(req)=>{
         admin.from("profiles").select("id",{count:"exact",head:true}),
         admin.from("wallet_transactions").select("id",{count:"exact",head:true}),
         admin.from("trades").select("id",{count:"exact",head:true}),
-        admin.from("ai_opportunities").select("id",{count:"exact",head:true})
+        admin.from("ai_opportunities").select("id",{count:"exact",head:true}),
+        admin.from("payment_orders").select("id",{count:"exact",head:true}).eq("purpose","ai_credits")
       ]);
-      const all=[users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets,depositRequests,paymentOrders,diagnostics,creditTransactions,modelStats,audit,usersCount,transactionsCount,tradesCount,opportunitiesCount];
+      const all=[users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets,depositRequests,paymentOrders,aiCreditOrders,diagnostics,creditTransactions,modelStats,audit,usersCount,transactionsCount,tradesCount,opportunitiesCount,aiCreditOrdersCount];
       return json({
         users:users.data||[],transactions:transactions.data||[],trades:trades.data||[],opportunities:opportunities.data||[],learning:learning.data||[],markets:markets.data||[],
         plans:plans.data||[],subscriptions:subs.data||[],rewards:rewards.data||[],referrals:referrals.data||[],settings:settings.data||[],adaptive:jobs.data||[],wallets:wallets.data||[],
-        depositRequests:depositRequests.data||[],paymentOrders:paymentOrders.data||[],diagnostics:diagnostics.data||[],creditTransactions:creditTransactions.data||[],modelStats:modelStats.data||[],audit:audit.data||[],
-        currentAdminId:user.id,counts:{users:usersCount.count??users.data?.length??0,transactions:transactionsCount.count??transactions.data?.length??0,trades:tradesCount.count??trades.data?.length??0,opportunities:opportunitiesCount.count??opportunities.data?.length??0},
+        depositRequests:depositRequests.data||[],paymentOrders:paymentOrders.data||[],aiCreditOrders:aiCreditOrders.data||[],diagnostics:diagnostics.data||[],creditTransactions:creditTransactions.data||[],modelStats:modelStats.data||[],audit:audit.data||[],
+        currentAdminId:user.id,counts:{users:usersCount.count??users.data?.length??0,transactions:transactionsCount.count??transactions.data?.length??0,trades:tradesCount.count??trades.data?.length??0,opportunities:opportunitiesCount.count??opportunities.data?.length??0,aiCreditOrders:aiCreditOrdersCount.count??aiCreditOrders.data?.length??0},
         errors:all.filter(x=>x.error).map(x=>x.error.message)
       });
     }
