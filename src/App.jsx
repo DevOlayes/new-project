@@ -1089,6 +1089,7 @@ function AdminDashboard({ onExit }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [remoteSearch, setRemoteSearch] = useState({query:"",users:[],wallets:[]});
   const [lastUpdated, setLastUpdated] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
 
@@ -1103,6 +1104,23 @@ function AdminDashboard({ onExit }) {
     finally { setBusy(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const query=search.trim();
+    if(query.length<2){setRemoteSearch({query:"",users:[],wallets:[]});return;}
+    let cancelled=false;
+    const timer=window.setTimeout(async()=>{
+      try{
+        const result=await supabase.functions.invoke("admin-control",{body:{action:"search_users",query}});
+        if(!cancelled&&!result.error&&!result.data?.error)setRemoteSearch({query,users:result.data?.users||[],wallets:result.data?.wallets||[]});
+      }catch{}
+    },250);
+    return ()=>{cancelled=true;window.clearTimeout(timer);};
+  },[search]);
+  const lookupUsers=useCallback(async(query)=>{
+    const result=await supabase.functions.invoke("admin-control",{body:{action:"search_users",query}});
+    if(result.error||result.data?.error)throw new Error(result.data?.error||result.error?.message||"Could not search accounts.");
+    return result.data||{users:[],wallets:[]};
+  },[]);
 
   async function act(action, payload = {}) {
     if (!supabase) { setError("Admin data service is not configured."); return false; }
@@ -1123,9 +1141,10 @@ function AdminDashboard({ onExit }) {
     <div className="admin-card admin-loading-card">{busy ? "Loading platform data…" : "Platform data is not available."}<button className="mini-action" type="button" onClick={() => void load()}>Retry</button></div>
   </div>;
 
-  const allUsers=data.users||[], users=allUsers.filter(item=>!item.is_admin&&!item.is_deleted), administrators=allUsers.filter(item=>item.is_admin&&!item.is_deleted), tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[];
+  const remoteMatches=search.trim().length>=2&&remoteSearch.query===search.trim();
+  const allUsers=(remoteMatches?remoteSearch.users:data.users)||[], users=allUsers.filter(item=>!item.is_admin&&!item.is_deleted), administrators=allUsers.filter(item=>item.is_admin&&!item.is_deleted), tx=data.transactions||[], trades=data.trades||[], opp=data.opportunities||[];
   const markets=data.markets||[], plans=data.plans||[], subs=data.subscriptions||[], learning=data.learning||[];
-  const adaptive=data.adaptive||[], wallets=data.wallets||[], deposits=data.depositRequests||[];
+  const adaptive=data.adaptive||[], wallets=(remoteMatches?remoteSearch.wallets:data.wallets)||[], deposits=data.depositRequests||[];
   const paymentOrders=data.paymentOrders||[], walletDepositOrders=paymentOrders.filter(item=>item.purpose==="wallet_deposit"), aiCreditOrders=data.aiCreditOrders||[], diagnostics=data.diagnostics||[], credits=data.creditTransactions||[];
   const rewards=data.rewards||[], referrals=data.referrals||[], modelStats=data.modelStats||[], audit=data.audit||[];
   const q=search.trim().toLowerCase();
@@ -1222,7 +1241,7 @@ function AdminDashboard({ onExit }) {
     </>}
 
     {tab==="users"&&editingUser&&<AdminUserEditor user={editingUser} onClose={()=>setEditingUser(null)} onSave={async patch=>{const ok=await act("update_user",{user_id:editingUser.id,patch});if(ok)setEditingUser(null);return ok;}}/>}
-    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network,userName(item.user_id),userEmail(item.user_id)))} users={allUsers.filter(item=>!item.is_deleted)} onAction={act} search={search}/>}
+    {tab==="wallets"&&<AdminWallets wallets={wallets.filter(item=>matches(item.user_id,item.asset,item.network,userName(item.user_id),userEmail(item.user_id)))} users={allUsers.filter(item=>!item.is_deleted)} onAction={act} search={search} lookupUsers={lookupUsers}/>}
 
     {tab==="deposits"&&<>
       <div className="admin-kpis"><Kpi label="Deposit requests" value={deposits.length}/><Kpi label="Awaiting review" value={pendingDeposits}/><Kpi label="Incomplete after 24 hours" value={deposits.filter(item=>item.status==="incomplete").length}/><Kpi label="Approved" value={deposits.filter(item=>item.status==="approved").length}/></div>
@@ -1402,10 +1421,13 @@ function AdminWithdrawals({transactions,onAction,userName=(id)=>String(id||"").s
       </div>;
     })}{withdrawals.length===0&&<div className="empty-state">No withdrawal requests found.</div>}</AdminTable></>;
 }
-function AdminWallets({wallets,users,onAction,search=""}){
- const [userId,setUserId]=useState(users[0]?.id||""),[amount,setAmount]=useState(""),[direction,setDirection]=useState("credit"),[reason,setReason]=useState("Admin wallet adjustment"),[requestId,setRequestId]=useState(""),[userSearch,setUserSearch]=useState("");
- const eligibleUsers=users.filter(u=>[u.id,u.username,u.display_name,u.email].some(v=>String(v||"").toLowerCase().includes(userSearch.toLowerCase())));
- const visibleWallets=wallets.filter(w=>w.asset==="USDT"||Number(w.available_balance||0)!==0||Number(w.locked_balance||0)!==0);
+function AdminWallets({wallets,users,onAction,search="",lookupUsers}){
+ const [userId,setUserId]=useState(users[0]?.id||""),[amount,setAmount]=useState(""),[direction,setDirection]=useState("credit"),[reason,setReason]=useState("Admin wallet adjustment"),[requestId,setRequestId]=useState(""),[userSearch,setUserSearch]=useState(""),[remoteAccounts,setRemoteAccounts]=useState({query:"",users:[],wallets:[]});
+ useEffect(()=>{const query=userSearch.trim();if(query.length<2){setRemoteAccounts({query:"",users:[],wallets:[]});return;}let cancelled=false;const timer=window.setTimeout(async()=>{try{const result=await lookupUsers(query);if(!cancelled)setRemoteAccounts({query,users:result.users||[],wallets:result.wallets||[]});}catch{if(!cancelled)setRemoteAccounts({query,users:[],wallets:[]});}},250);return()=>{cancelled=true;window.clearTimeout(timer);};},[userSearch,lookupUsers]);
+ const remoteAccountMatches=userSearch.trim().length>=2&&remoteAccounts.query===userSearch.trim();
+ const accountPool=remoteAccountMatches?remoteAccounts.users:users;
+ const eligibleUsers=accountPool.filter(u=>!u.is_deleted&&[u.id,u.username,u.display_name,u.email].some(v=>String(v||"").toLowerCase().includes(userSearch.toLowerCase())));
+ const visibleWallets=(remoteAccountMatches?remoteAccounts.wallets:wallets).filter(w=>w.asset==="USDT"||Number(w.available_balance||0)!==0||Number(w.locked_balance||0)!==0);
  async function submit(e){e.preventDefault();const value=Number(amount);if(!userId||!Number.isFinite(value)||value<=0||reason.trim().length<3)return;const request=requestId||crypto.randomUUID();setRequestId(request);const ok=await onAction("adjust_wallet",{user_id:userId,asset:"USDT",network:"TRC-20",amount:value,direction,reason:reason.trim(),request_id:request});if(ok){setAmount("");setRequestId("");}}
  return <div className="admin-stack"><section className="admin-card"><div className="admin-section-title"><div><h2>Wallet controls</h2><p>Choose a customer, then credit or debit their available USDT balance. Every adjustment is processed server-side and recorded in the wallet ledger. Test/admin accounts cannot withdraw.</p></div></div><form className="admin-wallet-adjust-form" onSubmit={submit}><label>Find customer<input value={userSearch} onChange={e=>{setUserSearch(e.target.value);setUserId("");setRequestId("");}} placeholder="Search name, username, email or ID"/></label><label>Customer account<select value={userId} onChange={e=>{setUserId(e.target.value);setRequestId("");}} required><option value="">Select customer…</option>{eligibleUsers.map(u=><option key={u.id} value={u.id}>{u.display_name||u.username||u.email||u.id.slice(0,8)}{u.email?" · "+u.email:""}</option>)}</select></label><label>Amount (USDT)<input inputMode="decimal" type="number" min="0.000001" step="0.000001" value={amount} onChange={e=>{setAmount(e.target.value);setRequestId("");}} placeholder="0.00" required/></label><label>Adjustment<select value={direction} onChange={e=>{setDirection(e.target.value);setRequestId("");}}><option value="credit">Add to available balance</option><option value="debit">Subtract from available balance</option></select></label><label>Reason for audit trail<input value={reason} onChange={e=>{setReason(e.target.value);setRequestId("");}} minLength={3} maxLength={300} required placeholder="Reason for this adjustment"/></label><button className="mini-action" type="submit" disabled={!userId||Number(amount)<=0||reason.trim().length<3}>Apply audited adjustment</button></form></section><AdminTable title="Customer wallet balances" columns={["Customer","Asset / network","Available","Locked","Last updated"]} emptyMessage="No wallet balances match your search.">{visibleWallets.filter(w=>{const u=users.find(x=>x.id===w.user_id);return !search||[w.user_id,w.asset,w.network,u?.display_name,u?.username,u?.email].some(v=>String(v||"").toLowerCase().includes(search.toLowerCase()));}).map(w=>{const u=users.find(x=>x.id===w.user_id);return <div className="admin-row" key={w.id}><span><strong>{u?.display_name||u?.username||"Account"}{u?.is_admin?" · ADMIN/TEST":""}</strong><small>{u?.email||w.user_id}</small></span><span>{w.asset}<small>{w.network}</small></span><span>{Number(w.available_balance||0).toFixed(4)}</span><span>{Number(w.locked_balance||0).toFixed(4)}</span><span>{w.updated_at?new Date(w.updated_at).toLocaleString():"—"}</span></div>;})}</AdminTable><AdminPanel title="Wallet asset policy"><p>USDT on TRC-20 is the default customer ledger wallet. Other asset balances are shown only when a balance exists; a ledger wallet is not proof that a customer has connected or supplied an external wallet address. Do not invent or assign a personal TON address.</p></AdminPanel></div>;
 }
