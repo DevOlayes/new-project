@@ -1084,7 +1084,7 @@ function AdminDashboard({ onExit }) {
   {tab==="overview"&&<><div className="admin-kpis"><Kpi label="Users" value={users.length}/><Kpi label="Transactions" value={tx.length}/><Kpi label="Trading records" value={trades.length}/><Kpi label="AI opportunities" value={opp.length}/><Kpi label="Learning rows" value={learning.length}/><Kpi label="Credit volume" value={money.toFixed(2)}/></div><div className="admin-grid"><AdminPanel title="Engine health"><p>Markets: <b>{markets.filter(x=>x.active).length}/{markets.length}</b> active</p><p>Adaptive profiles: <b>{adaptive.length}</b></p><p>Learning outcomes: <b>{won} wins / {lost} losses</b></p><p>Model: <b>opportunity-v2</b></p></AdminPanel><AdminPanel title="Recent activity">{tx.slice(0,8).map(x=><div className="admin-row" key={x.id}><span>{x.type}</span><b>{x.direction} {Number(x.amount).toFixed(2)}</b></div>)}</AdminPanel></div></>}
   {tab==="users"&&<AdminTable title="Users" columns={["Name","Email","Provider","Joined","Admin"]}>{users.map(x=><div className="admin-row" key={x.id}><span>{x.display_name||x.telegram_username||"User"}<small>{x.id.slice(0,8)}…</small></span><span>{x.email||"—"}</span><span>{x.last_login_provider||"—"}</span><span>{new Date(x.created_at).toLocaleDateString()}</span><button className="mini-action" onClick={()=>act("set_user_admin",{user_id:x.id,is_admin:!x.is_admin})}>{x.is_admin?"Remove":"Make admin"}</button></div>)}</AdminTable>}
   {tab==="wallets"&&<AdminWallets wallets={wallets} users={users} onAction={act}/>}
-  {tab==="transactions"&&<AdminTable title="Financial activity" columns={["Type","Direction","Amount","Status","Time"]}>{tx.map(x=><div className="admin-row" key={x.id}><span>{x.type}</span><span>{x.direction}</span><span>{Number(x.amount).toFixed(4)}</span><span>{x.status}</span><span>{new Date(x.created_at).toLocaleString()}</span></div>)}</AdminTable>}
+  {tab==="transactions"&&<><AdminTable title="Financial activity" columns={["Type","Direction","Amount","Status","Time"]}>{tx.map(x=><div className="admin-row" key={x.id}><span>{x.type}</span><span>{x.direction}</span><span>{Number(x.amount).toFixed(4)}</span><span>{x.status}</span><span>{new Date(x.created_at).toLocaleString()}</span></div>)}</AdminTable><AdminWithdrawals transactions={tx} onAction={act}/></>}
   {tab==="trading"&&<AdminTable title="Trading activity" columns={["Asset","Direction","Stake","Status","Result","Opened"]}>{trades.map(x=><div className="admin-row" key={x.id}><span>{x.asset}</span><span>{x.direction}</span><span>{Number(x.stake).toFixed(2)}</span><span>{x.status}</span><span>{x.result_amount??"—"}</span><span>{new Date(x.opened_at).toLocaleString()}</span></div>)}</AdminTable>}
   {tab==="markets"&&<AdminTable title="Market controls" columns={["Pair","Type","Source","Active","Tradable"]}>{markets.map(x=><div className="admin-row" key={x.symbol}><span><b>{x.display_symbol}</b><small>{x.symbol}</small></span><span>{x.market_type}</span><span>{x.source}</span><button className="mini-action" onClick={()=>act("update_market",{symbol:x.symbol,active:!x.active})}>{x.active?"Disable":"Enable"}</button><button className="mini-action" onClick={()=>act("update_market",{symbol:x.symbol,tradable:!x.tradable})}>{x.tradable?"Tradable":"Locked"}</button></div>)}</AdminTable>}
   {tab==="ai"&&<><AdminTable title="Latest AI opportunities" columns={["Pair","Direction","Confidence","Status","Outcome"]}>{opp.slice(0,50).map(x=><div className="admin-row" key={x.id}><span>{x.symbol}</span><span>{x.direction}</span><span>{Math.round(Number(x.signal_score)*100)}%</span><span>{x.status}</span><span>{x.outcome||"pending"}</span></div>)}</AdminTable><AdminTable title="Adaptive model profiles" columns={["Pair","Samples","Weights","Floor"]}>{adaptive.map(x=><div className="admin-row" key={x.id}><span>{x.symbol}</span><span>{x.sample_size}</span><span>{JSON.stringify(x.weights)}</span><span>{x.confidence_floor}</span></div>)}</AdminTable></>}
@@ -1094,6 +1094,40 @@ function AdminDashboard({ onExit }) {
 function Kpi({label,value}){return <div className="admin-kpi"><small>{label}</small><strong>{value}</strong></div>}
 function AdminPanel({title,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div>{children}</section>}
 function AdminTable({title,columns,children}){return <section className="admin-card"><div className="admin-section-title"><h2>{title}</h2></div><div className="admin-table-head">{columns.map(x=><span key={x}>{x}</span>)}</div>{children}</section>}
+function AdminWithdrawals({transactions,onAction}){
+  const [notes,setNotes]=useState({});
+  const [hashes,setHashes]=useState({});
+  const withdrawals=(transactions||[]).filter(x=>x.type==="withdrawal").sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  async function review(item,action){
+    const note=(notes[item.id]||"").trim();
+    if(action==="reject"&&note.length<3)return;
+    if(action==="complete"&&note.length<3)return;
+    const defaultNote=action==="approve"?"Approved for manual payout":"";
+    const ok=await onAction("review_withdrawal",{
+      transaction_id:item.id,
+      review_action:action,
+      reason:note||defaultNote,
+      tx_hash:action==="complete"?(hashes[item.id]||"").trim():null
+    });
+    if(ok){setNotes(current=>({...current,[item.id]:""}));if(action==="complete")setHashes(current=>({...current,[item.id]:""}));}
+  }
+  return <><AdminPanel title="Withdrawal review"><p>Approval moves a request into processing but does not send funds. Send the payout manually through the appropriate wallet/provider, verify the transfer on the correct network, then record its transaction hash to complete the request. Rejecting a pending request returns its locked amount to the user's available balance. A request already processing cannot be rejected here.</p></AdminPanel>
+    <AdminTable title="Withdrawal requests" columns={["User / destination","Amount","Status","Review"]}>{withdrawals.map(item=>{
+      const meta=item.metadata||{},note=notes[item.id]||"",hash=hashes[item.id]||"";
+      return <div className="admin-row" key={item.id}>
+        <span>{item.user_id.slice(0,8)}…<small>{meta.asset||"USDT"} · {meta.network||"—"}</small><small>{meta.destination_address||"Destination unavailable"}</small></span>
+        <span>{Number(item.amount).toFixed(4)} {meta.asset||"USDT"}</span>
+        <span>{item.status}<small>{item.tx_hash?"TX: "+item.tx_hash.slice(0,14)+"…":""}</small></span>
+        <span className="admin-withdrawal-actions">
+          {item.status==="pending"&&<><input value={note} onChange={e=>setNotes(current=>({...current,[item.id]:e.target.value}))} placeholder="Review note / rejection reason"/><button className="mini-action" type="button" onClick={()=>review(item,"approve")}>Approve for payout</button><button className="mini-action" type="button" disabled={note.trim().length<3} onClick={()=>review(item,"reject")}>Reject & refund</button></>}
+          {item.status==="processing"&&<><input value={hash} onChange={e=>setHashes(current=>({...current,[item.id]:e.target.value}))} placeholder="External payout transaction hash"/><input value={note} onChange={e=>setNotes(current=>({...current,[item.id]:e.target.value}))} placeholder="Payout verification note"/><button className="mini-action" type="button" disabled={hash.trim().length<8||note.trim().length<3} onClick={()=>review(item,"complete")}>Confirm payout sent</button></>}
+          {item.status==="completed"&&<small>Completed — payout hash recorded</small>}
+          {item.status==="cancelled"&&<small>Rejected — funds returned</small>}
+          {!["pending","processing","completed","cancelled"].includes(item.status)&&<small>Manual reconciliation required</small>}
+        </span>
+      </div>;
+    })}{withdrawals.length===0&&<div className="empty-state">No withdrawal requests found.</div>}</AdminTable></>;
+}
 function AdminWallets({wallets,users,onAction}){
   const [userId,setUserId]=useState(users.find(x=>x.is_admin)?.id||"");
   const [amount,setAmount]=useState("");
