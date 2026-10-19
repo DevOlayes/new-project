@@ -44,6 +44,19 @@ Deno.serve(async (req: Request) => {
 
   const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Flexa AI user";
   const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+  const username = typeof user.user_metadata?.username === "string"
+    ? user.user_metadata.username.trim().replace(/^@/, "").toLowerCase()
+    : "";
+  const provider = String(user.app_metadata?.provider || user.user_metadata?.provider || "email").toLowerCase();
+  if (username && !/^[a-z0-9_]{3,24}$/.test(username)) {
+    return Response.json({ error: "Username must be 3–24 letters, numbers or underscores." }, { status: 400, headers: corsHeaders });
+  }
+  if (username) {
+    const { data: existingUsername, error: usernameError } = await admin
+      .from("profiles").select("id").ilike("username", username).neq("id", user.id).maybeSingle();
+    if (usernameError) return Response.json({ error: "Could not validate username availability." }, { status: 500, headers: corsHeaders });
+    if (existingUsername) return Response.json({ error: "That username is already in use. Please choose another." }, { status: 409, headers: corsHeaders });
+  }
 
   let referredBy: string | null = null;
   if (referralCode) {
@@ -55,7 +68,10 @@ Deno.serve(async (req: Request) => {
     id: user.id,
     display_name: displayName,
     avatar_url: avatarUrl,
+    email: user.email || null,
+    last_login_provider: provider === "google" ? "google" : "email",
   };
+  if (username) profilePatch.username = username;
   // Only attach a referral when a valid referral code was supplied.
   // Re-running onboarding must never erase an existing referral relationship.
   if (referredBy) profilePatch.referred_by = referredBy;
@@ -66,8 +82,9 @@ Deno.serve(async (req: Request) => {
   );
   if (profileError) return Response.json({ error: "Could not initialize your profile." }, { status: 500, headers: corsHeaders });
 
+  // USDT on TRC-20 is the only default ledger wallet. A TON wallet is
+  // created only through an explicit connect/provision flow, never silently.
   for (const wallet of [
-    { user_id: user.id, asset: "TON", network: "TON" },
     { user_id: user.id, asset: "USDT", network: "TRC-20" },
   ]) {
     const { error: walletError } = await admin.from("wallets").upsert(
