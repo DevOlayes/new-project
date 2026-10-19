@@ -721,7 +721,13 @@ export default function App() {
         </div>
       </AppErrorBoundary>
     </main>
-    <nav className="bottom-nav" aria-label="Primary navigation"><div className="sidebar-menu-head"><span>FLEXAR AI</span><button type="button" className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close side menu">×</button></div>{nav.map(([id, icon, label]) => <button type="button" key={id} className={(page === id || (id === "activity" && page.startsWith("activity-"))) ? "nav active" : "nav"} onClick={() => { setPage(id); if (window.matchMedia("(min-width: 760px)").matches) setSidebarOpen(false); }}><span>{icon}</span><small>{label}</small></button>)}</nav>
+    <nav className="bottom-nav" aria-label="Primary navigation" onClickCapture={(event) => {
+      if (
+        window.matchMedia("(min-width: 760px)").matches &&
+        event.target instanceof Element &&
+        event.target.closest("button.nav")
+      ) setSidebarOpen(false);
+    }}><div className="sidebar-menu-head"><span>FLEXAR AI</span><button type="button" className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Close side menu">×</button></div>{nav.map(([id, icon, label]) => <button type="button" key={id} className={(page === id || (id === "activity" && page.startsWith("activity-"))) ? "nav active" : "nav"} onClick={() => { setPage(id); if (window.matchMedia("(min-width: 760px)").matches) setSidebarOpen(false); }}><span>{icon}</span><small>{label}</small></button>)}</nav>
     {notificationPrompt && !aiActivationOpen && <NotificationPromptModal onEnable={enableNotifications} onDismiss={dismissNotificationPrompt} />}
     {showNotifications && <NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} />}
     {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
