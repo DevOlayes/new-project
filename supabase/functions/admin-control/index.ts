@@ -124,12 +124,28 @@ Deno.serve(async(req)=>{
       if(!user_id||!patch||typeof patch!=="object"||Array.isArray(patch))return json({error:"A user and profile changes are required."},400);
       const clean:any={};
       if("display_name" in patch){if(typeof patch.display_name!=="string"||!patch.display_name.trim()||patch.display_name.length>100)return json({error:"Display name must be 1–100 characters."},400);clean.display_name=patch.display_name.trim();}
-      if("username" in patch){const username=String(patch.username||"").trim().replace(/^@/,"");if(!/^[A-Za-z0-9_]{3,24}$/.test(username))return json({error:"Username must be 3–24 letters, numbers or underscores."},400);clean.username=username.toLowerCase();}
-      if("email" in patch){const email=String(patch.email||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({error:"A valid email address is required."},400);const {error:authError}=await admin.auth.admin.updateUserById(user_id,{email});if(authError)return json({error:authError.message},400);clean.email=email;}
+      if("username" in patch){
+        const username=String(patch.username||"").trim().replace(/^@/,"").toLowerCase();
+        if(!/^[a-z0-9_]{3,24}$/.test(username))return json({error:"Username must be 3–24 letters, numbers or underscores."},400);
+        const {data:existingUsername,error:usernameError}=await admin.from("profiles").select("id").ilike("username",username).neq("id",user_id).maybeSingle();
+        if(usernameError)return json({error:"Could not validate username availability."},400);
+        if(existingUsername)return json({error:"That username is already in use. Choose another."},409);
+        clean.username=username;
+      }
+      if("email" in patch){const email=String(patch.email||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({error:"A valid email address is required."},400);clean.email=email;clean.__auth_email=email;}
       if(!Object.keys(clean).length)return json({error:"No supported profile changes supplied."},400);
+      const authEmail=clean.__auth_email;
+      delete clean.__auth_email;
+      if(authEmail){
+        const {error:authError}=await admin.auth.admin.updateUserById(user_id,{email:authEmail});
+        if(authError)return json({error:authError.message},400);
+      }
       clean.updated_at=new Date().toISOString();
       const {error}=await admin.from("profiles").update(clean).eq("id",user_id).eq("is_admin",false);
-      if(error)return json({error:error.message},400);
+      if(error){
+        if(authEmail)console.error("Profile update failed after auth email update for",user_id,error.message);
+        return json({error:error.message},400);
+      }
       await recordAudit(user.id,"update_user","profile",String(user_id),{fields:Object.keys(clean)});
       return json({ok:true});
     }
