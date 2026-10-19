@@ -648,6 +648,7 @@ export default function App() {
   }
 
   if (profile?.is_admin && page === "admin") return <AdminDashboard onExit={() => { window.history.pushState({}, "", "/"); setPage("home"); }} />;
+  if (!user && loading) return <div className="loading-screen"><img className="loader-logo" src="/flexar-public-logo.webp" alt="FLEXAR AI" /><strong>Connecting your FLEXAR AI account…</strong><span>Loading your account data…</span></div>;
   if (!user) return <Landing market={market} showAuth={showAuth} setShowAuth={setShowAuth} installPrompt={installPrompt} installFLEXAR={installFLEXAR} />;
   if (user && loading) {
     return <div className="flexar-loading-screen" role="status" aria-live="polite">
@@ -1140,8 +1141,8 @@ function AdminDashboard({ onExit }) {
   const aiPaidOrders=aiCreditOrders.filter(item=>item.status==="paid");
   const aiCreditRevenue=aiPaidOrders.reduce((sum,item)=>sum+Number(item.base_amount||0),0);
   const pendingAiCreditOrders=aiCreditOrders.filter(item=>item.status==="pending").length;
-  const availableTotal=wallets.reduce((sum,item)=>sum+Number(item.available_balance||0),0);
-  const lockedTotal=wallets.reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
+  const availableTotal=wallets.filter(item=>item.asset==="USDT").reduce((sum,item)=>sum+Number(item.available_balance||0),0);
+  const lockedTotal=wallets.filter(item=>item.asset==="USDT").reduce((sum,item)=>sum+Number(item.locked_balance||0),0);
   const navGroups=[{label:"Workspace",items:[["overview","Overview","⌂"]]},{label:"Accounts & funds",items:[["users","Users","♙"],["wallets","Wallets","◈"]]},{label:"Payments",items:[["aiPurchases","AI credit purchases","✦"],["deposits","Deposits","↓"],["withdrawals","Withdrawals","↑"],["transactions","Wallet ledger","≋"]]},{label:"Trading & intelligence",items:[["trading","Trading activity","↗"],["ai","AI engine","✧"],["markets","Market controls","⌁"],["credits","AI credit ledger","◉"]]},{label:"Plans & growth",items:[["subscriptions","Subscriptions","▣"],["rewards","Rewards & referrals","♧"]]},{label:"System",items:[["health","System health","⌘"],["audit","Audit log","☷"],["settings","Settings","⚙"],["administrators","Administrators","♙"]]}];
   const activeNavItem=navGroups.flatMap(group=>group.items).find(([id])=>id===tab);
   const sectionDescriptions={
@@ -1175,7 +1176,7 @@ function AdminDashboard({ onExit }) {
 
     {tab==="overview"&&<>
       <div className="admin-kpis">
-        <Kpi label="Registered users" value={counts.users??users.length}/>
+        <Kpi label="Active customers" value={users.length}/>
         <Kpi label="Wallet transactions" value={counts.transactions??tx.length}/>
         <Kpi label="Trading records" value={counts.trades??trades.length}/>
         <Kpi label="Pending withdrawals" value={pendingWithdrawals}/>
