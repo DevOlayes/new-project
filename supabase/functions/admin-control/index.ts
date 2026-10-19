@@ -25,6 +25,50 @@ Deno.serve(async(req)=>{
     const body=await req.json().catch(()=>({}));
     const action=body.action||"overview";
 
+    if(action==="list_identity_verifications"){
+      const {data:rows,error}=await admin.from("identity_verifications")
+        .select("id,user_id,legal_name,country_code,id_type,status,duplicate_flag,duplicate_reviewed,review_notes,submitted_at,reviewed_at,id_document_path,face_scan_path")
+        .order("duplicate_flag",{ascending:false}).order("submitted_at",{ascending:false}).limit(300);
+      if(error)return json({error:"Could not load identity verification queue."},500);
+      const userIds=[...new Set((rows||[]).map((row:any)=>row.user_id))];
+      const {data:profiles,error:profileError}=userIds.length?await admin.from("profiles").select("id,email,display_name,username,created_at").in("id",userIds):{data:[],error:null};
+      if(profileError)return json({error:"Could not load verification account details."},500);
+      const profileMap=new Map((profiles||[]).map((p:any)=>[p.id,p]));
+      const verifications=await Promise.all((rows||[]).map(async(row:any)=>{
+        const [idResult,faceResult]=await Promise.all([
+          admin.storage.from("identity-documents").createSignedUrl(row.id_document_path,600),
+          admin.storage.from("identity-documents").createSignedUrl(row.face_scan_path,600)
+        ]);
+        return {...row,profile:profileMap.get(row.user_id)||null,
+          id_document_url:idResult.data?.signedUrl||null,
+          face_scan_url:faceResult.data?.signedUrl||null,
+          document_link_error:Boolean(idResult.error||faceResult.error)};
+      }));
+      return json({ok:true,verifications});
+    }
+    if(action==="review_identity_verification"){
+      const {verification_id,review_action,reason=""}=body;
+      const allowed=["approve","reject","resubmission_required"];
+      if(!verification_id||!allowed.includes(review_action))return json({error:"A verification request and valid review action are required."},400);
+      const note=String(reason||"").trim();
+      const {data:target,error:targetError}=await admin.from("identity_verifications")
+        .select("id,user_id,status,duplicate_flag").eq("id",verification_id).maybeSingle();
+      if(targetError)return json({error:"Could not load this verification request."},400);
+      if(!target)return json({error:"Verification request not found."},404);
+      if(target.status==="approved")return json({error:"This identity has already been approved. Contact support for a correction."},409);
+      if((review_action!=="approve"||target.duplicate_flag)&&note.length<3)
+        return json({error:target.duplicate_flag&&review_action==="approve"?"A review note is required before approving a duplicate-ID flag.":"A review note of at least 3 characters is required."},400);
+      const nextStatus=review_action==="approve"?"approved":review_action==="reject"?"rejected":"resubmission_required";
+      const {error}=await admin.from("identity_verifications").update({
+        status:nextStatus,review_notes:note||null,reviewed_at:new Date().toISOString(),
+        reviewed_by:user.id,duplicate_reviewed:Boolean(target.duplicate_flag),updated_at:new Date().toISOString()
+      }).eq("id",verification_id);
+      if(error)return json({error:"Could not save the identity review."},400);
+      await recordAudit(user.id,"review_identity_verification","identity_verification",String(verification_id),{
+        user_id:target.user_id,review_action,next_status:nextStatus,duplicate_flag:Boolean(target.duplicate_flag)
+      });
+      return json({ok:true,status:nextStatus});
+    }
     if(action==="overview"){
       // Run expiry during admin refresh as well as the scheduled job so stale
       // unpaid orders never linger in the pending queues when an admin opens them.
