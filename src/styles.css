@@ -3023,3 +3023,46 @@ body{background:var(--bg)}
 /* Operations configuration is presented as task-focused controls, not raw rows. */
 .admin-settings-workspace{display:grid;gap:16px}.admin-settings-hero{position:relative;overflow:hidden;padding:24px;border:1px solid rgba(3,252,125,.18);border-radius:20px;background:radial-gradient(circle at 90% 10%,rgba(3,252,125,.1),transparent 34%),linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.01))}.admin-settings-hero h2{margin:8px 0;font-size:25px;letter-spacing:-.04em}.admin-settings-hero p{max-width:620px;color:var(--muted);font-size:12px;line-height:1.65}.admin-settings-count{display:inline-flex;padding:7px 10px;border:1px solid rgba(3,252,125,.18);border-radius:999px;color:var(--green);font-size:10px;font-weight:800}.admin-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.admin-setting-card{min-width:0;padding:18px;border:1px solid rgba(255,255,255,.08);border-radius:17px;background:rgba(255,255,255,.025)}.admin-setting-card-head{display:flex;gap:12px;align-items:flex-start}.admin-setting-icon{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border:1px solid rgba(3,252,125,.18);border-radius:11px;background:rgba(3,252,125,.07);color:var(--green)}.admin-setting-card-head h3{font-size:14px;margin:2px 0 5px}.admin-setting-card-head p{color:var(--muted);font-size:10px;line-height:1.55;margin:0}.admin-setting-key{margin:17px 0 7px;color:var(--muted);font-size:8px;letter-spacing:.12em;overflow-wrap:anywhere}.admin-setting-editor{width:100%;resize:vertical;min-height:90px;border:1px solid rgba(255,255,255,.1);border-radius:11px;padding:12px;background:rgba(0,0,0,.18);color:inherit;font:11px/1.6 ui-monospace,SFMono-Regular,monospace;outline:none}.admin-setting-editor:focus{border-color:rgba(3,252,125,.55);box-shadow:0 0 0 3px rgba(3,252,125,.07)}.admin-setting-card-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}.admin-setting-card-foot span{font-size:9px;color:var(--muted)}.admin-setting-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding:13px;border:1px solid rgba(255,255,255,.07);border-radius:12px}.admin-setting-toggle strong,.admin-setting-toggle small{display:block}.admin-setting-toggle small{font-size:9px;color:var(--muted);margin-top:4px}.admin-setting-toggle input{width:19px;height:19px;accent-color:var(--green)}.admin-wallet-adjust-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:15px}.admin-wallet-adjust-form label{display:grid;gap:7px;color:var(--muted);font-size:10px;font-weight:750}.admin-wallet-adjust-form input,.admin-wallet-adjust-form select{width:100%;min-width:0;min-height:42px;padding:10px 12px;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:#0b150e;color:inherit;font:inherit;outline:none}.admin-wallet-adjust-form input:focus,.admin-wallet-adjust-form select:focus{border-color:rgba(3,252,125,.55);box-shadow:0 0 0 3px rgba(3,252,125,.07)}.admin-wallet-adjust-form button{align-self:end;min-height:42px}.admin-settings-grid .admin-setting-card:only-child{grid-column:1/-1}
 @media(max-width:760px){.admin-settings-grid,.admin-wallet-adjust-form{grid-template-columns:1fr}.admin-settings-hero{padding:18px}.admin-setting-card{padding:15px}}
+
+/* Admin operations polish: predictable form controls, clearer actions and compact data density. */
+.admin-shell input:not([type="checkbox"]):not([type="radio"]),.admin-shell select,.admin-shell textarea,.auth-modal input,.auth-modal select,.auth-modal textarea{width:100%;min-width:0;min-height:44px;padding:11px 13px;border:1px solid rgba(255,255,255,.11);border-radius:12px;background:linear-gradient(180deg,rgba(18,29,21,.98),rgba(9,16,11,.98));color:#f4fff7;font:inherit;font-size:12px;line-height:1.45;outline:none;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
+.admin-shell input::placeholder,.admin-shell textarea::placeholder,.auth-modal input::placeholder{color:#738278;opacity:1}
+.admin-shell input:focus,.admin-shell select:focus,.admin-shell textarea:focus,.auth-modal input:focus{border-color:rgba(3,252,125,.58);box-shadow:0 0 0 3px rgba(3,252,125,.075);background:#0c1810}
+.admin-shell input:disabled,.admin-shell select:disabled,.admin-shell textarea:disabled{opacity:.58;cursor:not-allowed}
+.admin-shell input[type="checkbox"],.auth-modal input[type="checkbox"]{width:18px;height:18px;accent-color:var(--green)}
+.admin-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.admin-header-actions button{min-height:42px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);color:#eaf4ed;font-size:11px;font-weight:750;transition:transform .16s ease,border-color .16s ease,background .16s ease}
+.admin-header-actions button:hover:not(:disabled){transform:translateY(-1px);border-color:rgba(3,252,125,.3);background:rgba(3,252,125,.07)}
+.admin-header-actions button:disabled{opacity:.55;cursor:wait}
+.admin-wallet-adjust-form{padding:16px;border:1px solid rgba(3,252,125,.12);border-radius:16px;background:rgba(3,252,125,.025)}
+.admin-wallet-adjust-form label{font-size:10px;letter-spacing:.01em}
+.admin-wallet-adjust-form button{min-height:44px;border-radius:12px}
+.admin-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.admin-toolbar label{font-size:10px;color:var(--muted);font-weight:750;white-space:nowrap}
+.admin-toolbar input{flex:1 1 260px;min-width:160px}
+.admin-setting-card{box-shadow:0 10px 30px rgba(0,0,0,.12);transition:border-color .18s ease,transform .18s ease}
+.admin-setting-card:hover{border-color:rgba(3,252,125,.18);transform:translateY(-1px)}
+.admin-setting-editor{min-height:110px;font-size:12px;line-height:1.65}
+.admin-setting-card-foot button,.admin-table-pagination button,.admin-row .mini-action{border-radius:10px}
+.admin-referral-tree{margin:9px 0;border:1px solid rgba(255,255,255,.075);border-radius:14px;background:rgba(255,255,255,.018);overflow:hidden}
+.admin-referral-tree>summary{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px;cursor:pointer;list-style:none}
+.admin-referral-tree>summary::-webkit-details-marker{display:none}
+.admin-referral-tree>summary:after{content:"+";color:var(--green);font-size:18px;margin-left:8px}
+.admin-referral-tree[open]>summary:after{content:"−"}
+.admin-referral-tree>summary>span{min-width:0}
+.admin-referral-tree>summary strong{display:block;font-size:12px}
+.admin-referral-tree>summary small{display:block;margin-top:5px;color:var(--muted);font-size:9px;line-height:1.5;overflow-wrap:anywhere}
+.admin-record-details{padding:0 12px 13px;overflow-x:auto}
+.admin-record-details>.admin-table-head,.admin-record-details>.admin-row{min-width:650px}
+.admin-record-details>small{display:block;margin:10px 2px 0;color:var(--muted);font-size:9px}
+.admin-referral-children{padding:0 12px 12px 22px;border-left:1px solid rgba(3,252,125,.2);margin-left:20px}
+.admin-referral-child{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.055)}
+.admin-referral-child:last-child{border-bottom:0}
+.admin-referral-child strong{font-size:10px}
+.admin-referral-child small{display:block;margin-top:4px;color:var(--muted);font-size:9px;overflow-wrap:anywhere}
+.admin-row .mini-action{white-space:nowrap}
+.admin-page-heading p{max-width:720px}
+.admin-table-count{white-space:nowrap}
+.admin-row>*{min-width:0;overflow-wrap:anywhere}
+@media(max-width:760px){.admin-header-actions{width:100%;justify-content:stretch}.admin-header-actions button{flex:1}.admin-toolbar{align-items:stretch}.admin-toolbar label{width:100%}.admin-wallet-adjust-form{padding:12px}.admin-referral-tree>summary{align-items:flex-start;padding:12px;gap:8px}.admin-referral-child{grid-template-columns:1fr;gap:7px;padding:12px 0}.admin-referral-children{margin-left:12px;padding-left:12px}}
+@media(prefers-reduced-motion:reduce){.admin-header-actions button,.admin-setting-card{transition:none}}
