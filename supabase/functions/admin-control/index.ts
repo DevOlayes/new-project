@@ -43,6 +43,24 @@ Deno.serve(async(req)=>{
       return json({users:users.data||[],transactions:transactions.data||[],trades:trades.data||[],opportunities:opportunities.data||[],learning:learning.data||[],markets:markets.data||[],plans:plans.data||[],subscriptions:subs.data||[],rewards:rewards.data||[],referrals:referrals.data||[],settings:settings.data||[],adaptive:jobs.data||[],wallets:wallets.data||[],errors:[users,transactions,trades,opportunities,learning,markets,plans,subs,rewards,referrals,settings,jobs,wallets].filter(x=>x.error).map(x=>x.error.message)});
     }
 
+    if(action==="adjust_wallet"){
+      const {user_id,asset="USDT",network="TRC-20",amount,direction,reason,request_id}=body;
+      const numericAmount=Number(amount);
+      if(!user_id||!Number.isFinite(numericAmount)||numericAmount<=0||!["credit","debit"].includes(direction)||typeof reason!=="string"||!request_id)
+        return json({error:"A target user, positive amount, credit/debit direction, reason and request ID are required."},400);
+      const {data:adjustment,error}=await admin.schema("private").rpc("admin_adjust_wallet",{
+        p_admin_user_id:user.id,
+        p_user_id:user_id,
+        p_asset:asset,
+        p_network:network,
+        p_amount:numericAmount,
+        p_direction:direction,
+        p_reason:reason,
+        p_request_id:request_id
+      });
+      if(error)return json({error:error.message},400);
+      return json({ok:true,adjustment});
+    }
     if(action==="update_setting"){
       const {key,value}=body; if(!key) return json({error:"key required"},400);
       const {error}=await admin.from("app_settings").upsert({key,value,updated_at:new Date().toISOString()},{onConflict:"key"});
