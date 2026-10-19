@@ -78,6 +78,7 @@ const withTimeout = (promise, ms, message = "Request timed out") =>
 export default function App() {
   
   const [page, setPage] = useState(() => { const route=window.location.pathname.split("/").filter(Boolean).join("/"); return route==="admin"?"admin":route==="identity-verification"?"identity-verification":route==="profile"?"profile":"home"; });
+  const [aiCreditsReturnPage, setAiCreditsReturnPage] = useState("trade");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Close the desktop navigation drawer whenever a destination changes.
@@ -719,14 +720,14 @@ export default function App() {
       <AppErrorBoundary page={page}>
         <div key={page} className="page-transition" aria-live="polite">
           {page === "home" && <Home account={account} profile={profile} setPage={setPage} onWalletAction={setWalletAction} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
-          {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onOpenCredits={() => setPage("ai-credits")} onActivationChange={(open) => { setAiActivationOpen(open); if (open) setGlobalNotice(""); }} onStopAi={stopAiEngine} />}
-          {page === "ai-credits" && <AICreditsPage profile={profile} account={account} onBack={() => setPage("trade")} refreshAccount={refreshAccount} />}
+          {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onOpenCredits={() => { setAiCreditsReturnPage("trade"); setPage("ai-credits"); }} onActivationChange={(open) => { setAiActivationOpen(open); if (open) setGlobalNotice(""); }} onStopAi={stopAiEngine} />}
+          {page === "ai-credits" && <AICreditsPage profile={profile} account={account} onBack={() => setPage(aiCreditsReturnPage)} refreshAccount={refreshAccount} />}
           {page === "activity" && <Activity account={account} setPage={setPage} />}
           {page === "activity-trades" && <ActivityDetailPage account={account} type="trades" onBack={() => setPage("activity")} />}
           {page === "activity-transactions" && <ActivityDetailPage account={account} type="transactions" onBack={() => setPage("activity")} />}
           {page === "referral" && <Referral account={account} profile={profile} />}
           {page === "profile" && <Profile user={user} profile={profile} signOut={signOut} onVerifyIdentity={navigateToIdentityVerification} />}
-          {page === "identity-verification" && <IdentityVerificationPage user={user} profile={profile} onBack={() => { window.history.pushState({}, "", "/profile"); setPage("profile"); }} onOpenCredits={() => setPage("ai-credits")} onSubmitted={(data) => { setProfile(current => current ? {...current, ai_credits:data?.credits_remaining ?? Math.max(0,Number(current.ai_credits||0)-5)} : current); window.dispatchEvent(new Event("flexar-ai-credits-updated")); }} />}
+          {page === "identity-verification" && <IdentityVerificationPage user={user} profile={profile} onBack={() => { window.history.pushState({}, "", "/profile"); setPage("profile"); }} onOpenCredits={() => { setAiCreditsReturnPage("identity-verification"); setPage("ai-credits"); }} onSubmitted={(data) => { setProfile(current => current ? {...current, ai_credits:data?.credits_remaining ?? Math.max(0,Number(current.ai_credits||0)-5)} : current); window.dispatchEvent(new Event("flexar-ai-credits-updated")); }} />}
         </div>
       </AppErrorBoundary>
     </main>
