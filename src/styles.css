@@ -2304,3 +2304,123 @@ body{background:var(--bg)}
   .sidebar-open .content{padding-left:300px!important}
   .app-shell .content{transition:padding-left .22s ease}
 }
+
+
+/* FLEXAR wallet UX polish: explicit desktop sidebar close control and branded asset picker. */
+@media(min-width:760px){
+  .bottom-nav{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:7px;padding:18px 14px!important;padding-top:14px!important;overflow-y:auto}
+  .bottom-nav:before{display:none!important}
+  .sidebar-menu-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 5px 18px;margin-bottom:8px;border-bottom:1px solid rgba(3,252,125,.12);color:var(--green);font-size:11px;font-weight:900;letter-spacing:.16em}
+  .sidebar-close{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:1px solid rgba(3,252,125,.22);border-radius:10px;background:rgba(3,252,125,.07);color:var(--green);font-size:23px;line-height:1;cursor:pointer}
+  .sidebar-close:hover{background:rgba(3,252,125,.15)}
+  .bottom-nav .nav{display:flex;align-items:center;gap:13px;min-height:48px;padding:0 14px;text-align:left}
+  .bottom-nav .nav span{width:20px;font-size:19px;text-align:center}
+  .bottom-nav .nav small{margin:0;font-size:11px;font-weight:700}
+}
+.wallet-action-modal{width:min(460px,calc(100vw - 28px))!important;padding:22px!important;border-color:rgba(3,252,125,.16)!important;background:radial-gradient(circle at 100% 0,rgba(3,252,125,.055),transparent 34%),#06100d!important}
+.wallet-flow-heading{display:flex;align-items:flex-start;gap:13px;margin:3px 32px 16px 0}
+.wallet-flow-heading>div{min-width:0}
+.wallet-flow-heading .eyebrow{margin:0 0 5px;font-size:8px}
+.wallet-flow-heading h2{margin:0;font-size:22px;letter-spacing:-.04em}
+.wallet-flow-heading p{margin:7px 0 0;font-size:10px;line-height:1.55;color:#8b9b91}
+.wallet-flow-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border:1px solid rgba(38,161,123,.24);border-radius:15px;background:rgba(38,161,123,.09)}
+.wallet-flow-icon img{width:28px;height:28px}
+.wallet-stepper{display:flex;align-items:center;gap:7px;margin:18px 0}
+.wallet-stepper>span{display:flex;align-items:center;gap:6px;white-space:nowrap;color:#68766e;font-size:9px;font-weight:750}
+.wallet-stepper>span b{display:grid;place-items:center;width:23px;height:23px;border:1px solid rgba(255,255,255,.12);border-radius:50%;font-size:9px}
+.wallet-stepper>span.current{color:var(--green)}
+.wallet-stepper>span.current b,.wallet-stepper>span.complete b{border-color:rgba(3,252,125,.4);background:rgba(3,252,125,.09);color:var(--green)}
+.wallet-stepper>i{height:1px;flex:1;min-width:8px;background:rgba(255,255,255,.09)}
+.wallet-address-card.wallet-network-featured{gap:12px;padding:15px;border-color:rgba(3,252,125,.2);background:linear-gradient(140deg,rgba(3,252,125,.045),rgba(255,255,255,.012))}
+.wallet-asset-title{display:flex;align-items:center;gap:10px;min-width:0}
+.wallet-asset-title>img{width:36px;height:36px;flex:0 0 36px;padding:7px;border:1px solid rgba(38,161,123,.22);border-radius:12px;background:rgba(38,161,123,.08)}
+.wallet-asset-title>span{display:grid;gap:4px;flex:1;min-width:0}
+.wallet-asset-title strong{font-size:12px!important}
+.wallet-asset-title small{font-size:9px;color:#8b9b91;opacity:1!important}
+.wallet-network-pill{padding:5px 7px;border:1px solid rgba(3,252,125,.19);border-radius:999px;color:var(--green);font-size:7px;letter-spacing:.08em}
+.wallet-network-featured>p{margin:0;color:#8b9b91;font-size:9px;line-height:1.55}
+.wallet-network-featured code{font-size:10px!important;line-height:1.5;letter-spacing:.01em;padding:12px!important;border:1px solid rgba(255,255,255,.06);background:#030806!important}
+.wallet-address-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.wallet-address-actions button,.deposit-copy-button{padding:9px 12px;border:1px solid rgba(3,252,125,.25);border-radius:10px;background:rgba(3,252,125,.08);color:var(--green);font-size:9px;font-weight:800}
+.wallet-address-actions>span{color:#6f8075;font-size:8px}
+.wallet-address-loading{padding:11px;border:1px dashed rgba(255,255,255,.1);border-radius:10px;color:#8b9b91;font-size:10px;line-height:1.5}
+.wallet-address-card.wallet-network-coming{display:flex;align-items:center;gap:11px;padding:11px 13px;background:rgba(255,255,255,.015)}
+.wallet-network-coming>img{width:29px;height:29px;padding:5px;border:1px solid rgba(255,255,255,.08);border-radius:10px}
+.wallet-network-coming>span{display:grid;gap:3px;flex:1}
+.wallet-network-coming>span strong{font-size:10px!important}
+.wallet-network-coming>span small{font-size:8px}
+.wallet-network-coming>b{color:#78877d;font-size:7px;letter-spacing:.06em}
+.deposit-amount-form{padding:15px;border:1px solid rgba(3,252,125,.13);border-radius:14px;background:rgba(255,255,255,.015)}
+.deposit-amount-form label,.withdrawal-form label{display:block;color:#aab8af;font-size:10px;font-weight:750}
+.deposit-amount-input,.withdrawal-amount-input{display:flex;align-items:center;gap:9px;margin-top:8px;padding:4px 12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:#030906}
+.deposit-amount-input>span,.withdrawal-amount-input>span{color:#68776e;font-size:22px;font-weight:650}
+.deposit-amount-input input,.withdrawal-amount-input input{flex:1;min-width:0;margin:0!important;min-height:55px!important;padding:0!important;border:0!important;outline:0!important;background:transparent!important;color:#f4fff7!important;font-size:28px!important;font-weight:800!important;letter-spacing:-.045em}
+.deposit-amount-input b,.withdrawal-amount-input b{padding:7px 8px;border:1px solid rgba(3,252,125,.15);border-radius:8px;color:var(--green);font-size:9px}
+.deposit-minimum-hint{display:flex;gap:9px;align-items:flex-start;margin:13px 0;color:#819187}
+.deposit-minimum-hint>span{display:grid;place-items:center;width:19px;height:19px;flex:0 0 19px;border-radius:50%;background:rgba(3,252,125,.1);color:var(--green);font-size:11px}
+.deposit-minimum-hint p{margin:0;font-size:9px;line-height:1.6}
+.deposit-minimum-hint strong{color:#dbe9df}
+.deposit-payment-step{margin-top:14px;padding:15px;border:1px solid rgba(3,252,125,.17);border-radius:15px;background:linear-gradient(155deg,rgba(3,252,125,.035),rgba(255,255,255,.012))}
+.deposit-step-title>span{color:var(--green);font-size:8px;font-weight:900;letter-spacing:.15em}
+.deposit-step-title h3{margin:5px 0;font-size:16px}
+.deposit-step-title p{margin:0;color:#849389;font-size:9px;line-height:1.55}
+.deposit-qr-card{display:grid;justify-items:center;gap:8px;width:max-content;max-width:100%;margin:16px auto;padding:12px;border:1px solid rgba(3,252,125,.2);border-radius:14px;background:#fff}
+.deposit-qr-code{display:block;width:180px;height:180px;max-width:100%;object-fit:contain}
+.deposit-qr-card>small{color:#254c39;font-size:8px;font-weight:900;letter-spacing:.1em}
+.deposit-qr-placeholder{display:grid;place-items:center;width:180px;height:180px;color:#254c39;font-size:10px}
+.deposit-payment-amount{padding:14px;border:1px solid rgba(3,252,125,.13);border-radius:12px;background:rgba(3,252,125,.035);text-align:center}
+.deposit-payment-amount>small{display:block;color:#8b9b91;font-size:8px;font-weight:900;letter-spacing:.14em}
+.deposit-payment-amount>strong{display:block;margin-top:7px;color:#f3fff7;font-size:29px;line-height:1.1;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+.deposit-payment-amount>strong span{color:var(--green);font-size:13px;letter-spacing:0}
+.deposit-payment-amount p{margin:8px 0 0;color:#8b9b91;font-size:9px;line-height:1.5}
+.deposit-payment-step .deposit-copy-button,.deposit-payment-step .withdrawal-submit{width:100%;margin-top:10px}
+.deposit-safety-note{margin:11px 0 0;color:#7d8c82;font-size:8px;line-height:1.6}
+.deposit-history{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)}
+.deposit-history-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.deposit-history-head h3{margin:0;font-size:11px}
+.deposit-history-head>span{color:#748379;font-size:8px}
+.deposit-history .admin-row{padding:11px 0;font-size:10px}
+.deposit-history .empty-state{padding:14px 0;color:#7f8e84;font-size:9px}
+.withdrawal-network-banner{display:flex;align-items:center;gap:10px;margin:15px 0;padding:12px;border:1px solid rgba(3,252,125,.17);border-radius:12px;background:rgba(3,252,125,.035)}
+.withdrawal-network-banner>div{display:grid;gap:4px;flex:1;min-width:0}
+.withdrawal-network-banner>div strong{font-size:10px}
+.withdrawal-network-banner>div small{color:#87968c;font-size:8px;line-height:1.45}
+.withdrawal-network-banner>img{width:27px;height:27px}
+.network-status-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(3,252,125,.4)}
+.withdrawal-balance-card{margin:0 0 13px;padding:15px 16px}
+.withdrawal-balance-card strong{font-size:23px!important;line-height:1.15;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.withdrawal-balance-card span{padding:7px 9px;border:1px solid rgba(3,252,125,.17);border-radius:9px;background:rgba(3,252,125,.04);font-size:10px}
+.withdrawal-amount-input{margin-bottom:5px}
+.withdrawal-max-button{display:block;margin:-3px 0 13px auto;padding:6px 9px;border:1px solid rgba(3,252,125,.18);border-radius:8px;background:rgba(3,252,125,.055);color:var(--green);font-size:8px;font-weight:800}
+.withdrawal-network-warning{display:flex;align-items:flex-start;gap:9px;margin:2px 0 14px;padding:11px;border:1px solid rgba(255,190,72,.2);border-radius:11px;background:rgba(255,190,72,.035)}
+.withdrawal-network-warning>span{display:grid;place-items:center;width:18px;height:18px;flex:0 0 18px;border-radius:50%;background:rgba(255,190,72,.13);color:#ffca76;font-size:11px;font-weight:900}
+.withdrawal-network-warning p{margin:0;color:#a6a797;font-size:8px;line-height:1.6}
+.withdrawal-network-warning p strong{display:block;margin-bottom:3px;color:#ffcf82;font-size:9px}
+.asset-selector{position:relative;flex:0 0 auto;min-width:142px;max-width:190px}
+.asset-selector-trigger{display:flex;align-items:center;gap:8px;width:100%;min-height:49px;padding:6px 9px;border:1px solid rgba(3,252,125,.17);border-radius:12px;background:linear-gradient(135deg,rgba(3,252,125,.055),rgba(255,255,255,.015));color:#f4fff7;text-align:left}
+.asset-selector-trigger>img{width:29px;height:29px;flex:0 0 29px;object-fit:contain}
+.asset-selector-trigger>span{display:grid;gap:3px;flex:1;min-width:0}
+.asset-selector-trigger strong{font-size:10px}
+.asset-selector-trigger small{overflow:hidden;color:#87968c;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+.asset-selector-trigger i{color:var(--green);font-size:14px;font-style:normal}
+.asset-selector-menu{position:absolute;z-index:90;top:calc(100% + 8px);right:0;width:min(280px,calc(100vw - 70px));max-height:300px;overflow:auto;padding:6px;border:1px solid rgba(3,252,125,.2);border-radius:15px;background:#07100b;box-shadow:0 20px 55px rgba(0,0,0,.65)}
+.asset-selector-option{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:1px solid transparent;border-radius:10px;background:transparent;color:#f4fff7;text-align:left}
+.asset-selector-option:hover,.asset-selector-option.selected{border-color:rgba(3,252,125,.14);background:rgba(3,252,125,.06)}
+.asset-selector-option>img{width:30px;height:30px;flex:0 0 30px;object-fit:contain}
+.asset-selector-option>span{display:grid;gap:4px;flex:1;min-width:0}
+.asset-selector-option>span strong{font-size:10px}
+.asset-selector-option>span small{color:#87968c;font-size:8px}
+.asset-selector-option>b{color:var(--green);font-size:12px}
+@media(max-width:520px){
+  .wallet-action-modal{padding:17px!important}
+  .wallet-flow-heading h2{font-size:20px}
+  .wallet-stepper{gap:5px}
+  .wallet-stepper>span{gap:4px;font-size:8px}
+  .wallet-stepper>span b{width:21px;height:21px}
+  .deposit-qr-code{width:160px;height:160px}
+  .deposit-payment-amount>strong{font-size:25px}
+  .asset-selector{min-width:116px;max-width:145px}
+  .asset-selector-trigger{gap:6px;padding:5px 7px}
+  .asset-selector-trigger>img{width:25px;height:25px;flex-basis:25px}
+  .asset-selector-trigger small{max-width:62px}
+}
