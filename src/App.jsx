@@ -1002,7 +1002,7 @@ function DashboardTour({ open, stepIndex, page, setPage, onBack, onNext, onFinis
       window.removeEventListener("keydown", handleKey);
       setSpotlight(null);
     };
-  }, [open, stepIndex, page, step, setPage, onFinish]);
+  }, [open, stepIndex, page, step, setPage]);
   if (!open || !step) return null;
   return createPortal(<div className="dashboard-tour-layer">
     <div className="dashboard-tour-scrim" />
