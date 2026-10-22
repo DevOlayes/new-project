@@ -80,6 +80,8 @@ export default function App() {
   const [page, setPage] = useState(() => { const route=window.location.pathname.split("/").filter(Boolean).join("/"); return route==="admin"?"admin":route==="identity-verification"?"identity-verification":route==="profile"?"profile":"home"; });
   const [aiCreditsReturnPage, setAiCreditsReturnPage] = useState("trade");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dashboardTourOpen, setDashboardTourOpen] = useState(false);
+  const [dashboardTourStep, setDashboardTourStep] = useState(0);
 
   // Close the desktop navigation drawer whenever a destination changes.
   // Mobile keeps its existing interaction.
@@ -110,6 +112,24 @@ export default function App() {
   const [tradeSuccess, setTradeSuccess] = useState(null);
   const notificationSeenRef = useRef(null);
   const tradeNotificationStateRef = useRef(null);
+
+  function startDashboardTour() {
+    setDashboardTourStep(0);
+    setDashboardTourOpen(true);
+  }
+  function finishDashboardTour() {
+    setDashboardTourOpen(false);
+    try { if (user?.id) localStorage.setItem(`flexar_dashboard_tour_completed_${user.id}`, "1"); } catch {}
+  }
+
+  useEffect(() => {
+    if (!user?.id || loading || page !== "home" || !profile?.onboarding_completed || dashboardTourOpen) return;
+    let completed = false;
+    try { completed = localStorage.getItem(`flexar_dashboard_tour_completed_${user.id}`) === "1"; } catch { completed = true; }
+    if (completed) return;
+    const timer = window.setTimeout(() => { setDashboardTourStep(0); setDashboardTourOpen(true); }, 900);
+    return () => window.clearTimeout(timer);
+  }, [user?.id, loading, page, profile?.onboarding_completed, dashboardTourOpen]);
 
   useEffect(() => {
     const syncAdminRoute = () => { const route=window.location.pathname.split("/").filter(Boolean).join("/"); setPage(route==="admin"?"admin":route==="identity-verification"?"identity-verification":route==="profile"?"profile":"home"); };
@@ -719,7 +739,7 @@ export default function App() {
       {authError && <div className="error-banner">{authError}</div>}
       <AppErrorBoundary page={page}>
         <div key={page} className="page-transition" aria-live="polite">
-          {page === "home" && <Home account={account} profile={profile} setPage={setPage} onWalletAction={setWalletAction} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} />}
+          {page === "home" && <Home account={account} profile={profile} setPage={setPage} onWalletAction={setWalletAction} claimReward={claimReward} rewardBusy={rewardBusy} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onStartTour={startDashboardTour} />}
           {page === "trade" && <Trade account={account} profile={profile} startAiScan={startAiScan} aiScanning={aiScanning} aiEngineActive={aiEngineActive} onOpenCredits={() => { setAiCreditsReturnPage("trade"); setPage("ai-credits"); }} onActivationChange={(open) => { setAiActivationOpen(open); if (open) setGlobalNotice(""); }} onStopAi={stopAiEngine} />}
           {page === "ai-credits" && <AICreditsPage profile={profile} account={account} onBack={() => setPage(aiCreditsReturnPage)} refreshAccount={refreshAccount} />}
           {page === "activity" && <Activity account={account} setPage={setPage} />}
@@ -731,7 +751,7 @@ export default function App() {
         </div>
       </AppErrorBoundary>
     </main>
-    <nav className="bottom-nav" aria-label="Primary navigation" onClickCapture={(event) => {
+    <nav className="bottom-nav" data-tour="navigation" aria-label="Primary navigation" onClickCapture={(event) => {
       if (
         window.matchMedia("(min-width: 760px)").matches &&
         event.target instanceof Element &&
@@ -743,6 +763,7 @@ export default function App() {
     {walletAction && <WalletActions action={walletAction} onClose={() => setWalletAction("")} onVerification={() => { setWalletAction(""); navigateToIdentityVerification(); }} account={account} refreshAccount={refreshAccount} assetPrices={assetPrices} />}
     {globalNotice && !aiActivationOpen && <div className="global-notice" role="status" onClick={() => setGlobalNotice("")}>{globalNotice}</div>}
     {tradeSuccess && <TradeSuccessModal trade={tradeSuccess} onClose={() => setTradeSuccess(null)} onViewActive={() => { setTradeSuccess(null); setPage("activity"); }} />}
+    <DashboardTour open={dashboardTourOpen} stepIndex={dashboardTourStep} page={page} setPage={setPage} onBack={() => setDashboardTourStep((step) => Math.max(0, step - 1))} onNext={() => setDashboardTourStep((step) => Math.min(DASHBOARD_TOUR_STEPS.length - 1, step + 1))} onFinish={finishDashboardTour} />
   </div>;
 }
 
@@ -942,7 +963,69 @@ function RewardCountdown({ reward }) {
   const minutes = totalMinutes % 60;
   return <small className={days < 2 ? "reward-expiry urgent" : "reward-expiry"}>Expires in {days}d {hours}h {minutes}m</small>;
 }
-function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBusy, startAiScan, aiScanning, aiEngineActive }) {
+
+const DASHBOARD_TOUR_STEPS = [
+  { page: "home", selector: '[data-tour="balance"]', eyebrow: "STEP 1 OF 6 · YOUR DASHBOARD", title: "Your balances at a glance", body: "Available balance shows funds currently available in your wallet. Portfolio value and open P&L can change while positions are active. Promotional bonus funds are tracked separately from withdrawable funds." },
+  { page: "home", selector: '[data-tour="ai-cta"]', eyebrow: "STEP 2 OF 6 · FLEXAR AI", title: "Start with the AI workspace", body: "Open AI Trade to review market opportunities and choose manual approval or Autopilot. AI signals are estimates, not promises of profit." },
+  { page: "home", selector: '[data-tour="funding"]', eyebrow: "STEP 3 OF 6 · WALLET ACTIONS", title: "Manage your funds", body: "Deposit, withdraw, and swap from here. Withdrawal eligibility depends on verified identity, eligible funds, the minimum threshold, and security review." },
+  { page: "home", selector: '[data-tour="signal"]', eyebrow: "STEP 4 OF 6 · AI SIGNALS", title: "Understand a signal before acting", body: "Signals show a market, direction, and model score. A higher score is not a guarantee; review the setup, position size, and downside risk before committing funds." },
+  { page: "home", selector: '[data-tour="navigation"]', eyebrow: "STEP 5 OF 6 · NAVIGATION", title: "Find the main areas", body: "Use the navigation to reach Home, AI Trade, Activity, Referral, and Profile. Activity helps you review closed trades, open P&L, and account transactions." },
+  { page: "trade", selector: '[data-tour="trade-hero"]', eyebrow: "STEP 6 OF 6 · AI TRADE", title: "Choose how FLEXAR works for you", body: "Manual approval lets you review a setup before a trade is opened. Autopilot works within your configured stake limit. Both modes remain exposed to market risk, so use a stake you can afford to lose." }
+];
+
+function DashboardTour({ open, stepIndex, page, setPage, onBack, onNext, onFinish }) {
+  const [spotlight, setSpotlight] = useState(null);
+  const step = DASHBOARD_TOUR_STEPS[stepIndex];
+  useEffect(() => {
+    if (!open || !step) { setSpotlight(null); return; }
+    if (page !== step.page) { setPage(step.page); return; }
+    let target = null;
+    const updateSpotlight = () => {
+      target = document.querySelector(step.selector);
+      if (!target) { setSpotlight(null); return; }
+      const rect = target.getBoundingClientRect();
+      setSpotlight({ top: Math.max(8, rect.top - 6), left: Math.max(8, rect.left - 6), width: Math.min(window.innerWidth - 16, rect.width + 12), height: Math.min(window.innerHeight - 16, rect.height + 12) });
+    };
+    const timer = window.setTimeout(() => {
+      target = document.querySelector(step.selector);
+      target?.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "nearest" });
+      updateSpotlight();
+    }, 180);
+    window.addEventListener("resize", updateSpotlight);
+    window.addEventListener("scroll", updateSpotlight, true);
+    const handleKey = (event) => { if (event.key === "Escape") onFinish(); };
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", updateSpotlight);
+      window.removeEventListener("scroll", updateSpotlight, true);
+      window.removeEventListener("keydown", handleKey);
+      setSpotlight(null);
+    };
+  }, [open, stepIndex, page, step, setPage, onFinish]);
+  if (!open || !step) return null;
+  return createPortal(<div className="dashboard-tour-layer">
+    <div className="dashboard-tour-scrim" />
+    {spotlight && <div className="dashboard-tour-spotlight" aria-hidden="true" style={{ top: spotlight.top, left: spotlight.left, width: spotlight.width, height: spotlight.height }} />}
+    <section className="dashboard-tour-card" role="dialog" aria-modal="true" aria-labelledby="dashboard-tour-title">
+      <div className="dashboard-tour-progress"><span style={{ width: ((stepIndex + 1) / DASHBOARD_TOUR_STEPS.length * 100) + "%" }} /></div>
+      <small className="dashboard-tour-eyebrow">{step.eyebrow}</small>
+      <h2 id="dashboard-tour-title">{step.title}</h2>
+      <p>{step.body}</p>
+      <div className="dashboard-tour-footer">
+        <button type="button" className="dashboard-tour-skip" onClick={onFinish}>Skip tour</button>
+        <div className="dashboard-tour-actions">
+          {stepIndex > 0 && <button type="button" className="dashboard-tour-back" onClick={onBack}>Back</button>}
+          {stepIndex < DASHBOARD_TOUR_STEPS.length - 1
+            ? <button type="button" className="dashboard-tour-next" onClick={onNext}>Next <span aria-hidden="true">→</span></button>
+            : <button type="button" className="dashboard-tour-next" onClick={onFinish}>Finish tour <span aria-hidden="true">✓</span></button>}
+        </div>
+      </div>
+    </section>
+  </div>, document.body);
+}
+
+function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBusy, startAiScan, aiScanning, aiEngineActive, onStartTour }) {
   const active=account.trades.filter(t=>t.status==="active"), opportunities=account.opportunities||[], unread=account.notifications.filter(i=>!i.is_read).length;
   const usdtBalance=Number(account.wallets.find(i=>i.asset==="USDT")?.available_balance||0), reward=account.rewards?.find(r=>["available","active"].includes(r.status)&&Number(r.remaining_reward||0)>0);
   const displayName=profile?.display_name||profile?.telegram_username||"Your account", initials=displayName.split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"F";
@@ -950,15 +1033,16 @@ function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBu
   const activeTrade=active[0], activePnl=active.reduce((sum,trade)=>sum+Number(trade.unrealized_pnl||0),0),activeCapital=active.reduce((sum,trade)=>sum+Number(trade.stake||0),0),portfolioValue=usdtBalance+activeCapital+activePnl,activeReturn=activeCapital>0?(activePnl/activeCapital)*100:0,activeMarket=activeTrade?.metadata?.market_symbol||activeTrade?.asset||"—", activeDirection=String(activeTrade?.direction||"").toUpperCase();
   return <div className="flexar-home minimal-home">
     <section className="home-account">
-      <div className="home-profile-line">
+      <div className="home-profile-line" data-tour="profile-line">
         <div className="avatar-orb" aria-label={`${displayName} avatar`}><span>{initials}</span><i/></div>
         <div><small>WELCOME BACK</small><strong>{displayName}</strong></div>
         <button type="button" className="home-profile-button notification-button" onClick={()=>window.dispatchEvent(new CustomEvent("flexar-open-notifications"))} aria-label="Open notifications">
           <span className="bell-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span>
           {unread>0&&<b className="notification-dot">{unread>9?"9+":unread}</b>}
         </button>
+        <button type="button" className="home-profile-button tour-help-button" onClick={onStartTour} aria-label="Start dashboard tour" title="Dashboard tour">?</button>
       </div>
-      <div className="home-balance">
+      <div className="home-balance" data-tour="balance">
         <img className="balance-watermark" src="/flexa-symbol.webp" alt="" aria-hidden="true" />
         <div className="balance-content">
           <small>AVAILABLE BALANCE</small>
@@ -971,11 +1055,11 @@ function Home({ account, profile, setPage, onWalletAction, claimReward, rewardBu
         </div>
       </div>
     </section>
-    <section className="home-ai-cta"><div><small>FLEXAR AI</small><h2>{aiEngineActive?"AI is watching the markets.":opportunities.length?"Your AI opportunity is ready.":"Find your next trade with AI."}</h2><p>{aiScanning?"Scanning supported markets for a qualifying setup.":aiEngineActive?"FLEXAR will surface a qualifying setup when its signal rules are met.":"Let FLEXAR analyze the market first, then choose how FLEXAR should trade for you."}</p></div><button type="button" onClick={()=>setPage("trade")} disabled={aiScanning}>{aiScanning?"Scanning…":aiEngineActive||opportunities.length?"Trade with AI →":"Start FLEXAR AI →"}</button></section>
-    <section className="home-funding-actions" aria-label="Funding actions"><button type="button" onClick={()=>onWalletAction("deposit")}><span>↓</span><strong>Deposit</strong></button><button type="button" onClick={()=>onWalletAction("withdraw")}><span>↗</span><strong>Withdraw</strong></button><button type="button" onClick={()=>onWalletAction("swap")}><span>⇄</span><strong>Swap</strong></button></section>
+    <section className="home-ai-cta" data-tour="ai-cta"><div><small>FLEXAR AI</small><h2>{aiEngineActive?"AI is watching the markets.":opportunities.length?"Your AI opportunity is ready.":"Find your next trade with AI."}</h2><p>{aiScanning?"Scanning supported markets for a qualifying setup.":aiEngineActive?"FLEXAR will surface a qualifying setup when its signal rules are met.":"Let FLEXAR analyze the market first, then choose how FLEXAR should trade for you."}</p></div><button type="button" onClick={()=>setPage("trade")} disabled={aiScanning}>{aiScanning?"Scanning…":aiEngineActive||opportunities.length?"Trade with AI →":"Start FLEXAR AI →"}</button></section>
+    <section className="home-funding-actions" data-tour="funding" aria-label="Funding actions"><button type="button" onClick={()=>onWalletAction("deposit")}><span>↓</span><strong>Deposit</strong></button><button type="button" onClick={()=>onWalletAction("withdraw")}><span>↗</span><strong>Withdraw</strong></button><button type="button" onClick={()=>onWalletAction("swap")}><span>⇄</span><strong>Swap</strong></button></section>
     {reward&&<section className="home-reward-row"><div><small>{reward.status==="active"?"WELCOME CREDIT ACTIVE":"WELCOME CREDIT"}</small><strong>{"$"+Number(reward.remaining_reward||0).toFixed(2)} <span>remaining</span></strong><RewardCountdown reward={reward}/></div><button type="button" onClick={reward.status==="active"?()=>setPage("trade"):claimReward} disabled={rewardBusy}>{reward.status==="active"?"Use credit":rewardBusy?"Claiming…":"Claim"}</button></section>}
     <section className="home-section portfolio-preview"><div className="home-section-title"><div><small>PORTFOLIO</small><h2>My assets</h2></div><span className="home-section-note">{assets.length} asset{assets.length===1?"":"s"}</span></div><div className="home-asset-list">{assets.map(item=><div className="home-asset-row" key={item.asset}><span className={"home-asset-icon asset-"+item.asset.toLowerCase()}><img src={item.icon} alt="" loading="lazy"/></span><div><strong>{item.label}</strong><small>{item.asset==="TON"?"GRAM":item.asset}</small></div><b>{Number(item.wallet?.available_balance||0).toLocaleString(undefined,{maximumFractionDigits:6})} {item.asset==="TON"?"GRAM":item.asset}</b></div>)}</div></section>
-    <section className="home-section home-ai-card"><div className="home-section-title"><div><small>AI SIGNAL</small><h2>{opportunities.length?"Signal ready":"Waiting for a setup"}</h2></div><span className={aiEngineActive?"home-live":""}><i/> {aiEngineActive?"LIVE":"READY"}</span></div>{opportunities.length?<div className="home-signal-row"><div><strong>{opportunities[0].symbol}</strong><small>{opportunities[0].direction==="down"?"↘ DOWN":"↗ UP"} · {Math.round(Number(opportunities[0].signal_score||0)*100)}% confidence</small></div><button type="button" onClick={()=>setPage("trade")}>Review →</button></div>:<div className="home-ai-empty"><p>{aiScanning?"Scanning supported markets…":"No setup is being presented yet. Start the AI engine when you are ready."}</p><button type="button" onClick={()=>setPage("trade")}>Open AI Trade</button></div>}</section>
+    <section className="home-section home-ai-card" data-tour="signal"><div className="home-section-title"><div><small>AI SIGNAL</small><h2>{opportunities.length?"Signal ready":"Waiting for a setup"}</h2></div><span className={aiEngineActive?"home-live":""}><i/> {aiEngineActive?"LIVE":"READY"}</span></div>{opportunities.length?<div className="home-signal-row"><div><strong>{opportunities[0].symbol}</strong><small>{opportunities[0].direction==="down"?"↘ DOWN":"↗ UP"} · {Math.round(Number(opportunities[0].signal_score||0)*100)}% confidence</small></div><button type="button" onClick={()=>setPage("trade")}>Review →</button></div>:<div className="home-ai-empty"><p>{aiScanning?"Scanning supported markets…":"No setup is being presented yet. Start the AI engine when you are ready."}</p><button type="button" onClick={()=>setPage("trade")}>Open AI Trade</button></div>}</section>
     {activeTrade&&<section className="home-active-row"><div><small>ACTIVE TRADE</small><strong>{activeMarket}</strong><span className={activeDirection==="UP"?"green":"red"}>{activeDirection}</span></div><button type="button" onClick={()=>setPage("activity")}>Monitor →</button></section>}
     <section className="home-section home-activity"><div className="home-section-title"><div><small>ACTIVITY</small><h2>Recent activity</h2></div><button type="button" onClick={()=>setPage("activity")}>View all</button></div><ActivityRows account={account}/></section>
   </div>;
@@ -1844,7 +1928,7 @@ function Trade({ account, profile, startAiScan, aiScanning, aiEngineActive, onOp
   }
   async function confirmAiTrade(){if(!supabase||busy||!canTrade||numericAmount<=0||!opportunity)return;setBusy(true);setNotice("");try{const {data,error}=await supabase.functions.invoke("execute-trade",{body:{mode:"ai",opportunity_id:opportunity.id,stake:numericAmount}});if(error){let message=error.message||"The AI trade could not be started.";try{const payload=await error.context?.json?.();message=payload?.error||payload?.message||message}catch{}throw new Error(message)}if(data?.error)throw new Error(data.error);const tradeResult=data?.trade||data||{};window.dispatchEvent(new CustomEvent("flexa-trade-started",{detail:{tradeId:tradeResult.trade_id||null,symbol:tradeResult.symbol||symbol,direction:tradeResult.direction||opportunity.direction,stake:Number(tradeResult.stake??numericAmount),maxHoldSeconds:Number(tradeResult.max_hold_seconds||0),fundingSource:tradeResult.funding_source||null,takeProfitPrice:tradeResult.take_profit_price||null,stopLossPrice:tradeResult.stop_loss_price||null,breakEvenPrice:tradeResult.break_even_price||null,trailingStopPrice:tradeResult.trailing_stop_price||null,riskProfile:tradeResult.risk_profile||riskStyle}}))}catch(error){setNotice(error.message||"The AI trade could not be started.") }finally{setBusy(false)}}
   useEffect(()=>{ if(mode!=="autopilot") setAutoBusy(false); },[mode]);
-  return <div className="ai-trade-page"><section className="ai-page-hero compact"><div className="ai-hero-copy"><div className="engine-kicker"><span className="engine-pulse"/> FLEXAR AI TRADING BOT</div><h1>Start FLEXAR AI<br/><span>trading bot.</span></h1><p>Choose how FLEXAR should work for you: review every AI trade yourself, or let the bot execute within the stake limit you set.</p><div className="ai-credit-compact"><span className="ai-credit-label">AI CREDITS</span><strong>{Number(profile?.ai_credits||0).toFixed(0)}</strong><span className="ai-credit-unit">remaining</span><button type="button" className="ai-credit-info-button" onClick={()=>setAiCreditInfo(true)} aria-label="About FLEXAR AI credits">ⓘ</button><button type="button" className="ai-credit-add-button" onClick={onOpenCredits}>Buy credits</button></div>{!aiEngineActive&&!opportunity&&<button type="button" className="ai-start-button hero-start" onClick={()=>setModeOpen(true)} disabled={aiScanning}>{aiScanning?"Scanning…":"Start FLEXAR AI trading bot →"}</button>}</div><div className="ai-engine-controls"><div className={aiEngineActive?"ai-engine-state active":"ai-engine-state"}><span className="engine-status-dot"/><div><small>BOT</small><strong>{aiEngineActive?"RUNNING":"STANDBY"}</strong></div></div>{aiEngineActive&&<button type="button" className="ai-stop-button" onClick={onStopAi}>Stop AI</button>}</div></section>
+  return <div className="ai-trade-page"><section className="ai-page-hero compact" data-tour="trade-hero"><div className="ai-hero-copy"><div className="engine-kicker"><span className="engine-pulse"/> FLEXAR AI TRADING BOT</div><h1>Start FLEXAR AI<br/><span>trading bot.</span></h1><p>Choose how FLEXAR should work for you: review every AI trade yourself, or let the bot execute within the stake limit you set.</p><div className="ai-credit-compact"><span className="ai-credit-label">AI CREDITS</span><strong>{Number(profile?.ai_credits||0).toFixed(0)}</strong><span className="ai-credit-unit">remaining</span><button type="button" className="ai-credit-info-button" onClick={()=>setAiCreditInfo(true)} aria-label="About FLEXAR AI credits">ⓘ</button><button type="button" className="ai-credit-add-button" onClick={onOpenCredits}>Buy credits</button></div>{!aiEngineActive&&!opportunity&&<button type="button" className="ai-start-button hero-start" onClick={()=>setModeOpen(true)} disabled={aiScanning}>{aiScanning?"Scanning…":"Start FLEXAR AI trading bot →"}</button>}</div><div className="ai-engine-controls"><div className={aiEngineActive?"ai-engine-state active":"ai-engine-state"}><span className="engine-status-dot"/><div><small>BOT</small><strong>{aiEngineActive?"RUNNING":"STANDBY"}</strong></div></div>{aiEngineActive&&<button type="button" className="ai-stop-button" onClick={onStopAi}>Stop AI</button>}</div></section>
     {mode==="manual"&&aiEngineActive&&opportunities.length>0&&!activeTrade&&<section className="ai-suggestion-strip"><div className="section-heading"><div><small>AI SUGGESTIONS · MAX 2</small><h2>Choose a setup</h2></div><span>{opportunities.length} available</span></div><div className="ai-suggestion-list">{opportunities.map(item=>{const itemScore=Math.round(Number(item.signal_score||0)*100);const itemUp=item.direction!=="down";return <button type="button" key={item.id} className={item.id===opportunity?.id?"ai-suggestion-card selected":"ai-suggestion-card"} onClick={()=>{setSelectedOpportunityId(item.id);setDetailsExpanded(false)}}><PairIcon symbol={item.symbol} cryptoIcons={cryptoIcons}/><span><strong>{item.symbol}</strong><small>{itemUp?"↗ LONG":"↘ SHORT"} · {itemScore}% signal</small></span><b>{itemScore}%</b></button>})}</div></section>}
     {activeAiTrades.length>0&&<section className="ai-active-session"><div className="ai-active-session-head"><div><small>ACTIVE AI SESSION</small><h2>{activeAiTrades.length} active {activeAiTrades.length===1?"position":"positions"}</h2></div><div className="ai-session-total"><small>TOTAL OPEN P&L</small><strong className={activeAiPnl>=0?"green":"red"}>{signedMoney(activeAiPnl)}</strong><span>{activeAiCapital>0?((activeAiPnl/activeAiCapital)*100).toFixed(2):"0.00"}% on active capital</span></div></div><div className="ai-active-session-list">{activeAiTrades.map(trade=>{const tradePnl=Number(trade.unrealized_pnl||0),tradeStake=Number(trade.stake||0),tradeSymbol=trade.metadata?.market_symbol||trade.asset||"—";return <article className="ai-active-position" key={trade.id}><div className="ai-active-position-main"><PairIcon symbol={tradeSymbol} cryptoIcons={cryptoIcons}/><div><strong>{tradeSymbol}</strong><small className={trade.direction==="up"?"green":"red"}>{trade.direction==="up"?"↗ LONG":"↘ SHORT"} · {Number(trade.leverage||1).toFixed(0)}×</small></div></div><div><small>CAPITAL</small><strong>$ {money(tradeStake)}</strong></div><div className="ai-active-position-value"><small>POSITION VALUE</small><strong>$ {money(tradeStake*Math.max(1,Number(trade.leverage||1)))}</strong></div><div className="ai-active-position-pnl"><small>LIVE P&L</small><strong className={tradePnl>=0?"green":"red"}>{signedMoney(tradePnl)}</strong><span>{tradeStake>0?((tradePnl/tradeStake)*100).toFixed(2):"0.00"}%</span></div><button type="button" onClick={()=>setDetailsExpanded(false)}>View position</button></article>})}</div></section>}
     {!opportunity&&!activeTrade?<><section className="ai-status-panel"><div><small>AI BOT STATUS</small><h2>{aiScanning?"Scanning the markets…":aiEngineActive?"FLEXAR is watching for a qualifying setup.":"Ready for your first AI setup."}</h2><p>{aiScanning?"Comparing live market conditions across supported instruments.":aiEngineActive?(mode==="autopilot"?"Autopilot is enabled. A qualifying setup will execute within your selected stake limit.":"Manual approval is enabled. You will review each AI trade before capital is used."):"The trading workspace is ready. Start the bot above and choose how FLEXAR should handle the next qualifying setup."}</p></div><span className={aiEngineActive?"status-pill live":"status-pill"}>{aiEngineActive?"LIVE":"READY"}</span></section><section className="ai-workspace-preview"><div className="workspace-preview-head"><div><small>TRADING WORKSPACE</small><h2>AI setup monitor</h2></div><span>10 MARKETS</span></div><div className="workspace-preview-grid"><div><small>MARKET</small><strong>BTC / USDT</strong><span>CRYPTO · LIVE</span></div><div><small>SIGNAL</small><strong>Waiting</strong><span>AI will surface the setup</span></div><div><small>POSITION</small><strong>{activeTradeCount}/2 ACTIVE</strong><span>FLEXAR manages open risk</span></div><div><small>STAKE</small><strong>{autoStake} USDT</strong><span>{mode==="autopilot"?"Autopilot limit":"Manual approval"}</span></div></div></section></>:<section className={activeTrade?"ai-trade-decision active":"ai-trade-decision"}><div className="decision-head"><div><small>{activeTrade?"AI TRADE · ACTIVE":"AI SIGNAL · READY FOR REVIEW"}</small><h2>{symbol}</h2><span>{direction==="UP"?"↗ LONG":"↘ SHORT"} · {score}% SIGNAL</span></div><div className="signal-score-large"><strong>{score}%</strong><small>CONFIDENCE</small></div></div><div className="decision-market-row"><div className="market-identity"><PairIcon symbol={symbol} cryptoIcons={cryptoIcons}/><div><strong>{symbol}</strong><small>{marketType}</small></div></div><div className={direction==="UP"?"signal-direction up":"signal-direction down"}>{direction==="UP"?"↗ UP":"↘ DOWN"}</div></div><button type="button" className="ai-preview-toggle" onClick={()=>setDetailsExpanded(v=>!v)}>{detailsExpanded?"Collapse full preview":"Expand full preview"} <span>{detailsExpanded?"↑":"↓"}</span></button>{detailsExpanded&&<><div className="signal-level-grid compact-levels"><div><small>ENTRY</small><strong>{price.toLocaleString(undefined,{maximumFractionDigits:6})}</strong></div><div><small>INITIAL TARGET</small><strong>{previewTakeProfit?previewTakeProfit.toLocaleString(undefined,{maximumFractionDigits:6}):"AUTO"}</strong></div><div><small>INITIAL STOP</small><strong>{previewStopLoss?previewStopLoss.toLocaleString(undefined,{maximumFractionDigits:6}):"AUTO"}</strong></div><div><small>MAX HOLD</small><strong>{risk.maxHoldHours} H</strong></div></div><p className="ai-risk-preview-copy"><b>{riskStyle[0].toUpperCase()+riskStyle.slice(1)} risk:</b> the stop can move to break-even after the configured profit trigger, then trail the market so profitable trades can continue beyond the initial target.</p></>}<div className="ai-mode-strip"><span>{mode==="autopilot"?"AUTOPILOT ACTIVE":"MANUAL APPROVAL"}</span><button type="button" onClick={()=>setModeOpen(true)}>Change mode</button></div><div className="active-ai-trade-summary"><div className="panel-heading"><div><small>POSITION STATUS</small><h3>Trade is active</h3></div><span className="capital-badge live">LIVE</span></div><div className="active-ai-live-preview"><PairIcon symbol={symbol} cryptoIcons={cryptoIcons}/><div><strong>{symbol}</strong><small>{direction==="UP"?"↗ LONG":"↘ SHORT"} · {Number(activeTrade?.metadata?.confidence_percent||score).toFixed(0)}% confidence</small></div><b className={Number(activeTrade?.unrealized_pnl||0)>=0?"green":"red"}>{Number(activeTrade?.unrealized_pnl||0)>=0?"+":"−"}$ {Math.abs(Number(activeTrade?.unrealized_pnl||0)).toFixed(2)}</b></div><button type="button" className="ai-preview-toggle" onClick={()=>setDetailsExpanded(v=>!v)}>{detailsExpanded?"Collapse details":"Expand details"} <span>{detailsExpanded?"↑":"↓"}</span></button>{detailsExpanded&&<><div className="active-ai-metrics"><div><small>CAPITAL</small><strong>$ {Number(activeTrade?.stake||0).toFixed(2)}</strong></div><div><small>LIVE PROFIT</small><strong className={Number(activeTrade?.unrealized_pnl||0)>=0?"green":"red"}>{Number(activeTrade?.unrealized_pnl||0)>=0?"+":"−"}$ {Math.abs(Number(activeTrade?.unrealized_pnl||0)).toFixed(2)}</strong></div><div><small>LEVERAGE</small><strong>{Number(activeTrade?.leverage||1).toFixed(0)}×</strong></div><div><small>CONFIDENCE</small><strong>{Number(activeTrade?.metadata?.confidence_percent||score).toFixed(0)}%</strong></div></div><div className="active-ai-status"><span>ENTRY {Number(activeTrade?.entry_price||price).toLocaleString(undefined,{maximumFractionDigits:6})}</span><span>INITIAL TARGET {Number(activeTrade?.initial_take_profit_price||previewTakeProfit).toLocaleString(undefined,{maximumFractionDigits:6})}</span><span>INITIAL STOP {Number(activeTrade?.initial_stop_loss_price||previewStopLoss).toLocaleString(undefined,{maximumFractionDigits:6})}</span><span>MAX HOLD {risk.maxHoldHours} H</span></div><p className="active-ai-live-copy">FLEXAR is managing this position. Live profit updates as the market moves.</p></>}</div><div className="decision-capital"><div className="panel-heading"><div><small>STAKE</small><h3>Choose your capital</h3></div><span className="capital-badge">USDT</span></div><div className="capital-summary"><div><small>AVAILABLE</small><strong>{tradingFunds.toLocaleString(undefined,{maximumFractionDigits:4})} USDT</strong></div><span>Wallet {walletBalance.toFixed(2)} · Bonus {bonusBalance.toFixed(2)} · {activeTradeCount}/2 active</span></div><div className="stake-presets">{["10","25","50","100"].map(v=><button type="button" key={v} className={amount===v?"selected":"choice"} onClick={()=>setAmount(v)} disabled={busy||!canOpenAnotherTrade}>$ {v}</button>)}</div><div className="amount-input-wrap"><span>$</span><input inputMode="decimal" value={amount} onChange={e=>updateAmount(e.target.value)} placeholder="0.00" aria-label="AI trade stake" disabled={busy||!canOpenAnotherTrade}/><small>USDT</small></div>{mode==="autopilot"?<div className="autopilot-notice">{autoBusy?"Autopilot is executing this qualifying setup…":activeTradeCount>=2?"Two positions are already active. FLEXAR will wait for an opening before taking another.":"Autopilot is enabled for this bot. Manual approval is not required for qualifying setups within your stake limit."}</div>:<button className="ai-approve-button decision-approve" disabled={busy||!canTrade||numericAmount<=0} onClick={confirmAiTrade}>{busy?"Opening AI trade…":activeTradeCount>=2?"Two positions already active":"Approve AI Trade →"}</button>}{notice&&<div className="notice" role="status">{notice}</div>}{!hasTradingAccess&&<div className="subscription-lock"><b>Your trading access has ended.</b><span>Choose a FLEXAR Pro plan or ensure you have at least 1.5 AI credits to open an AI trade.</span></div>}{hasTradingAccess&&!canTrade&&numericAmount>0&&activeTradeCount<2&&<p className="helper">Your stake is higher than your available trading funds.</p>}</div></section>}

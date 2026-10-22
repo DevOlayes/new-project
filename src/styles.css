@@ -3227,3 +3227,22 @@ body{background:var(--bg)}
 @media(max-width:980px){.identity-page-layout{grid-template-columns:minmax(0,1fr) 240px;gap:14px}.identity-form-card{padding:22px}.identity-side-card{padding:17px}.identity-page-hero{padding:28px}.identity-hero-mark{margin-right:0;transform:scale(.9)}}
 @media(max-width:760px){.identity-page{padding-top:0}.identity-page-hero{min-height:0;padding:25px 21px;border-radius:19px}.identity-page-hero p{font-size:12px}.identity-trust-points{gap:7px;margin-top:19px}.identity-trust-points span{padding:7px 8px;font-size:9px}.identity-hero-mark{flex-basis:76px;width:76px;height:95px;transform:scale(.76);transform-origin:center right;margin-left:-30px}.identity-shield{width:72px;height:83px}.identity-page-layout{grid-template-columns:1fr}.identity-form-card{padding:19px 15px;border-radius:17px}.identity-form-heading{flex-direction:column;gap:12px}.identity-form-heading h2{font-size:18px}.identity-fields-grid{grid-template-columns:1fr;gap:15px}.identity-field-wide{grid-column:auto}.identity-upload-grid{grid-template-columns:1fr}.identity-upload-card{min-height:170px}.identity-submit-row{align-items:stretch;flex-direction:column}.identity-submit-button{width:100%;white-space:normal}.identity-sidebar{display:grid;grid-template-columns:1fr}.identity-fee-modal{padding:25px 19px}.identity-fee-modal h2{font-size:21px}.identity-modal-actions{flex-direction:column-reverse}.identity-cancel-button{min-height:44px}.identity-page-hero h1{font-size:29px}}
 @media(max-width:390px){.identity-page-hero{padding:22px 16px}.identity-hero-mark{display:none}.identity-trust-points span{font-size:9px}.identity-form-card{padding:17px 12px}.identity-fee-breakdown>span{font-size:10px}.identity-fee-breakdown strong{font-size:10px}}
+
+/* Guided first-run dashboard tour */
+.tour-help-button{font-size:17px;font-weight:800;line-height:1;border:1px solid rgba(3,252,125,.28)!important;color:var(--green)!important;background:rgba(3,252,125,.07)!important}
+.dashboard-tour-layer{position:fixed;inset:0;z-index:9000;pointer-events:none}
+.dashboard-tour-scrim{position:fixed;inset:0;background:rgba(1,5,3,.74);backdrop-filter:blur(2px);pointer-events:auto}
+.dashboard-tour-spotlight{position:fixed;z-index:9001;border:2px solid var(--green);border-radius:15px;box-shadow:0 0 0 100vmax rgba(1,5,3,.74),0 0 0 5px rgba(3,252,125,.13),0 0 28px rgba(3,252,125,.22);pointer-events:none;transition:top .18s ease,left .18s ease,width .18s ease,height .18s ease}
+.dashboard-tour-card{position:fixed;z-index:9002;top:clamp(18px,19vh,150px);left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 30px));padding:22px;border:1px solid rgba(3,252,125,.27);border-radius:22px;background:linear-gradient(150deg,#111d14,#07100a);box-shadow:0 22px 80px rgba(0,0,0,.55);color:#f4fff7;pointer-events:auto}
+.dashboard-tour-progress{height:4px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden;margin-bottom:20px}
+.dashboard-tour-progress span{display:block;height:100%;border-radius:99px;background:var(--green);transition:width .2s ease}
+.dashboard-tour-eyebrow{display:block;color:var(--green);font-size:10px;font-weight:850;letter-spacing:.13em}
+.dashboard-tour-card h2{margin:10px 0 8px;font-size:22px;line-height:1.2;letter-spacing:-.025em}
+.dashboard-tour-card p{margin:0;color:#aab9ae;font-size:13px;line-height:1.65}
+.dashboard-tour-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:22px}
+.dashboard-tour-actions{display:flex;align-items:center;gap:8px}
+.dashboard-tour-footer button{min-height:40px;padding:0 14px;border-radius:11px;font-size:12px;font-weight:800}
+.dashboard-tour-skip,.dashboard-tour-back{border:1px solid rgba(255,255,255,.13);background:#0b160e;color:#d8e5dc}
+.dashboard-tour-next{border:1px solid var(--green);background:var(--green);color:#041008}
+@media(max-width:480px){.dashboard-tour-card{top:12vh;padding:19px 17px;border-radius:19px}.dashboard-tour-card h2{font-size:20px}.dashboard-tour-card p{font-size:12px}.dashboard-tour-footer button{padding:0 11px}.dashboard-tour-spotlight{border-radius:12px}}
+@media(prefers-reduced-motion:reduce){.dashboard-tour-spotlight,.dashboard-tour-progress span{transition:none}}
