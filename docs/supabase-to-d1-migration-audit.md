@@ -148,3 +148,10 @@ Additional read-only catalog checks completed:
 - Created a dedicated empty D1 database **flexar-migration-staging** in WEUR for migration work. Database UUID: 5cbaacf7-f67f-4a52-9548-1eab07e5f591. It is currently empty (no schema/data) and has read replication disabled. This is a separate staging target; no production Worker is bound to it and no application traffic is routed to it.
 - Audit/checkpoint document updated after catalog review. This resource creation is the first infrastructure change, deliberately isolated. Supabase remains untouched.
 - Next: generate and test D1 schema migrations against this empty staging DB, then transfer and reconcile datasets in controlled batches. Avoid touching the existing pexoriy D1 databases.
+
+
+## Checkpoint 4 — initial schema skeleton staged (2026-11-24)
+- Extracted live information_schema columns for the public base tables and generated a preliminary D1-compatible structural SQL skeleton.
+- Committed `cloudflare/migrations/0001_schema_skeleton.sql` on the audit branch (commit 385dc042b7c168eb1576c020eb52509c6e102121). The file deliberately warns it is NOT production-ready: PK/FK constraints, indexes, defaults, trigger behavior, and financial exact-unit handling need further review. Numeric fields are currently TEXT pending explicit conversions.
+- Applied the preliminary skeleton to the isolated `flexar-migration-staging` D1 resource and verified 28 application tables exist there. The Cloudflare system table `_cf_KV` is excluded from the app-table count. No rows were imported.
+- This is a preliminary structure, not the completed schema. Next work must add reviewed PK/FK/index/unique constraints, default handling, test schema integrity and compare every table to live metadata before any data transfer.
