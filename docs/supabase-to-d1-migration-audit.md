@@ -141,3 +141,10 @@ Additional read-only catalog checks completed:
 2. Build D1 schema conversion with migration files and staged validation; prioritize operational/transaction tables, while handling market history separately.
 3. Create Cloudflare staging D1/R2 resources only after confirming account access and isolation (no production bindings), then test schema migrations.
 4. Port and verify financial workflows before data cutover. Keep source Supabase intact until explicit approval.
+
+
+## Checkpoint 3 — isolated Cloudflare D1 staging resource
+- Confirmed Cloudflare account access and inspected existing D1 resources (pexoriy-preview and pexoriy-core). Neither was modified.
+- Created a dedicated empty D1 database **flexar-migration-staging** in WEUR for migration work. Database UUID: 5cbaacf7-f67f-4a52-9548-1eab07e5f591. It is currently empty (no schema/data) and has read replication disabled. This is a separate staging target; no production Worker is bound to it and no application traffic is routed to it.
+- Audit/checkpoint document updated after catalog review. This resource creation is the first infrastructure change, deliberately isolated. Supabase remains untouched.
+- Next: generate and test D1 schema migrations against this empty staging DB, then transfer and reconcile datasets in controlled batches. Avoid touching the existing pexoriy D1 databases.
