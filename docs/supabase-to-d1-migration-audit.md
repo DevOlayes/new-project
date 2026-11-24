@@ -117,3 +117,27 @@ The live pg_cron job definitions include a publishable Supabase credential embed
 
 ### Phase 2 limitations
 Read-only project introspection established tables, approximate row counts, migration registry, active function listing, storage bucket/policies, pg_cron jobs, policies and advisor findings. The complete per-table columns/constraints, every policy/function/trigger body, every function's source and live configuration, realtime settings, external integrations, and migration file-vs-registry comparison remain to be audited. The initial catalog query output was truncated, so the raw complete function inventory should be queried in smaller groups before final sign-off.
+
+
+## Checkpoint 2 — live catalog deepening (2026-11-24)
+Additional read-only catalog checks completed:
+- Exact row counts captured across 27 public tables. High-volume tables: market_candles 1,144,945; market_features 541,709; ai_opportunities 1,766; wallet_transactions 1,340; trades 670; ai_credit_transactions 669; client_diagnostic_events 419.
+- Public/private routine inventory enumerated, including privileged routines: admin wallet adjustment/withdrawal review; execute_manual_trade, execute_trade, manage_active_trades, request_withdrawal (two overloads), run_autopilot_engine, settle_due_trades, swap_assets; payment order/deposit verification and crediting, referral rewards, AI credit consumption/purchase/refund, identity verification, set_ai_trading_mode. Function-source review remains pending in detail.
+- Trigger inventory: MT5 connection timestamp trigger; user_rewards exhausted-reward completion trigger (insert/update).
+- RLS policy inventory gathered. Ownership filters exist on core profile, wallet, trade, transaction, referral, reward, notification and subscription reads. Public market reads/settings and some admin-only read policies exist. Policies for admin_audit_log, client_diagnostic_events and identity_verifications were previously flagged as missing; backend/service-only access paths must be confirmed.
+- Exact live row counts: adaptive_model_weights 20; admin_audit_log 0; ai_credit_transactions 669; ai_opportunities 1,766; ai_training_funds 1; app_settings 12; client_diagnostic_events 419; deposit_requests 0; identity_verifications 0; market_candles 1,144,945; market_features 541,709; market_instruments 10; model_performance_stats 80; mt5_connections 0; notifications 0; opportunity_decision_snapshots 0; opportunity_evaluation_dataset 100; payment_orders 2; profiles 2; referral_rewards 0; referrals 0; reward_campaigns 1; subscription_plans 1; trades 670; user_rewards 2; user_subscriptions 0; wallet_transactions 1,340; wallets 2.
+- Repository SQL migration inventory: 27 migration files surfaced. Live Supabase registry previously reported 41 entries; this difference is material and could indicate migration files absent from repository, registry-only entries, or differing history. No attempt made to repair the migration registry.
+- Live Edge Function inventory contains mt5-gateway, not in the 20-function repo list. Source parity investigation remains open.
+
+## Migration implementation safeguards
+- No data export/import has yet occurred; row-count capture is an audit/validation baseline.
+- Do not migrate auth passwords/session secrets through an improvised process. Auth provider and identity continuity are a dedicated migration decision.
+- Do not migrate market history monolithically. Use deterministic chunking, resumability, source/destination counts/checksums.
+- Wallet, transaction, trade, payment and AI-credit records must remain immutable during transfer. Target mutation logic must be independently tested against source behavior.
+- Migration branch only. Production services, scheduled jobs, Supabase data and user-facing site remain untouched.
+
+## Immediate next tasks
+1. Reconcile the 41 live migration registry entries against the 27 repository SQL files; retrieve and analyze all SQL files, plus missing live-only function source.
+2. Build D1 schema conversion with migration files and staged validation; prioritize operational/transaction tables, while handling market history separately.
+3. Create Cloudflare staging D1/R2 resources only after confirming account access and isolation (no production bindings), then test schema migrations.
+4. Port and verify financial workflows before data cutover. Keep source Supabase intact until explicit approval.
