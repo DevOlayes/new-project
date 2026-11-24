@@ -57,3 +57,63 @@ D1 is SQLite-based; Postgres schema/data cannot be imported unchanged. Use versi
 Selective GitHub tree/source inspection only. Full migration SQL review, live Supabase catalog, RLS, storage policies, secrets, logs, realtime config and data volume inspection remain outstanding. Their absence from this checkpoint must not be interpreted as absence in production.
 
 Checkpoint document only; no production changes.
+
+
+## Phase 2: Live Supabase inspection (read-only) — 2026-11-24
+The connected Supabase project named **flexar** (ref `kuwpxpninjdvmkqkaxoi`) was confirmed `ACTIVE_HEALTHY`. Live database introspection was performed using read-only calls; no writes or schema changes were made.
+
+### Live schema counts and approximate row counts
+27 public tables surfaced by the live listing (all RLS-enabled):
+- profiles (2); wallets (2); wallet_transactions (1,340); trades (670); referrals (0); notifications (0); app_settings (12); market_candles (1,144,945); ai_opportunities (1,766); market_features (541,709); opportunity_evaluation_dataset (100); reward_campaigns (1); user_rewards (2); referral_rewards (0); market_instruments (10); opportunity_decision_snapshots (0); model_performance_stats (80); adaptive_model_weights (20); subscription_plans (1); user_subscriptions (0); mt5_connections (0); ai_credit_transactions (669); ai_training_funds (1); deposit_requests (0); payment_orders (2); client_diagnostic_events (419); admin_audit_log (0); identity_verifications (0).
+
+**Data-volume implication:** market_candles (~1.145M) and market_features (~542K) already dominate the measured data volume. These two datasets need separate transfer, retention, indexing, chunking and reconciliation strategies; they should not be treated like transactional tables or imported in one large batch.
+
+### Live migration history
+The live Supabase migration registry returned **41 migration entries**. Repository migration files must be compared against this live registry to identify drift, missing files and chronology mismatches.
+
+### Live Edge Functions
+All repository functions were observed active in the live function listing, with versions and JWT verification settings. The live listing also surfaced **mt5-gateway**, which was not in the repository's initial function inventory; its source and repository/deployment relationship must be investigated. The live inventory therefore needs reconciliation rather than assuming the repo list is exhaustive.
+
+### Storage
+Live storage inspection confirmed one private bucket, `identity-documents`:
+- private bucket
+- 10 MiB maximum object size
+- allowed types: JPEG, PNG, WEBP and PDF
+- policies permit authenticated users to upload and view objects within their own user-ID folder
+
+Target: private R2 bucket and Worker-mediated access; migration must preserve folder ownership boundaries, type/size validation and authorization.
+
+### Realtime
+The inspected database publication table listing returned null. This is not a definitive account-wide proof that no realtime feature is used; frontend source and project configuration need further verification.
+
+### Active scheduled database jobs
+Live pg_cron inspection surfaced 9 active jobs:
+- market-ingest: every minute
+- opportunity-engine: every minute
+- opportunity-evaluator: every minute
+- performance-dataset: every 5 minutes
+- adaptive-learning: every 5 minutes (offset schedule)
+- payment-request expiry: every 15 minutes
+- position manager: every minute
+- autopilot engine: every minute
+- market-features: scheduled job currently every 3 minutes (job name says every minute; actual schedule must be treated as authoritative)
+
+These scheduled functions are a critical migration dependency. They need Cloudflare Cron Triggers and/or durable orchestration, with concurrency protection, retry semantics, monitoring and idempotency.
+
+### Security advisor findings — recorded, not remediated
+- RLS-enabled tables with no policies: admin_audit_log, client_diagnostic_events, identity_verifications (advisor severity INFO; privileged access may be intentionally service-only, but verify that configuration and backend-only access remain intact).
+- Mutable search_path warning: private.touch_mt5_connection.
+- SECURITY DEFINER functions exposed to authenticated users flagged by advisor: execute_trade, set_ai_trading_mode and swap_assets. Their authorization and exposure must be reviewed and migrated as backend-controlled operations where appropriate.
+- Leaked-password protection currently disabled in Supabase Auth (advisor finding).
+
+### Performance advisor findings
+- 3 unindexed foreign keys: ai_credit_transactions.user_id; deposit_requests.reviewed_by; identity_verifications.reviewed_by.
+- 1 duplicate-index finding on wallets user/asset/network uniqueness.
+- 23 unused-index findings (advisor output); do not remove indexes blindly—usage windows and production query workload must be considered.
+- RLS auth initialization-plan warning for a deposit_requests policy.
+
+### Important exposure note
+The live pg_cron job definitions include a publishable Supabase credential embedded in scheduled request headers. This was not reproduced in this audit document. Publishable credentials are not equivalent to service-role secrets, but using them as cron authentication is not a robust secret boundary. Replace this with a dedicated, rotatable secret and proper endpoint authentication during migration. Treat the credential as exposed to the extent it is present in repository/database configuration and rotate or replace as part of the security plan; do not publish secret values in logs or documentation.
+
+### Phase 2 limitations
+Read-only project introspection established tables, approximate row counts, migration registry, active function listing, storage bucket/policies, pg_cron jobs, policies and advisor findings. The complete per-table columns/constraints, every policy/function/trigger body, every function's source and live configuration, realtime settings, external integrations, and migration file-vs-registry comparison remain to be audited. The initial catalog query output was truncated, so the raw complete function inventory should be queried in smaller groups before final sign-off.
