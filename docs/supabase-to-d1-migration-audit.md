@@ -155,3 +155,16 @@ Additional read-only catalog checks completed:
 - Committed `cloudflare/migrations/0001_schema_skeleton.sql` on the audit branch (commit 385dc042b7c168eb1576c020eb52509c6e102121). The file deliberately warns it is NOT production-ready: PK/FK constraints, indexes, defaults, trigger behavior, and financial exact-unit handling need further review. Numeric fields are currently TEXT pending explicit conversions.
 - Applied the preliminary skeleton to the isolated `flexar-migration-staging` D1 resource and verified 28 application tables exist there. The Cloudflare system table `_cf_KV` is excluded from the app-table count. No rows were imported.
 - This is a preliminary structure, not the completed schema. Next work must add reviewed PK/FK/index/unique constraints, default handling, test schema integrity and compare every table to live metadata before any data transfer.
+
+
+## Checkpoint 5 — source row-count baseline and staging inspection (2026-11-24)
+- Requeried exact live PostgreSQL counts for all 28 public base tables. Key totals: market_candles 1,144,945; market_features 541,709; wallet_transactions 1,340; trades 670; ai_credit_transactions 669; ai_opportunities 1,766; profiles 2; wallets 2. Counts must be recalculated at transfer time because the source remains live and mutable.
+- Confirmed the D1 staging skeleton remains bare column declarations without PK/FK/unique/index/check/default constraints. No staging records exist yet. No source data or production resource has been modified.
+- A transfer cannot responsibly be performed as an ad-hoc copy of tool outputs for datasets at this scale. A resumable migration runner must be implemented with paging/chunk boundaries, exact decimal serialization, manifest/checksum tracking, and validation. Identity-document paths do not transfer private R2 files, and Supabase Auth identities are not represented by public profiles rows.
+- Data-transfer checkpoint remains NOT STARTED.
+
+## Immediate transfer prerequisites
+1. Complete schema/constraint conversion and staging tests.
+2. Implement a repeatable migration runner using authorized source/destination access, resumable chunks, retry/idempotency, manifests, and reconciliation.
+3. Separate handling for Auth, private identity files/R2, and large market datasets.
+4. Validate every migrated table and financial ledger totals before declaring transfer complete.
